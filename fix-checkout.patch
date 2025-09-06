@@ -1,0 +1,17 @@
+--- a/src/app/checkout/page.tsx
++++ b/src/app/checkout/page.tsx
+@@ -125,14 +125,7 @@
+       // Confirm payment
+       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+         payment_method: {
+-          card: {
+-            // This would be replaced with actual Stripe Elements in production
+-            number: '4242424242424242',
+-            exp_month: 12,
+-            exp_year: 2025,
+-            cvc: '123',
+-          },
++          type: 'card',
+           billing_details: {
+             name: `${data.firstName} ${data.lastName}`,
+             email: data.email,

@@ -1,0 +1,25 @@
+[build]
+  command = "npm run build"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NEXT_PUBLIC_SUPABASE_URL = "https://fnhuxuwqcbynqcnomtpz.supabase.co"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuaHV4dXdxY2J5bnFjbm9tdHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMzMzMTMsImV4cCI6MjA1MTYwOTMxM30.z-5o9Z-F0kEZgdGBTJP0mAJWQJJXnvlD1v5kQ7oS1rY"
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_placeholder"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[images]
+  remote_images = ["https://*", "http://*"]
