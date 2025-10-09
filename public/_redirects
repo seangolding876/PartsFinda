@@ -1,0 +1,8 @@
+# PartsFinda SPA Redirects for Netlify
+# Ensure all routes work correctly with client-side routing
+
+# API routes should go to Next.js functions
+/api/*  /.netlify/functions/nextjs/:splat  200
+
+# All other routes should serve index.html for SPA routing
+/*    /index.html   200
