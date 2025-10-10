@@ -79,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
     const isProduction: boolean = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: false,
-      secure: isProduction,
+      secure: false,
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7,
       path: '/'
