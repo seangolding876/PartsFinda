@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 // IMPORTANT: Same secret use karein jo login API mein use kar rahe hain
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-at-least-32-chars';
+const JWT_SECRET = process.env.JWT_SECRET || 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE';
 
 export interface JwtPayload {
   userId: string; // string rahega, UUID nahi required
@@ -19,7 +19,8 @@ export function generateToken(payload: JwtPayload): string {
   // Sign options properly define karein
   const options: jwt.SignOptions = {
     expiresIn: '7d',
-    issuer: 'partsfinda-api'
+    issuer: 'partsfinda-api',
+    algorithm: 'HS256' // explicitly define karein
   };
 
   const token = jwt.sign(payload, JWT_SECRET, options);

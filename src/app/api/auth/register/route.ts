@@ -62,7 +62,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
     const tokenPayload = {
       userId: String(user.id),
       email: user.email,
-      name: user.name
+      name: String(user.name),
+      role: user.role
     };
 
     const authToken: string = generateToken(tokenPayload);
