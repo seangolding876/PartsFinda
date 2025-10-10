@@ -101,10 +101,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
 
     // Generate JWT token
     const tokenPayload = {
-      userId: user.id,
+      userId: String(user.id),
       email: user.email,
-      name: user.name,
-      role: user.role
+      name: user.name
     };
 
     const authToken: string = generateToken(tokenPayload);
