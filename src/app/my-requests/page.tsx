@@ -1,161 +1,186 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart } from 'lucide-react';
+import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User } from 'lucide-react';
 import Link from 'next/link';
+
+// Auth utility
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+interface PartRequest {
+  id: number;
+  part_name: string;
+  part_number?: string;
+  make_name: string;
+  model_name: string;
+  year: number;
+  description: string;
+  budget: number;
+  parish: string;
+  condition: string;
+  urgency: string;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
 
 function BuyerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [partRequests, setPartRequests] = useState<PartRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    active: 0,
+    quoted: 0,
+    completed: 0,
+    moneySaved: 0
+  });
 
-  const stats = [
-    { icon: <Package className="w-6 h-6" />, label: 'Active Requests', value: '8', color: 'text-blue-600', bg: 'bg-blue-100' },
-    { icon: <MessageCircle className="w-6 h-6" />, label: 'Quotes Received', value: '24', color: 'text-green-600', bg: 'bg-green-100' },
-    { icon: <CheckCircle className="w-6 h-6" />, label: 'Completed Orders', value: '12', color: 'text-purple-600', bg: 'bg-purple-100' },
-    { icon: <TrendingUp className="w-6 h-6" />, label: 'Money Saved', value: 'J$45,000', color: 'text-orange-600', bg: 'bg-orange-100' }
-  ];
+  // Fetch user's part requests
+  const fetchUserRequests = async () => {
+    try {
+      setLoading(true);
+      const authData = getAuthData();
+      
+      if (!authData?.token) {
+        console.error('No authentication token found');
+        return;
+      }
 
-  const recentRequests = [
-    {
-      id: 'REQ-001',
-      partName: 'Brake Pads Set',
-      vehicle: '2020 Toyota Camry',
-      status: 'active',
-      quotesReceived: 5,
-      bestPrice: 'J$8,500',
-      dateCreated: '2024-01-15',
-      description: 'Front brake pads for 2020 Toyota Camry. Looking for ceramic pads with good quality.',
-      budget: 'J$5,000 - J$10,000',
-      parish: 'Kingston',
-      urgency: 'normal'
-    },
-    {
-      id: 'REQ-002',
-      partName: 'Engine Oil Filter',
-      vehicle: '2019 Honda Civic',
-      status: 'completed',
-      quotesReceived: 8,
-      bestPrice: 'J$2,200',
-      dateCreated: '2024-01-10',
-      description: 'OEM quality oil filter for Honda Civic 2019.',
-      budget: 'J$2,000 - J$3,000',
-      parish: 'St. Andrew',
-      urgency: 'normal'
-    },
-    {
-      id: 'REQ-003',
-      partName: 'Transmission Fluid',
-      vehicle: '2021 Nissan Altima',
-      status: 'quoted',
-      quotesReceived: 3,
-      bestPrice: 'J$4,200',
-      dateCreated: '2024-01-12',
-      description: 'ATF for automatic transmission. Need 4 liters.',
-      budget: 'J$4,000 - J$6,000',
-      parish: 'Portmore',
-      urgency: 'urgent'
-    },
-    {
-      id: 'REQ-004',
-      partName: 'Air Filter',
-      vehicle: '2018 BMW 3 Series',
-      status: 'expired',
-      quotesReceived: 2,
-      bestPrice: 'J$3,500',
-      dateCreated: '2023-12-28',
-      description: 'High-flow air filter for BMW 3 Series.',
-      budget: 'J$3,000 - J$5,000',
-      parish: 'Spanish Town',
-      urgency: 'normal'
+      const response = await fetch('/api/part-requests?action=getUserRequests', {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch requests');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setPartRequests(result.data);
+        calculateStats(result.data);
+      } else {
+        console.error('Failed to fetch requests:', result.error);
+      }
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const quotes = [
-    {
-      id: 'QUO-001',
-      requestId: 'REQ-001',
-      supplier: 'Kingston Auto Parts',
-      supplierRating: 4.8,
-      supplierLocation: 'Kingston',
-      price: 'J$8,500',
-      originalPrice: 'J$10,000',
-      partCondition: 'New',
-      warranty: '2 years',
-      deliveryTime: '2-3 days',
-      description: 'Premium ceramic brake pads with excellent stopping power.',
-      features: ['Ceramic compound', 'Low noise', 'Extended life'],
-      dateReceived: '2024-01-16',
-      validUntil: '2024-01-23',
-      status: 'pending'
-    },
-    {
-      id: 'QUO-002',
-      requestId: 'REQ-001',
-      supplier: 'Spanish Town Motors',
-      supplierRating: 4.9,
-      supplierLocation: 'Spanish Town',
-      price: 'J$9,200',
-      partCondition: 'New',
-      warranty: '1 year',
-      deliveryTime: '1-2 days',
-      description: 'OEM quality brake pads with quick delivery.',
-      features: ['OEM specification', 'Quick delivery', 'Installation guide'],
-      dateReceived: '2024-01-16',
-      validUntil: '2024-01-25',
-      status: 'pending'
-    }
-  ];
+  // Calculate statistics from real data
+  const calculateStats = (requests: PartRequest[]) => {
+    const active = requests.filter(req => req.status === 'open').length;
+    const quoted = requests.filter(req => 
+      req.status === 'open' && parseInt(req.created_at) > Date.now() - 7 * 24 * 60 * 60 * 1000
+    ).length;
+    const completed = requests.filter(req => req.status === 'fulfilled').length;
+    
+    // Calculate estimated savings (this would come from actual quote data)
+    const moneySaved = requests
+      .filter(req => req.status === 'fulfilled')
+      .reduce((total, req) => total + (req.budget || 0) * 0.2, 0); // 20% savings estimate
 
-  const orderHistory = [
-    {
-      id: 'ORD-001',
-      partName: 'Oil Filter',
-      supplier: 'Auto Excellence',
-      price: 'J$2,200',
-      orderDate: '2024-01-08',
-      deliveryDate: '2024-01-10',
-      status: 'delivered',
-      rating: 5,
-      vehicle: '2019 Honda Civic'
+    setStats({
+      active,
+      quoted,
+      completed,
+      moneySaved
+    });
+  };
+
+  useEffect(() => {
+    fetchUserRequests();
+  }, []);
+
+  const statsData = [
+    { 
+      icon: <Package className="w-6 h-6" />, 
+      label: 'Active Requests', 
+      value: stats.active.toString(), 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-100' 
     },
-    {
-      id: 'ORD-002',
-      partName: 'Spark Plugs Set',
-      supplier: 'Parts Pro Jamaica',
-      price: 'J$1,800',
-      orderDate: '2023-12-15',
-      deliveryDate: '2023-12-18',
-      status: 'delivered',
-      rating: 4,
-      vehicle: '2018 Nissan Altima'
+    { 
+      icon: <MessageCircle className="w-6 h-6" />, 
+      label: 'Recent Quotes', 
+      value: stats.quoted.toString(), 
+      color: 'text-green-600', 
+      bg: 'bg-green-100' 
+    },
+    { 
+      icon: <CheckCircle className="w-6 h-6" />, 
+      label: 'Completed Orders', 
+      value: stats.completed.toString(), 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-100' 
+    },
+    { 
+      icon: <TrendingUp className="w-6 h-6" />, 
+      label: 'Money Saved', 
+      value: `J$${stats.moneySaved.toLocaleString()}`, 
+      color: 'text-orange-600', 
+      bg: 'bg-orange-100' 
     }
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-blue-100 text-blue-800';
-      case 'quoted': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-purple-100 text-purple-800';
-      case 'expired': return 'bg-red-100 text-red-800';
+      case 'open': return 'bg-blue-100 text-blue-800';
+      case 'fulfilled': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'urgent': return 'bg-red-100 text-red-800';
-      case 'normal': return 'bg-yellow-100 text-yellow-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const filteredRequests = recentRequests.filter(request => {
-    const matchesSearch = request.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.vehicle.toLowerCase().includes(searchQuery.toLowerCase());
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const filteredRequests = partRequests.filter(request => {
+    const matchesSearch = request.part_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.make_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.model_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterStatus === 'all' || request.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -188,8 +213,8 @@ function BuyerDashboard() {
                   <User className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-800">John Doe</h3>
-                  <p className="text-sm text-gray-600">Buyer since 2023</p>
+                  <h3 className="font-semibold text-gray-800">Your Account</h3>
+                  <p className="text-sm text-gray-600">{partRequests.length} requests</p>
                 </div>
               </div>
 
@@ -208,7 +233,7 @@ function BuyerDashboard() {
                     activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
                   }`}
                 >
-                  My Requests
+                  My Requests ({partRequests.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('quotes')}
@@ -217,22 +242,6 @@ function BuyerDashboard() {
                   }`}
                 >
                   Quotes Received
-                </button>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'orders' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Order History
-                </button>
-                <button
-                  onClick={() => setActiveTab('favorites')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'favorites' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Favorite Suppliers
                 </button>
                 <button
                   onClick={() => setActiveTab('profile')}
@@ -252,7 +261,7 @@ function BuyerDashboard() {
               <div className="space-y-6">
                 {/* Stats Grid */}
                 <div className="grid md:grid-cols-4 gap-6">
-                  {stats.map((stat, index) => (
+                  {statsData.map((stat, index) => (
                     <div key={index} className="bg-white rounded-lg shadow-lg p-6">
                       <div className={`${stat.bg} rounded-full w-12 h-12 flex items-center justify-center mb-4`}>
                         <div className={stat.color}>{stat.icon}</div>
@@ -263,30 +272,45 @@ function BuyerDashboard() {
                   ))}
                 </div>
 
-                {/* Recent Activity */}
+                {/* Recent Requests */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Activity</h3>
-                  <div className="space-y-4">
-                    {recentRequests.slice(0, 3).map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
-                            <Package className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Requests</h3>
+                  {partRequests.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No part requests yet</p>
+                      <Link
+                        href="/request-part"
+                        className="inline-block mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                      >
+                        Create Your First Request
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {partRequests.slice(0, 3).map((request) => (
+                        <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
+                              <Package className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-800">{request.part_name}</h4>
+                              <p className="text-sm text-gray-600">{request.make_name} {request.model_name} ({request.year})</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-800">{request.partName}</h4>
-                            <p className="text-sm text-gray-600">{request.vehicle}</p>
+                          <div className="text-right">
+                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.status)}`}>
+                              {request.status}
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {formatDate(request.created_at)}
+                            </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.status)}`}>
-                            {request.status}
-                          </div>
-                          <p className="text-sm text-gray-500 mt-1">{request.quotesReceived} quotes</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -312,230 +336,104 @@ function BuyerDashboard() {
                       className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="quoted">Quoted</option>
-                      <option value="completed">Completed</option>
-                      <option value="expired">Expired</option>
+                      <option value="open">Active</option>
+                      <option value="fulfilled">Completed</option>
+                      <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Requests List */}
                 <div className="space-y-4">
-                  {filteredRequests.map((request) => (
-                    <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-gray-800">{request.partName}</h3>
-                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.status)}`}>
-                              {request.status}
-                            </div>
-                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getUrgencyColor(request.urgency)}`}>
-                              {request.urgency}
-                            </div>
-                          </div>
-                          <p className="text-gray-600 mb-2">{request.vehicle}</p>
-                          <p className="text-gray-700 mb-4">{request.description}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Request ID: {request.id}</p>
-                          <p className="text-sm text-gray-500">Created: {request.dateCreated}</p>
-                        </div>
-                      </div>
-
-                      <div className="grid md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Budget</p>
-                          <p className="text-green-600 font-bold">{request.budget}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Best Quote</p>
-                          <p className="text-blue-600 font-bold">{request.bestPrice}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Quotes Received</p>
-                          <p className="text-purple-600 font-bold">{request.quotesReceived}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Location</p>
-                          <p className="text-gray-600">{request.parish}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3">
-                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </button>
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                          <MessageCircle className="w-4 h-4" />
-                          View Quotes ({request.quotesReceived})
-                        </button>
-                        {request.status === 'expired' && (
-                          <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                            Repost Request
-                          </button>
-                        )}
-                      </div>
+                  {filteredRequests.length === 0 ? (
+                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-4">
+                        {partRequests.length === 0 
+                          ? "You haven't created any part requests yet."
+                          : "No requests match your search criteria."
+                        }
+                      </p>
+                      {partRequests.length === 0 && (
+                        <Link
+                          href="/request-part"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors inline-block"
+                        >
+                          Create Your First Request
+                        </Link>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'quotes' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Received Quotes</h3>
-                  <div className="space-y-6">
-                    {quotes.map((quote) => (
-                      <div key={quote.id} className="border border-gray-200 rounded-lg p-6">
+                  ) : (
+                    filteredRequests.map((request) => (
+                      <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
                         <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className="text-lg font-bold text-gray-800">{quote.supplier}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star
-                                    key={i}
-                                    className={`w-4 h-4 ${
-                                      i < Math.floor(quote.supplierRating)
-                                        ? 'text-yellow-400 fill-current'
-                                        : 'text-gray-300'
-                                    }`}
-                                  />
-                                ))}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-xl font-bold text-gray-800">{request.part_name}</h3>
+                              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.status)}`}>
+                                {request.status}
                               </div>
-                              <span className="text-sm text-gray-600">({quote.supplierRating})</span>
-                              <span className="text-sm text-gray-500">• {quote.supplierLocation}</span>
+                              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getUrgencyColor(request.urgency)}`}>
+                                {request.urgency}
+                              </div>
                             </div>
+                            <p className="text-gray-600 mb-2">{request.make_name} {request.model_name} ({request.year})</p>
+                            <p className="text-gray-700 mb-4">{request.description}</p>
                           </div>
                           <div className="text-right">
-                            <div className="text-2xl font-bold text-green-600">{quote.price}</div>
-                            {quote.originalPrice && (
-                              <div className="text-sm text-gray-500 line-through">{quote.originalPrice}</div>
-                            )}
+                            <p className="text-sm text-gray-500">Request #{request.id}</p>
+                            <p className="text-sm text-gray-500">Created: {formatDate(request.created_at)}</p>
                           </div>
                         </div>
 
-                        <p className="text-gray-700 mb-4">{quote.description}</p>
-
-                        <div className="grid md:grid-cols-3 gap-4 mb-4">
+                        <div className="grid md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Budget</p>
+                            <p className="text-green-600 font-bold">
+                              {request.budget ? `J$${request.budget.toLocaleString()}` : 'Not specified'}
+                            </p>
+                          </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-700">Condition</p>
-                            <p className="text-gray-600">{quote.partCondition}</p>
+                            <p className="text-gray-600 capitalize">{request.condition}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-700">Warranty</p>
-                            <p className="text-gray-600">{quote.warranty}</p>
+                            <p className="text-sm font-semibold text-gray-700">Location</p>
+                            <p className="text-gray-600">{request.parish}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-700">Delivery</p>
-                            <p className="text-gray-600">{quote.deliveryTime}</p>
+                            <p className="text-sm font-semibold text-gray-700">Expires</p>
+                            <p className="text-gray-600">{formatDate(request.expires_at)}</p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {quote.features.map((feature, index) => (
-                            <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                              {feature}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm text-gray-500">
-                            Valid until: {quote.validUntil}
-                          </div>
-                          <div className="flex gap-3">
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                              Accept Quote
+                        <div className="flex gap-3">
+                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            View Details
+                          </button>
+                          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4" />
+                            View Quotes
+                          </button>
+                          {request.status === 'cancelled' && (
+                            <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                              Repost Request
                             </button>
-                            <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors">
-                              Message Supplier
-                            </button>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
 
-            {activeTab === 'orders' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Order History</h3>
-                  <div className="space-y-4">
-                    {orderHistory.map((order) => (
-                      <div key={order.id} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className="text-lg font-bold text-gray-800">{order.partName}</h4>
-                            <p className="text-gray-600">{order.vehicle}</p>
-                            <p className="text-sm text-gray-500">Order #{order.id}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xl font-bold text-green-600">{order.price}</div>
-                            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold mt-2">
-                              {order.status}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-4 mb-4">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Supplier</p>
-                            <p className="text-gray-600">{order.supplier}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Order Date</p>
-                            <p className="text-gray-600">{order.orderDate}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Delivered</p>
-                            <p className="text-gray-600">{order.deliveryDate}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-700">Your Rating:</span>
-                            <div className="flex">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < order.rating
-                                      ? 'text-yellow-400 fill-current'
-                                      : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex gap-3">
-                            <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors">
-                              View Details
-                            </button>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                              Order Again
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'favorites' && (
+            {/* Other tabs (quotes, profile) remain similar but will be populated with real data */}
+            {activeTab === 'quotes' && (
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Favorite Suppliers</h3>
-                <p className="text-gray-600">You haven't added any suppliers to your favorites yet. When you find suppliers you like, add them here for quick access.</p>
+                <h3 className="text-xl font-bold text-gray-800 mb-6">Quotes Received</h3>
+                <p className="text-gray-600">Quotes functionality will be implemented soon.</p>
               </div>
             )}
 
