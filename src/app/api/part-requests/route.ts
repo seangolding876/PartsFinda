@@ -109,112 +109,104 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - New part request create karne ke liye
+// POST handler
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check
+    // Authorization
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication token required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, error: 'Authentication token required' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
-    const userId = userInfo.userId;
+    let userInfo;
+    try {
+      userInfo = verifyToken(token);
+    } catch (error: any) {
+      return NextResponse.json({ success: false, error: error.message || 'Invalid token' }, { status: 401 });
+    }
+    const userId = parseInt(userInfo.userId, 10); // JWT se ayega string, convert to integer
 
     const body: PartRequestData = await request.json();
-    const {
-      partName,
-      partNumber,
-      makeId,
-      modelId,
-      vehicleYear,
-      description,
-      budget,
-      parish,
-      condition,
-      urgency
-    } = body;
 
-    console.log('📦 Creating part request for user:', userId);
-
-    // Validate required fields
+    // Required fields check
     const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description'];
     for (const field of requiredFields) {
       if (!body[field as keyof PartRequestData]) {
-        return NextResponse.json(
-          { success: false, error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 });
       }
     }
 
-    // Validate vehicle year
-    const currentYear = new Date().getFullYear();
-    if (vehicleYear < 1900 || vehicleYear > currentYear + 1) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid vehicle year' },
-        { status: 400 }
-      );
+    // Convert numeric fields
+    const budget = body.budget !== undefined ? parseFloat(body.budget as any) : null;
+    const vehicleYear = parseInt(body.vehicleYear as any, 10);
+    if (isNaN(vehicleYear) || (budget !== null && isNaN(budget))) {
+      return NextResponse.json({ success: false, error: 'Invalid numeric values' }, { status: 400 });
     }
 
-    // Calculate expires_at (30 days from now)
+    // UUID validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(body.makeId) || !uuidRegex.test(body.modelId)) {
+      return NextResponse.json({ success: false, error: 'Invalid UUID format' }, { status: 400 });
+    }
+
+    // Vehicle year validation
+    const currentYear = new Date().getFullYear();
+    if (vehicleYear < 1900 || vehicleYear > currentYear + 1) {
+      return NextResponse.json({ success: false, error: 'Invalid vehicle year' }, { status: 400 });
+    }
+
+    // Check user exists
+    const userCheck = await query('SELECT id, email FROM users WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+
+    // Check make & model exist
+    const makeCheck = await query('SELECT id, name FROM makes WHERE id = $1', [body.makeId]);
+    if (makeCheck.rows.length === 0) return NextResponse.json({ success: false, error: 'Invalid make ID' }, { status: 400 });
+
+    const modelCheck = await query('SELECT id, name FROM models WHERE id = $1 AND make_id = $2', [body.modelId, body.makeId]);
+    if (modelCheck.rows.length === 0) return NextResponse.json({ success: false, error: 'Invalid model ID or model does not belong to make' }, { status: 400 });
+
+    // Expiry 30 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Insert into database
+    // Insert part request
     const result = await query(
       `INSERT INTO part_requests (
-        user_id, part_name, part_number, make_id, model_id, year, 
-        description, budget, parish, condition, urgency, expires_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING *`,
+        user_id, make_id, model_id, vehicle_year, part_name, part_number, description, 
+        budget, parish, status, expires_at, condition, urgency
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      RETURNING id, part_name, created_at, expires_at, status`,
       [
         userId,
-        partName,
-        partNumber || null,
-        makeId,
-        modelId,
+        body.makeId,
+        body.modelId,
         vehicleYear,
-        description,
-        budget || null,
-        parish,
-        condition,
-        urgency,
-        expiresAt
+        body.partName,
+        body.partNumber || null,
+        body.description,
+        budget,
+        body.parish,
+        'open',
+        expiresAt,
+        body.condition,
+        body.urgency
       ]
     );
 
     const newRequest = result.rows[0];
-    console.log('✅ Part request created successfully:', newRequest.id);
-
     return NextResponse.json({
       success: true,
       message: 'Part request submitted successfully',
       data: newRequest
     });
-
   } catch (error: any) {
     console.error('❌ Error creating part request:', error);
-    
-    // Handle specific database errors
-    if (error.code === '23503') {
-      return NextResponse.json(
-        { success: false, error: 'Invalid make or model ID' },
-        { status: 400 }
-      );
-    }
-    
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to create part request',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to create part request',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    }, { status: 500 });
   }
 }
