@@ -181,7 +181,7 @@ function BuyerDashboard() {
       </div>
     );
   }
-
+  const authData = getAuthData();
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -213,7 +213,7 @@ function BuyerDashboard() {
                   <User className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-800">Your Account</h3>
+                  <h3 className="font-semibold text-gray-800">{authData?.name || 'Your Account'}</h3>
                   <p className="text-sm text-gray-600">{partRequests.length} requests</p>
                 </div>
               </div>
