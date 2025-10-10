@@ -17,7 +17,8 @@ export async function POST(): Promise<NextResponse<LogoutResponse>> {
   cookiesToClear.forEach(cookieName => {
     response.cookies.set(cookieName, '', {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
+      // secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       maxAge: 0,
       path: '/'
