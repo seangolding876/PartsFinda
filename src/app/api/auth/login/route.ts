@@ -111,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
 
     console.log('✅ Login successful for:', user.email, 'Role:', user.role);
 
-    // Create response
+    // Create response - sirf data return karein, localStorage set nahi karein
     const response: NextResponse<AuthResponse> = NextResponse.json({
       success: true,
       message: 'Login successful',
@@ -119,18 +119,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       user
     });
 
-// Login/Signup success par
-const authData = {
-  token: authToken,
-  role: user.role,
-  name: user.name,
-  email: user.email,
-  userId: user.id // Important: user ID bhi store karein
-};
-
-// localStorage mein save karein
-localStorage.setItem('authData', JSON.stringify(authData));
-console.log('✅ Auth data saved to localStorage');
     return response;
 
   } catch (error: any) {

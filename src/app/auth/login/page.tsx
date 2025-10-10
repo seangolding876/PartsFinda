@@ -25,7 +25,6 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -34,41 +33,52 @@ export default function LoginPage() {
 
       console.log('Login response status:', response.status);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Login response error:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
       const result = await response.json();
       console.log('Login result:', result);
 
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
+      }
+
       if (result.success) {
-        console.log('Login successful, triggering auth refresh...');
+        console.log('Login successful, saving to localStorage...');
 
-        // Force immediate page reload to refresh auth state
-        alert(`Welcome back to PartsFinda!`);
+        // ✅ YAHAN localStorage SET KAREIN
+        const authData = {
+          token: result.authToken,
+          role: result.user.role,
+          name: result.user.name,
+          email: result.user.email,
+          userId: result.user.id
+        };
 
-        // Immediate redirect based on role
+        localStorage.setItem('authData', JSON.stringify(authData));
+        console.log('✅ Auth data saved to localStorage:', authData);
+
+        alert(`Welcome back to PartsFinda, ${result.user.name}!`);
+
+        // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
-                           result.user.role === 'admin' ? '/admin/dashboard' : '/my-requests';
+                         result.user.role === 'admin' ? '/admin/dashboard' : '/my-requests';
 
         // Use window.location for immediate redirect
         window.location.href = redirectTo;
+
       } else {
         setError(result.error || 'Login failed. Please try again.');
       }
 
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err.message.includes('fetch')) {
-        setError('Network error. Please check your internet connection and try again.');
-      } else if (err.message.includes('HTTP 500')) {
-        setError('Server error. Please try again in a moment.');
+      
+      if (err.message.includes('Network') || err.message.includes('fetch')) {
+        setError('Network error. Please check your internet connection.');
       } else if (err.message.includes('HTTP 401')) {
         setError('Invalid email or password. Please try again.');
+      } else if (err.message.includes('HTTP 500')) {
+        setError('Server error. Please try again in a moment.');
       } else {
-        setError('Unable to sign in. Please try again.');
+        setError(err.message || 'Unable to sign in. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -175,7 +185,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

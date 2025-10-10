@@ -37,5 +37,5 @@ export const isAuthenticated = () => {
 
 export const logout = () => {
   localStorage.removeItem('authData');
-  window.location.href = '/login';
+  window.location.href = '/auth/login';
 };
