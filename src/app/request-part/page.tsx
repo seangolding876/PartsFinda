@@ -107,7 +107,7 @@ function RequestPartForm() {
     
     if (!isAuthenticated()) {
       alert('Please login to submit a part request');
-      router.push('/login');
+      router.push('/auth/login');
       return;
     }
 
@@ -116,30 +116,33 @@ function RequestPartForm() {
     try {
       const authData = getAuthData();
       
+      console.log('🔄 Submitting part request with token...');
+      
       const response = await fetch('/api/part-requests', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}` // ✅ TOKEN SEND KAREIN
         },
         body: JSON.stringify({
           ...formData,
           vehicleYear: parseInt(formData.vehicleYear),
           budget: formData.budget ? parseFloat(formData.budget) : undefined,
-          userId: authData.userId // User ID bhej rahe hain
+          // ❌ userId nahi bhejna - API token se extract karegi
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        alert('Request submitted successfully! Sellers will contact you soon.');
+        alert('✅ Request submitted successfully! Sellers will contact you soon.');
         router.push('/my-requests');
       } else {
-        alert('Failed to submit request: ' + result.error);
+        alert('❌ Failed to submit request: ' + result.error);
       }
     } catch (error) {
       console.error('Error submitting request:', error);
-      alert('Failed to submit request. Please try again.');
+      alert('❌ Failed to submit request. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -184,7 +187,7 @@ function RequestPartForm() {
                     value={formData.partName}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="e.g., Brake Pads, Alternator"
                   />
                 </div>
@@ -195,7 +198,7 @@ function RequestPartForm() {
                     name="partNumber"
                     value={formData.partNumber}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="OEM or aftermarket number"
                   />
                 </div>
@@ -213,7 +216,7 @@ function RequestPartForm() {
                     value={formData.vehicleYear}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select Year</option>
                     {Array.from({ length: 30 }, (_, i) => 2024 - i).map(year => (
@@ -228,7 +231,7 @@ function RequestPartForm() {
                     value={formData.makeId}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select Make</option>
                     {makes.map(make => (
@@ -244,7 +247,7 @@ function RequestPartForm() {
                     onChange={handleChange}
                     required
                     disabled={!formData.makeId}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">Select Model</option>
                     {models.map(model => (
@@ -264,7 +267,7 @@ function RequestPartForm() {
                 onChange={handleChange}
                 required
                 rows={4}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Please provide details about the part you need..."
               />
             </div>
@@ -277,7 +280,7 @@ function RequestPartForm() {
                   name="condition"
                   value={formData.condition}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="any">Any Condition</option>
                   <option value="new">New</option>
@@ -292,7 +295,7 @@ function RequestPartForm() {
                   name="budget"
                   value={formData.budget}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="e.g., 5000"
                 />
               </div>
@@ -302,7 +305,7 @@ function RequestPartForm() {
                   name="parish"
                   value={formData.parish}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select Parish</option>
                   {jamaicaParishes.map(parish => (
@@ -315,9 +318,19 @@ function RequestPartForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Submitting...' : 'Submit Request'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Submitting...
+                </span>
+              ) : (
+                'Submit Request'
+              )}
             </button>
           </form>
         </div>

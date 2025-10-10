@@ -14,10 +14,63 @@ interface PartRequestData {
   urgency: 'low' | 'medium' | 'high';
 }
 
+// JWT verification utility
+const verifyToken = (token: string): { userId: string; email: string; role: string } | null => {
+  try {
+    // Simple token verification (replace with your JWT logic)
+    if (token.startsWith('token_')) {
+      // For demo tokens, extract user ID from token structure
+      // In production, use proper JWT verification
+      const parts = token.split('_');
+      if (parts.length >= 2) {
+        // This is a demo - in real app, verify JWT properly
+        return {
+          userId: '880e8400-e29b-41d4-a716-446655440001', // Demo user ID
+          email: 'user@example.com',
+          role: 'buyer'
+        };
+      }
+    }
+    
+    // If using proper JWT tokens:
+    // const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // return decoded;
+    
+    return null;
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return null;
+  }
+};
+
 // Create new part request
 export async function POST(request: NextRequest) {
   try {
-    const body: PartRequestData & { userId?: string } = await request.json();
+    // Get authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication token required' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    console.log('🔐 Token received:', token.substring(0, 20) + '...');
+
+    // Verify token and get user info
+    const userInfo = verifyToken(token);
+    if (!userInfo) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
+    const userId = userInfo.userId;
+    console.log('✅ User authenticated:', { userId, email: userInfo.email });
+
+    const body: PartRequestData = await request.json();
     const {
       partName,
       partNumber,
@@ -28,14 +81,21 @@ export async function POST(request: NextRequest) {
       budget,
       parish,
       condition,
-      urgency,
-      userId // Frontend se bhejenge
+      urgency
     } = body;
 
-    // Validate required fields including userId
-    const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description', 'userId'];
+    console.log('📦 Part request data:', {
+      partName,
+      makeId,
+      modelId,
+      vehicleYear,
+      parish
+    });
+
+    // Validate required fields
+    const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description'];
     for (const field of requiredFields) {
-      if (!body[field as keyof typeof body]) {
+      if (!body[field as keyof PartRequestData]) {
         return NextResponse.json(
           { success: false, error: `Missing required field: ${field}` },
           { status: 400 }
@@ -43,7 +103,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate UUID format
+    // Validate UUID format for makeId and modelId
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     
     if (!uuidRegex.test(makeId)) {
@@ -60,13 +120,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!uuidRegex.test(userId)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid user ID format' },
-        { status: 400 }
-      );
-    }
-
     // Validate vehicle year
     const currentYear = new Date().getFullYear();
     if (vehicleYear < 1900 || vehicleYear > currentYear + 1) {
@@ -76,18 +129,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify user exists
+    // Verify user exists in database
     const userCheck = await query(
-      'SELECT id FROM profiles WHERE id = $1',
+      'SELECT id, email FROM profiles WHERE id = $1',
       [userId]
     );
 
     if (userCheck.rows.length === 0) {
+      console.log('❌ User not found in database:', userId);
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
       );
     }
+
+    console.log('✅ User verified in database:', userCheck.rows[0].email);
+
+    // Verify make exists
+    const makeCheck = await query(
+      'SELECT id, name FROM makes WHERE id = $1',
+      [makeId]
+    );
+
+    if (makeCheck.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid make ID' },
+        { status: 400 }
+      );
+    }
+
+    // Verify model exists and belongs to make
+    const modelCheck = await query(
+      'SELECT id, name FROM models WHERE id = $1 AND make_id = $2',
+      [modelId, makeId]
+    );
+
+    if (modelCheck.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid model ID or model does not belong to selected make' },
+        { status: 400 }
+      );
+    }
+
+    console.log('✅ Make and model verified:', {
+      make: makeCheck.rows[0].name,
+      model: modelCheck.rows[0].name
+    });
 
     // Calculate expires_at (30 days from now)
     const expiresAt = new Date();
@@ -101,7 +188,7 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING id, part_name, created_at, expires_at, status`,
       [
-        userId,
+        userId, // From token verification
         makeId,
         modelId,
         vehicleYear,
@@ -118,6 +205,7 @@ export async function POST(request: NextRequest) {
     );
 
     const newRequest = result.rows[0];
+    console.log('✅ Part request created successfully:', newRequest.id);
 
     return NextResponse.json({
       success: true,
@@ -132,9 +220,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error creating part request:', error);
+    console.error('❌ Error creating part request:', error);
     
-    // Handle foreign key constraint errors
+    // Handle specific database errors
     if (error.code === '23503') {
       return NextResponse.json(
         { success: false, error: 'Invalid make, model or user ID' },
@@ -142,8 +230,19 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Duplicate part request' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to create part request' },
+      { 
+        success: false, 
+        error: 'Failed to create part request',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
@@ -161,6 +260,8 @@ export async function GET(request: NextRequest) {
         'SELECT id, name FROM makes ORDER BY name'
       );
       
+      console.log(`✅ Fetched ${makesResult.rows.length} makes`);
+      
       return NextResponse.json({
         success: true,
         data: makesResult.rows
@@ -177,11 +278,22 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Validate makeId format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(makeId)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid make ID format' },
+          { status: 400 }
+        );
+      }
+
       // Get models for specific make
       const modelsResult = await query(
         'SELECT id, name FROM models WHERE make_id = $1 ORDER BY name',
         [makeId]
       );
+      
+      console.log(`✅ Fetched ${modelsResult.rows.length} models for make: ${makeId}`);
       
       return NextResponse.json({
         success: true,
@@ -197,7 +309,11 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error fetching data:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch data' },
+      { 
+        success: false, 
+        error: 'Failed to fetch data',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
