@@ -1,42 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { hashPassword } from '@/lib/password';
+import { generateToken } from '@/lib/jwt';
+import { RegisterRequest, AuthResponse, UserResponse } from '@/types/auth';
 
-// Simulate database with localStorage-like persistence
-// In production, this would be Supabase
-function getStoredUsers() {
-  // For serverless, we'll use a simple approach that works for demo
-  // In real production, use Supabase
-  return [];
-}
-
-function storeUser(user: any) {
-  // In production, this would save to Supabase
-  console.log('User registered:', user.email);
-  return true;
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse<AuthResponse>> {
   try {
-    const body = await request.json();
-    const { email, password, name, phone } = body;
+    const body: RegisterRequest = await request.json();
+    const { email, password, name, role = 'buyer' } = body;
 
     // Validation
     if (!email || !password || !name) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Email, password, and name are required' },
         { status: 400 }
       );
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email format' },
-        { status: 400 }
-      );
-    }
-
-    // Password validation
     if (password.length < 6) {
       return NextResponse.json(
         { success: false, error: 'Password must be at least 6 characters' },
@@ -44,74 +24,86 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user (simplified for demo)
-    const newUser = {
-      id: `user_${Date.now()}`,
-      email,
-      name,
-      phone: phone || '',
-      role: 'buyer',
-      createdAt: new Date().toISOString()
+    // Email validation
+    const emailRegex: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists
+    const existingUser = await query(
+      'SELECT id FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'User already exists with this email' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password and create user
+    const hashedPassword: string = await hashPassword(password);
+    
+    const result = await query(
+      `INSERT INTO users (email, password, name, role) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, email, name, role`,
+      [email.toLowerCase(), hashedPassword, name, role]
+    );
+
+    const user: UserResponse = result.rows[0] as UserResponse;
+
+    // Generate token
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
     };
 
-    // Store user (in production, use Supabase)
-    storeUser(newUser);
+    const authToken: string = generateToken(tokenPayload);
 
-    // Generate auth token
-    const authToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Create response
-    const response = NextResponse.json({
+    // Set cookies
+    const response: NextResponse<AuthResponse> = NextResponse.json({
       success: true,
-      message: 'Account created successfully',
+      message: 'Registration successful',
       authToken,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role
-      }
+      user
     });
 
-    // Set HTTP-only cookies for authentication
-    response.cookies.set('auth-token', authToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+    const isProduction: boolean = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: 'lax' as const,
+      maxAge: 60 * 60 * 24 * 7,
       path: '/'
-    });
+    };
 
-    response.cookies.set('user-role', newUser.role, {
-      httpOnly: false, // Allow client access
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/'
-    });
-
-    response.cookies.set('user-email', newUser.email, {
-      httpOnly: false, // Allow client access for display
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/'
-    });
-
-    response.cookies.set('user-name', newUser.name, {
-      httpOnly: false, // Allow client access for display
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/'
-    });
+    response.cookies.set('auth-token', authToken, cookieOptions);
+    response.cookies.set('user-role', user.role, cookieOptions);
+    response.cookies.set('user-email', user.email, cookieOptions);
+    response.cookies.set('user-name', user.name, cookieOptions);
 
     return response;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
+    
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Email already exists' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: 'Registration failed. Please try again.' },
+      { success: false, error: 'Registration failed' },
       { status: 500 }
     );
   }

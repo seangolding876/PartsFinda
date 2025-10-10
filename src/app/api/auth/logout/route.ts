@@ -1,33 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  try {
-    const response = NextResponse.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
+interface LogoutResponse {
+  success: boolean;
+  message: string;
+}
 
-    // Clear all authentication cookies
-    const cookieOptions = {
-      httpOnly: true,
+export async function POST(): Promise<NextResponse<LogoutResponse>> {
+  const response: NextResponse<LogoutResponse> = NextResponse.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+
+  // Clear all auth cookies
+  const cookiesToClear: string[] = ['auth-token', 'user-role', 'user-email', 'user-name'];
+  
+  cookiesToClear.forEach(cookieName => {
+    response.cookies.set(cookieName, '', {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
-      maxAge: 0, // Expire immediately
+      maxAge: 0,
       path: '/'
-    };
+    });
+  });
 
-    response.cookies.set('auth-token', '', cookieOptions);
-    response.cookies.set('user-role', '', { ...cookieOptions, httpOnly: false });
-    response.cookies.set('user-email', '', { ...cookieOptions, httpOnly: false });
-    response.cookies.set('user-name', '', { ...cookieOptions, httpOnly: false });
-
-    return response;
-
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Logout failed' },
-      { status: 500 }
-    );
-  }
+  return response;
 }

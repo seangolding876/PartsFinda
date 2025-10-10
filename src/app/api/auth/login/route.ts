@@ -1,55 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
+import { verifyPassword } from '@/lib/password';
+import { generateToken } from '@/lib/jwt';
+import { LoginRequest, AuthResponse, UserResponse } from '@/types/auth';
 
-// Predefined admin accounts for immediate access
-const adminAccounts = [
-  {
-    email: 'admin@partsfinda.com',
-    password: 'admin123',
-    name: 'PartsFinda Admin',
-    role: 'admin'
-  },
-  {
-    email: 'support@partsfinda.com',
-    password: 'support123',
-    name: 'Support Team',
-    role: 'admin'
-  }
-];
-
-// Test accounts for demo purposes
-const testAccounts = [
-  {
-    email: 'buyer@test.com',
-    password: 'password123',
-    name: 'Test Buyer',
-    role: 'buyer'
-  },
-  {
-    email: 'seller@test.com',
-    password: 'password123',
-    name: 'Test Seller',
-    role: 'seller'
-  },
-  {
-    email: 'customer@partsfinda.com',
-    password: 'customer123',
-    name: 'Demo Customer',
-    role: 'buyer'
-  },
-  {
-    email: 'supplier@partsfinda.com',
-    password: 'supplier123',
-    name: 'Demo Supplier',
-    role: 'seller'
-  }
-];
-
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse<AuthResponse>> {
   try {
     console.log('🔐 Login attempt started...');
 
-    const body = await request.json();
+    const body: LoginRequest = await request.json();
     const { email, password } = body;
 
     console.log('📧 Login attempt for:', email);
@@ -64,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex: RegExp = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       console.log('❌ Invalid email format');
       return NextResponse.json(
@@ -82,92 +41,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let user = null;
+    // Check if user exists in database
+    console.log('🔍 Checking database for user...');
+    const userResult = await query(
+      'SELECT id, email, password, name, role FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
 
-    // Check admin accounts first
-    console.log('🔍 Checking admin accounts...');
-    const adminUser = adminAccounts.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-    if (adminUser) {
-      console.log('✅ Admin user found:', adminUser.email);
+    let user: UserResponse | null = null;
+
+    if (userResult.rows.length > 0) {
+      const dbUser = userResult.rows[0];
+      
+      // Verify password for existing user
+      console.log('✅ User found, verifying password...');
+      const isPasswordValid: boolean = await verifyPassword(password, dbUser.password);
+      
+      if (!isPasswordValid) {
+        console.log('❌ Invalid password');
+        return NextResponse.json(
+          { success: false, error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+
       user = {
-        id: `admin_${Date.now()}`,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role
       };
-    }
-
-    // Check test accounts
-    if (!user) {
-      console.log('🔍 Checking test accounts...');
-      const testUser = testAccounts.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-      if (testUser) {
-        console.log('✅ Test user found:', testUser.email);
-        user = {
-          id: `test_${Date.now()}`,
-          email: testUser.email,
-          name: testUser.name,
-          role: testUser.role
-        };
-      }
-    }
-
-    // Try Supabase authentication if available
-    if (!user) {
-      console.log('🔍 Trying Supabase authentication...');
-      try {
-        const { data: authData, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (authData.user && !error) {
-          console.log('✅ Supabase user found');
-          user = {
-            id: authData.user.id,
-            email: authData.user.email || email,
-            name: authData.user.user_metadata?.name || email.split('@')[0],
-            role: authData.user.user_metadata?.role || 'buyer'
-          };
-        } else if (error) {
-          console.log('⚠️ Supabase auth error:', error.message);
-        }
-      } catch (supabaseError) {
-        console.log('⚠️ Supabase not available, continuing with fallback...');
-      }
-    }
-
-    // If no existing account found, create new account for business demo
-    if (!user) {
+    } else {
+      // Create new user
       console.log('🆕 Creating new user account...');
-      const name = email.split('@')[0].replace(/[^a-zA-Z\s]/g, ' ').trim() || 'New User';
-      const role = email.toLowerCase().includes('seller') || email.toLowerCase().includes('supplier') ? 'seller' : 'buyer';
+      const { hashPassword } = await import('@/lib/password');
+      
+      const name: string = email.split('@')[0].replace(/[^a-zA-Z\s]/g, ' ').trim() || 'New User';
+      const role: 'buyer' | 'seller' = email.toLowerCase().includes('seller') || email.toLowerCase().includes('supplier') ? 'seller' : 'buyer';
+      const hashedPassword: string = await hashPassword(password);
 
-      user = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        email,
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        role
-      };
+      const newUserResult = await query(
+        `INSERT INTO users (email, password, name, role) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING id, email, name, role`,
+        [email.toLowerCase(), hashedPassword, name, role]
+      );
 
+      user = newUserResult.rows[0] as UserResponse;
       console.log('✅ New user created:', { email: user.email, role: user.role });
-
-      // Try to create account in Supabase if available
-      try {
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: user.name,
-              role: user.role
-            }
-          }
-        });
-        console.log('✅ User registered in Supabase');
-      } catch (supabaseError) {
-        console.log('⚠️ Supabase registration skipped (demo mode)');
-      }
     }
 
     if (!user) {
@@ -178,29 +99,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate auth token
-    const authToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate JWT token
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    };
+
+    const authToken: string = generateToken(tokenPayload);
 
     console.log('✅ Login successful for:', user.email, 'Role:', user.role);
 
     // Create response
-    const response = NextResponse.json({
+    const response: NextResponse<AuthResponse> = NextResponse.json({
       success: true,
       message: 'Login successful',
       authToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role
-      }
+      user
     });
 
-    // Set cookies for authentication (production-compatible)
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Set cookies for authentication
+    const isProduction: boolean = process.env.NODE_ENV === 'production';
     const cookieOptions = {
-      httpOnly: false, // Allow client access
-      secure: isProduction, // Secure in production
+      httpOnly: false,
+      secure: isProduction,
       sameSite: 'lax' as const,
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/'
@@ -215,8 +138,17 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Login error:', error);
+    
+    // Handle specific database errors
+    if (error.code === '23505') { // Unique violation
+      return NextResponse.json(
+        { success: false, error: 'Email already exists' },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, error: 'Login failed. Please try again.' },
       { status: 500 }
