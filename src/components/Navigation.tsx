@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare, Settings, Users } from 'lucide-react';
+import { cwd } from 'process';
+import { log } from 'console';
+import { verifyToken } from '@/lib/jwt';
 
 // Auth utility functions
 const getAuthData = () => {
@@ -16,6 +19,8 @@ const getAuthData = () => {
     return null;
   }
 };
+
+
 
 const isAuthenticated = () => {
   const authData = getAuthData();
@@ -41,7 +46,12 @@ export default function Navigation() {
       const authData = getAuthData();
       console.log('Auth data from localStorage:', authData);
 
+
       if (authData && authData.token) {
+        const verifiedData = verifyToken(authData.token);
+        console.log('✅ Token verified successfully:', verifiedData);
+        console.log('👤 User from token:', verifiedData.userId, verifiedData.email);
+
         setIsAuthenticatedState(true);
         setUserRole(authData.role || '');
         setUserName(authData.name || authData.email || 'User');
