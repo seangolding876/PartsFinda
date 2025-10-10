@@ -119,23 +119,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       user
     });
 
-    // Set cookies for authentication
-    const isProduction: boolean = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: false,
-      secure: false,
-      sameSite: 'lax' as const,
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/'
-    };
+// Login/Signup success par
+const authData = {
+  token: authToken,
+  role: user.role,
+  name: user.name,
+  email: user.email,
+  userId: user.id // Important: user ID bhi store karein
+};
 
-    response.cookies.set('auth-token', authToken, cookieOptions);
-    response.cookies.set('user-role', user.role, cookieOptions);
-    response.cookies.set('user-email', user.email, cookieOptions);
-    response.cookies.set('user-name', user.name, cookieOptions);
-
-    console.log('✅ Cookies set for user:', user.email);
-
+// localStorage mein save karein
+localStorage.setItem('authData', JSON.stringify(authData));
+console.log('✅ Auth data saved to localStorage');
     return response;
 
   } catch (error: any) {

@@ -3,45 +3,98 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+// Auth utility functions
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+const isAuthenticated = () => {
+  const authData = getAuthData();
+  return !!(authData?.token);
+};
+
+interface Make {
+  id: string;
+  name: string;
+}
+
+interface Model {
+  id: string;
+  name: string;
+}
+
 function RequestPartForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [makes, setMakes] = useState<Make[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  
   const [formData, setFormData] = useState({
     partName: '',
     partNumber: '',
     vehicleYear: '',
-    vehicleMake: '',
-    vehicleModel: '',
-
+    makeId: '',
+    modelId: '',
     description: '',
-    condition: 'new',
+    condition: 'any' as 'new' | 'used' | 'refurbished' | 'any',
     budget: '',
-    quantity: '1',
-    location: '',
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
+    parish: '',
+    urgency: 'medium' as 'low' | 'medium' | 'high',
   });
 
-  // Pre-populate form with URL parameters from home page
+  // Check authentication on component mount
   useEffect(() => {
-    const make = searchParams.get('make');
-    const model = searchParams.get('model');
-    const year = searchParams.get('year');
-    const search = searchParams.get('search');
-
-    if (make || model || year || search) {
-      setFormData(prev => ({
-        ...prev,
-        vehicleMake: make || '',
-        vehicleModel: model || '',
-        vehicleYear: year || '',
-        partName: search || prev.partName
-      }));
+    if (!isAuthenticated()) {
+      alert('Please login to submit a part request');
+      router.push('/login');
+    } else {
+      setAuthChecked(true);
+      fetchMakes();
     }
-  }, [searchParams]);
+  }, [router]);
 
-  const isPrePopulated = formData.vehicleMake || formData.vehicleModel || formData.vehicleYear;
+  // Fetch models when make is selected
+  useEffect(() => {
+    if (formData.makeId) {
+      fetchModels(formData.makeId);
+    } else {
+      setModels([]);
+    }
+  }, [formData.makeId]);
+
+  const fetchMakes = async () => {
+    try {
+      const response = await fetch('/api/part-requests?action=getMakes');
+      const result = await response.json();
+      
+      if (result.success) {
+        setMakes(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching makes:', error);
+    }
+  };
+
+  const fetchModels = async (makeId: string) => {
+    try {
+      const response = await fetch(`/api/part-requests?action=getModels&makeId=${makeId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setModels(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error);
+    }
+  };
 
   const jamaicaParishes = [
     'Kingston', 'St. Andrew', 'St. Thomas', 'Portland', 'St. Mary',
@@ -49,31 +102,48 @@ function RequestPartForm() {
     'St. Elizabeth', 'Manchester', 'Clarendon', 'St. Catherine'
   ];
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  try {
-    const response = await fetch('/api/part-requests', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      alert('Request submitted successfully! Sellers will contact you soon.');
-      router.push('/my-requests');
-    } else {
-      alert('Failed to submit request: ' + result.error);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isAuthenticated()) {
+      alert('Please login to submit a part request');
+      router.push('/login');
+      return;
     }
-  } catch (error) {
-    console.error('Error submitting request:', error);
-    alert('Failed to submit request. Please try again.');
-  }
-};
+
+    setLoading(true);
+    
+    try {
+      const authData = getAuthData();
+      
+      const response = await fetch('/api/part-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          vehicleYear: parseInt(formData.vehicleYear),
+          budget: formData.budget ? parseFloat(formData.budget) : undefined,
+          userId: authData.userId // User ID bhej rahe hain
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Request submitted successfully! Sellers will contact you soon.');
+        router.push('/my-requests');
+      } else {
+        alert('Failed to submit request: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      alert('Failed to submit request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -83,27 +153,23 @@ const handleSubmit = async (e: React.FormEvent) => {
     }));
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h1 className="text-3xl font-bold mb-2">Request Auto Parts</h1>
           <p className="text-gray-600 mb-6">Tell us what you need and get competitive quotes from verified sellers</p>
-
-          {/* Pre-populated data indicator */}
-          {isPrePopulated && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2 text-green-800">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span className="font-medium">Vehicle information pre-filled</span>
-              </div>
-              <p className="text-sm text-green-700 mt-1">
-                We've automatically filled in your vehicle details. You can still edit them if needed.
-              </p>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Part Information */}
@@ -157,27 +223,34 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Make *</label>
-                  <input
-                    type="text"
-                    name="vehicleMake"
-                    value={formData.vehicleMake}
+                  <select
+                    name="makeId"
+                    value={formData.makeId}
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Toyota, Honda"
-                  />
+                  >
+                    <option value="">Select Make</option>
+                    {makes.map(make => (
+                      <option key={make.id} value={make.id}>{make.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Model *</label>
-                  <input
-                    type="text"
-                    name="vehicleModel"
-                    value={formData.vehicleModel}
+                  <select
+                    name="modelId"
+                    value={formData.modelId}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., Camry, Civic"
-                  />
+                    disabled={!formData.makeId}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  >
+                    <option value="">Select Model</option>
+                    {models.map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -196,24 +269,38 @@ const handleSubmit = async (e: React.FormEvent) => {
               />
             </div>
 
-            {/* Budget and Location */}
-            <div className="grid md:grid-cols-2 gap-4">
+            {/* Additional Details */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Condition</label>
+                <select
+                  name="condition"
+                  value={formData.condition}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="any">Any Condition</option>
+                  <option value="new">New</option>
+                  <option value="used">Used</option>
+                  <option value="refurbished">Refurbished</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Budget (JMD)</label>
                 <input
-                  type="text"
+                  type="number"
                   name="budget"
                   value={formData.budget}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 5000-8000"
+                  placeholder="e.g., 5000"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Location</label>
+                <label className="block text-sm font-medium mb-2">Parish</label>
                 <select
-                  name="location"
-                  value={formData.location}
+                  name="parish"
+                  value={formData.parish}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
@@ -225,40 +312,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div>
-              <h3 className="font-semibold mb-3">Contact Information</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Name *</label>
-                  <input
-                    type="text"
-                    name="contactName"
-                    value={formData.contactName}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Phone *</label>
-                  <input
-                    type="tel"
-                    name="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
             >
-              Submit Request
+              {loading ? 'Submitting...' : 'Submit Request'}
             </button>
           </form>
         </div>
