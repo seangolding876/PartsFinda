@@ -54,7 +54,7 @@ function RequestPartForm() {
   useEffect(() => {
     if (!isAuthenticated()) {
       alert('Please login to submit a part request');
-      router.push('/login');
+      router.push('/auth/login');
     } else {
       setAuthChecked(true);
       fetchMakes();
