@@ -48,9 +48,8 @@ export default function Navigation() {
 
 
       if (authData && authData.token) {
-        const verifiedData = verifyToken(authData.token);
+             const verifiedData = verifyToken(authData.token);
         console.log('✅ Token verified successfully:', verifiedData);
-        console.log('👤 User from token:', verifiedData.userId, verifiedData.email);
 
         setIsAuthenticatedState(true);
         setUserRole(authData.role || '');
