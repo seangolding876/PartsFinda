@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { verifyToken } from '@/lib/jwt'; // Proper JWT utility
+import { verifyToken } from '@/lib/jwt';
 
 interface PartRequestData {
   partName: string;
@@ -15,7 +15,80 @@ interface PartRequestData {
   urgency: 'low' | 'medium' | 'high';
 }
 
-// Create new part request
+// GET handler - makes and models fetch karne ke liye
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+
+    console.log('🔍 GET request for action:', action);
+
+    if (action === 'getMakes') {
+      // Get all makes
+      const makesResult = await query(
+        'SELECT id, name FROM makes ORDER BY name'
+      );
+      
+      console.log(`✅ Fetched ${makesResult.rows.length} makes`);
+      
+      return NextResponse.json({
+        success: true,
+        data: makesResult.rows
+      });
+    }
+
+    if (action === 'getModels') {
+      const makeId = searchParams.get('makeId');
+      
+      if (!makeId) {
+        return NextResponse.json(
+          { success: false, error: 'makeId is required' },
+          { status: 400 }
+        );
+      }
+
+      // Validate makeId format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(makeId)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid make ID format' },
+          { status: 400 }
+        );
+      }
+
+      // Get models for specific make
+      const modelsResult = await query(
+        'SELECT id, name FROM models WHERE make_id = $1 ORDER BY name',
+        [makeId]
+      );
+      
+      console.log(`✅ Fetched ${modelsResult.rows.length} models for make: ${makeId}`);
+      
+      return NextResponse.json({
+        success: true,
+        data: modelsResult.rows
+      });
+    }
+
+    return NextResponse.json(
+      { success: false, error: 'Invalid action' },
+      { status: 400 }
+    );
+
+  } catch (error: any) {
+    console.error('❌ Error fetching data:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to fetch data',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST handler - part request create karne ke liye
 export async function POST(request: NextRequest) {
   try {
     // Get authorization header
@@ -33,12 +106,12 @@ export async function POST(request: NextRequest) {
     // Verify token using proper JWT verification
     let userInfo;
     try {
-      userInfo = verifyToken(token); // This will throw error if invalid
+      userInfo = verifyToken(token);
       console.log('✅ Token verified:', { userId: userInfo.userId, email: userInfo.email });
-    } catch (error) {
-      console.error('❌ Token verification failed:', error);
+    } catch (error: any) {
+      console.error('❌ Token verification failed:', error.message);
       return NextResponse.json(
-        { success: false, error: 'Invalid or expired token' },
+        { success: false, error: error.message || 'Invalid token' },
         { status: 401 }
       );
     }

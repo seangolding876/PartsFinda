@@ -35,6 +35,7 @@ function RequestPartForm() {
   const [makes, setMakes] = useState<Make[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -72,27 +73,55 @@ function RequestPartForm() {
 
   const fetchMakes = async () => {
     try {
+      setFetchLoading(true);
+      console.log('🔄 Fetching makes...');
+      
       const response = await fetch('/api/part-requests?action=getMakes');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
+        console.log(`✅ Loaded ${result.data.length} makes`);
         setMakes(result.data);
+      } else {
+        console.error('❌ Failed to fetch makes:', result.error);
       }
     } catch (error) {
-      console.error('Error fetching makes:', error);
+      console.error('❌ Error fetching makes:', error);
+    } finally {
+      setFetchLoading(false);
     }
   };
 
   const fetchModels = async (makeId: string) => {
     try {
+      setFetchLoading(true);
+      console.log(`🔄 Fetching models for make: ${makeId}`);
+      
       const response = await fetch(`/api/part-requests?action=getModels&makeId=${makeId}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
+        console.log(`✅ Loaded ${result.data.length} models`);
         setModels(result.data);
+      } else {
+        console.error('❌ Failed to fetch models:', result.error);
+        setModels([]);
       }
     } catch (error) {
-      console.error('Error fetching models:', error);
+      console.error('❌ Error fetching models:', error);
+      setModels([]);
+    } finally {
+      setFetchLoading(false);
     }
   };
 
@@ -122,13 +151,12 @@ function RequestPartForm() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}` // ✅ TOKEN SEND KAREIN
+          'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
           ...formData,
           vehicleYear: parseInt(formData.vehicleYear),
           budget: formData.budget ? parseFloat(formData.budget) : undefined,
-          // ❌ userId nahi bhejna - API token se extract karegi
         }),
       });
 
@@ -231,9 +259,10 @@ function RequestPartForm() {
                     value={formData.makeId}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={fetchLoading}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Make</option>
+                    <option value="">{fetchLoading ? 'Loading makes...' : 'Select Make'}</option>
                     {makes.map(make => (
                       <option key={make.id} value={make.id}>{make.name}</option>
                     ))}
@@ -246,10 +275,12 @@ function RequestPartForm() {
                     value={formData.modelId}
                     onChange={handleChange}
                     required
-                    disabled={!formData.makeId}
+                    disabled={!formData.makeId || fetchLoading}
                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select Model</option>
+                    <option value="">
+                      {!formData.makeId ? 'Select make first' : fetchLoading ? 'Loading models...' : 'Select Model'}
+                    </option>
                     {models.map(model => (
                       <option key={model.id} value={model.id}>{model.name}</option>
                     ))}
@@ -257,7 +288,6 @@ function RequestPartForm() {
                 </div>
               </div>
             </div>
-
             {/* Description */}
             <div>
               <label className="block text-sm font-medium mb-2">Description *</label>
