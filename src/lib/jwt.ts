@@ -1,55 +1,55 @@
-// /lib/jwt.ts
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET: string = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development-only';
-const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
+// IMPORTANT: Same secret use karein jo login API mein use kar rahe hain
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-at-least-32-chars';
 
 export interface JwtPayload {
-  userId: string;
+  userId: string; // string rahega, UUID nahi required
   email: string;
   name: string;
-  role?: string; // ✅ Optional bana dein
+  role: string;
   iat?: number;
   exp?: number;
   iss?: string;
 }
 
-export function generateToken(payload: Omit<JwtPayload, 'iat' | 'exp' | 'iss'>): string {
-  if (!JWT_SECRET || JWT_SECRET === 'your-fallback-secret-key-for-development-only') {
-    console.warn('⚠️  Using fallback JWT secret - set JWT_SECRET environment variable in production');
-  }
-
-const options: jwt.SignOptions = {
-    expiresIn: JWT_EXPIRES_IN as any,
+export function generateToken(payload: JwtPayload): string {
+  console.log('🔐 Generating token with payload:', payload);
+  
+  // Sign options properly define karein
+  const options: jwt.SignOptions = {
+    expiresIn: '7d',
     issuer: 'partsfinda-api'
-};
+  };
 
-  return jwt.sign(payload, JWT_SECRET, options);
+  const token = jwt.sign(payload, JWT_SECRET, options);
+  console.log('✅ Token generated:', token);
+  return token;
 }
 
 export function verifyToken(token: string): JwtPayload {
   try {
+    console.log('🔍 Verifying token:', token);
+    
     if (!JWT_SECRET) {
       throw new Error('JWT_SECRET not configured');
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    console.log('✅ Token verified successfully:', decoded);
     
-    // Validate required fields (role optional)
-    if (!decoded.userId || !decoded.email) {
-      throw new Error('Invalid token payload');
-    }
-
     return decoded;
   } catch (error: any) {
-    console.error('JWT verification error:', error.message);
+    console.error('❌ Token verification failed:', error.message);
     
     if (error.name === 'TokenExpiredError') {
       throw new Error('Token expired');
     } else if (error.name === 'JsonWebTokenError') {
-      throw new Error('Invalid token');
+      throw new Error('Invalid token signature');
+    } else if (error.name === 'NotBeforeError') {
+      throw new Error('Token not active');
     } else {
-      throw new Error('Token verification failed');
+      throw new Error('Token verification failed: ' + error.message);
     }
   }
 }
