@@ -7,6 +7,7 @@ import { MessageSquare, Settings, Users } from 'lucide-react';
 import { cwd } from 'process';
 import { log } from 'console';
 import { verifyToken } from '@/lib/jwt';
+import {jwtDecode} from 'jwt-decode';
 
 // Auth utility functions
 const getAuthData = () => {
@@ -48,9 +49,8 @@ export default function Navigation() {
 
 
       if (authData && authData.token) {
-             const verifiedData = verifyToken(authData.token);
-        console.log('✅ Token verified successfully:', verifiedData);
-
+const payload = jwtDecode(authData.token); // client-side
+console.log(payload);
         setIsAuthenticatedState(true);
         setUserRole(authData.role || '');
         setUserName(authData.name || authData.email || 'User');
