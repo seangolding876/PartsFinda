@@ -49,11 +49,31 @@ function RequestPartForm() {
     'St. Elizabeth', 'Manchester', 'Clarendon', 'St. Catherine'
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    alert('Request submitted successfully! Sellers will contact you soon.');
-    router.push('/my-requests');
-  };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  try {
+    const response = await fetch('/api/part-requests', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      alert('Request submitted successfully! Sellers will contact you soon.');
+      router.push('/my-requests');
+    } else {
+      alert('Failed to submit request: ' + result.error);
+    }
+  } catch (error) {
+    console.error('Error submitting request:', error);
+    alert('Failed to submit request. Please try again.');
+  }
+};
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

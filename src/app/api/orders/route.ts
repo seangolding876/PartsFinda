@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 interface OrderItem {
   id: string;
@@ -31,182 +31,93 @@ interface CustomerInfo {
   shippingAddress: ShippingAddress;
 }
 
-interface Order {
-  id: string;
-  customer_info: CustomerInfo;
-  items: OrderItem[];
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  total: number;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'canceled';
-  payment_status: 'pending' | 'paid' | 'failed' | 'refunded';
-  payment_intent_id?: string;
-  tracking_number?: string;
-  created_at: string;
-  updated_at: string;
-  estimated_delivery?: string;
-  notes?: string;
-}
-
-// Mock orders database
-let orders: Order[] = [
-  {
-    id: 'ord_12345',
-    customer_info: {
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@email.com',
-      phone: '+1-555-0123',
-      billingAddress: {
-        line1: '123 Main St',
-        city: 'Los Angeles',
-        state: 'CA',
-        postal_code: '90210',
-        country: 'US'
-      },
-      shippingAddress: {
-        line1: '123 Main St',
-        city: 'Los Angeles',
-        state: 'CA',
-        postal_code: '90210',
-        country: 'US'
-      }
-    },
-    items: [
-      {
-        id: '1',
-        name: 'Brake Pads - Premium Ceramic',
-        price: 89.99,
-        quantity: 1,
-        seller_id: 'seller_1',
-        seller_name: 'AutoParts Pro',
-        image_url: '🔧',
-        part_number: 'BP-123456'
-      }
-    ],
-    subtotal: 89.99,
-    tax: 7.20,
-    shipping: 9.99,
-    total: 107.18,
-    status: 'confirmed',
-    payment_status: 'paid',
-    payment_intent_id: 'pi_mock_12345',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    estimated_delivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString()
-  }
-];
-
-function generateOrderId(): string {
-  return 'ord_' + Math.random().toString(36).substr(2, 9);
-}
-
-function calculateOrderTotals(items: OrderItem[], shippingCost: number = 9.99, taxRate: number = 0.08) {
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping = subtotal > 100 ? 0 : shippingCost; // Free shipping over $100
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax + shipping;
-
-  return {
-    subtotal: Math.round(subtotal * 100) / 100,
-    tax: Math.round(tax * 100) / 100,
-    shipping: Math.round(shipping * 100) / 100,
-    total: Math.round(total * 100) / 100
-  };
-}
-
 // Create new order
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerInfo, items, paymentIntentId, total: providedTotal } = body;
+    const { 
+      buyer_id, 
+      seller_id, 
+      items, 
+      subtotal, 
+      delivery_fee = 0, 
+      total, 
+      payment_method, 
+      delivery_address, 
+      delivery_parish, 
+      notes 
+    } = body;
 
     // Validate required fields
-    if (!customerInfo || !items || !Array.isArray(items) || items.length === 0) {
+    if (!buyer_id || !seller_id || !items || !subtotal || !total) {
       return NextResponse.json(
-        { error: 'Missing required fields: customerInfo, items' },
+        { error: 'Missing required fields: buyer_id, seller_id, items, subtotal, total' },
         { status: 400 }
       );
     }
 
-    // Validate customer info
-    const requiredCustomerFields = ['firstName', 'lastName', 'email', 'shippingAddress'];
-    for (const field of requiredCustomerFields) {
-      if (!customerInfo[field]) {
-        return NextResponse.json(
-          { error: `Missing required customer field: ${field}` },
-          { status: 400 }
+    // Generate order number (trigger will handle this, but we can create one for response)
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+    // Insert order into database
+    const orderResult = await query(
+      `INSERT INTO orders (
+        buyer_id, seller_id, order_number, subtotal, delivery_fee, total, 
+        payment_method, delivery_address, delivery_parish, notes, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
+      RETURNING id, order_number, status, total, created_at`,
+      [
+        buyer_id, seller_id, orderNumber, subtotal, delivery_fee, total,
+        payment_method, delivery_address, delivery_parish, notes
+      ]
+    );
+
+    const order = orderResult.rows[0];
+
+    // Insert order items if order_items table exists
+    try {
+      for (const item of items) {
+        await query(
+          `INSERT INTO order_items (
+            order_id, part_id, part_name, quantity, unit_price, total_price
+          ) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            order.id, 
+            item.id, 
+            item.name, 
+            item.quantity, 
+            item.price, 
+            item.price * item.quantity
+          ]
         );
       }
+    } catch (itemsError) {
+      console.log('Order items not saved (table might not exist):', itemsError);
     }
-
-    // Calculate order totals
-    const totals = calculateOrderTotals(items);
-
-    // Verify total if provided
-    if (providedTotal && Math.abs(providedTotal - totals.total) > 0.01) {
-      return NextResponse.json(
-        { error: 'Total amount mismatch' },
-        { status: 400 }
-      );
-    }
-
-    // Create new order
-    const newOrder: Order = {
-      id: generateOrderId(),
-      customer_info: customerInfo,
-      items,
-      ...totals,
-      status: 'pending',
-      payment_status: paymentIntentId ? 'paid' : 'pending',
-      payment_intent_id: paymentIntentId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      estimated_delivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
-    };
-
-    try {
-      // Try to save to Supabase
-      const { data, error } = await supabase
-        .from('orders')
-        .insert([newOrder])
-        .select()
-        .single();
-
-      if (error) {
-        console.log('Supabase error, using mock database:', error.message);
-        orders.push(newOrder);
-      } else {
-        console.log('Order saved to database');
-      }
-    } catch (dbError) {
-      console.log('Database unavailable, using mock storage');
-      orders.push(newOrder);
-    }
-
-    // Send order confirmation email (mock)
-    console.log(`📧 Order confirmation email sent to ${customerInfo.email}`);
-
-    // Notify sellers about new orders (mock)
-    const uniqueSellers = [...new Set(items.map(item => item.seller_id))];
-    console.log(`🔔 Notified ${uniqueSellers.length} sellers about new order`);
 
     return NextResponse.json({
       success: true,
       message: 'Order created successfully',
       order: {
-        id: newOrder.id,
-        status: newOrder.status,
-        payment_status: newOrder.payment_status,
-        total: newOrder.total,
-        created_at: newOrder.created_at,
-        estimated_delivery: newOrder.estimated_delivery
+        id: order.id,
+        order_number: order.order_number,
+        status: order.status,
+        total: order.total,
+        created_at: order.created_at
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating order:', error);
+    
+    // Handle specific database errors
+    if (error.code === '23503') { // Foreign key violation
+      return NextResponse.json(
+        { error: 'Invalid buyer or seller ID' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create order' },
       { status: 500 }
@@ -214,85 +125,135 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get orders
+// Get orders with filters
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get('customerId');
-    const customerEmail = searchParams.get('customerEmail');
-    const sellerId = searchParams.get('sellerId');
+    const buyerId = searchParams.get('buyer_id');
+    const sellerId = searchParams.get('seller_id');
     const status = searchParams.get('status');
-    const orderId = searchParams.get('orderId');
+    const orderId = searchParams.get('order_id');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let filteredOrders = [...orders];
+    let whereConditions: string[] = [];
+    let queryParams: any[] = [];
+    let paramCount = 0;
 
-    // Filter by specific order ID
+    // Build WHERE clause based on filters
     if (orderId) {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) {
-        return NextResponse.json(
-          { error: 'Order not found' },
-          { status: 404 }
+      paramCount++;
+      whereConditions.push(`o.id = $${paramCount}`);
+      queryParams.push(orderId);
+    }
+
+    if (buyerId) {
+      paramCount++;
+      whereConditions.push(`o.buyer_id = $${paramCount}`);
+      queryParams.push(buyerId);
+    }
+
+    if (sellerId) {
+      paramCount++;
+      whereConditions.push(`o.seller_id = $${paramCount}`);
+      queryParams.push(sellerId);
+    }
+
+    if (status && status !== 'all') {
+      paramCount++;
+      whereConditions.push(`o.status = $${paramCount}`);
+      queryParams.push(status);
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : '';
+
+    // Get orders with buyer and seller info
+    const ordersResult = await query(
+      `SELECT 
+        o.*,
+        buyer_profile.name as buyer_name,
+        buyer_profile.email as buyer_email,
+        seller_profile.name as seller_name,
+        seller_profile.email as seller_email
+       FROM orders o
+       LEFT JOIN profiles buyer_profile ON o.buyer_id = buyer_profile.id
+       LEFT JOIN profiles seller_profile ON o.seller_id = seller_profile.id
+       ${whereClause}
+       ORDER BY o.created_at DESC
+       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`,
+      [...queryParams, limit, offset]
+    );
+
+    // Get total count for pagination
+    const countResult = await query(
+      `SELECT COUNT(*) FROM orders o ${whereClause}`,
+      queryParams
+    );
+
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Get order items if order_items table exists
+    const ordersWithItems = [];
+    for (const order of ordersResult.rows) {
+      let items = [];
+      try {
+        const itemsResult = await query(
+          `SELECT * FROM order_items WHERE order_id = $1`,
+          [order.id]
         );
+        items = itemsResult.rows;
+      } catch (itemsError) {
+        console.log('Order items not available:', itemsError);
+        // Create mock items for demo
+        items = [
+          {
+            id: '1',
+            part_name: 'Auto Part',
+            quantity: 1,
+            unit_price: order.total,
+            total_price: order.total
+          }
+        ];
       }
-      return NextResponse.json({
-        success: true,
-        order
+
+      ordersWithItems.push({
+        ...order,
+        items
       });
     }
 
-    // Filter by customer email
-    if (customerEmail) {
-      filteredOrders = filteredOrders.filter(order =>
-        order.customer_info.email.toLowerCase() === customerEmail.toLowerCase()
-      );
-    }
-
-    // Filter by seller ID
-    if (sellerId) {
-      filteredOrders = filteredOrders.filter(order =>
-        order.items.some(item => item.seller_id === sellerId)
-      );
-    }
-
-    // Filter by status
-    if (status && status !== 'all') {
-      filteredOrders = filteredOrders.filter(order => order.status === status);
-    }
-
-    // Sort by creation date (newest first)
-    filteredOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    // Apply pagination
-    const paginatedOrders = filteredOrders.slice(offset, offset + limit);
-
     // Calculate stats
-    const stats = {
-      total: filteredOrders.length,
-      pending: filteredOrders.filter(o => o.status === 'pending').length,
-      confirmed: filteredOrders.filter(o => o.status === 'confirmed').length,
-      processing: filteredOrders.filter(o => o.status === 'processing').length,
-      shipped: filteredOrders.filter(o => o.status === 'shipped').length,
-      delivered: filteredOrders.filter(o => o.status === 'delivered').length,
-      canceled: filteredOrders.filter(o => o.status === 'canceled').length,
-      totalRevenue: filteredOrders.reduce((sum, order) => sum + order.total, 0)
-    };
+    const statsResult = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN status = 'shipped' THEN 1 END) as shipped,
+        COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered,
+        COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled,
+        COUNT(CASE WHEN status = 'refunded' THEN 1 END) as refunded,
+        COALESCE(SUM(total), 0) as total_revenue
+      FROM orders
+      ${whereClause}
+    `, queryParams);
+
+    const stats = statsResult.rows[0];
 
     return NextResponse.json({
       success: true,
-      orders: paginatedOrders,
+      orders: ordersWithItems,
       pagination: {
-        total: filteredOrders.length,
+        total: totalCount,
         limit,
         offset,
-        hasMore: offset + limit < filteredOrders.length
+        hasMore: offset + limit < totalCount
       },
       stats
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(
       { error: 'Failed to fetch orders' },
@@ -305,82 +266,82 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, status, tracking_number, notes, estimated_delivery } = body;
+    const { 
+      order_id, 
+      status, 
+      payment_status, 
+      tracking_number, 
+      notes 
+    } = body;
 
-    if (!orderId) {
+    if (!order_id) {
       return NextResponse.json(
         { error: 'Order ID is required' },
         { status: 400 }
       );
     }
 
-    const orderIndex = orders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) {
+    // Build update query dynamically
+    const updateFields: string[] = [];
+    const queryParams: any[] = [];
+    let paramCount = 0;
+
+    if (status) {
+      paramCount++;
+      updateFields.push(`status = $${paramCount}`);
+      queryParams.push(status);
+    }
+
+    if (payment_status) {
+      paramCount++;
+      updateFields.push(`payment_status = $${paramCount}`);
+      queryParams.push(payment_status);
+    }
+
+    if (tracking_number !== undefined) {
+      paramCount++;
+      updateFields.push(`tracking_number = $${paramCount}`);
+      queryParams.push(tracking_number);
+    }
+
+    if (notes !== undefined) {
+      paramCount++;
+      updateFields.push(`notes = $${paramCount}`);
+      queryParams.push(notes);
+    }
+
+    if (updateFields.length === 0) {
+      return NextResponse.json(
+        { error: 'No fields to update' },
+        { status: 400 }
+      );
+    }
+
+    paramCount++;
+    queryParams.push(order_id);
+
+    const updateResult = await query(
+      `UPDATE orders 
+       SET ${updateFields.join(', ')}, updated_at = NOW()
+       WHERE id = $${paramCount}
+       RETURNING *`,
+      queryParams
+    );
+
+    if (updateResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    // Update order
-    const updatedOrder = { ...orders[orderIndex] };
-
-    if (status) {
-      updatedOrder.status = status;
-    }
-
-    if (tracking_number) {
-      updatedOrder.tracking_number = tracking_number;
-    }
-
-    if (notes) {
-      updatedOrder.notes = notes;
-    }
-
-    if (estimated_delivery) {
-      updatedOrder.estimated_delivery = estimated_delivery;
-    }
-
-    updatedOrder.updated_at = new Date().toISOString();
-
-    orders[orderIndex] = updatedOrder;
-
-    try {
-      // Try to update in Supabase
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: updatedOrder.status,
-          tracking_number: updatedOrder.tracking_number,
-          notes: updatedOrder.notes,
-          estimated_delivery: updatedOrder.estimated_delivery,
-          updated_at: updatedOrder.updated_at
-        })
-        .eq('id', orderId);
-
-      if (error) {
-        console.log('Supabase update error:', error.message);
-      }
-    } catch (dbError) {
-      console.log('Database update failed, using mock storage');
-    }
-
-    // Send status update notifications
-    if (status) {
-      console.log(`📧 Order status update email sent to ${updatedOrder.customer_info.email}`);
-
-      if (status === 'shipped' && tracking_number) {
-        console.log(`📦 Shipping notification sent with tracking: ${tracking_number}`);
-      }
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Order updated successfully',
-      order: updatedOrder
+      order: updateResult.rows[0]
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating order:', error);
     return NextResponse.json(
       { error: 'Failed to update order' },
@@ -393,7 +354,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const orderId = searchParams.get('orderId');
+    const orderId = searchParams.get('order_id');
     const reason = searchParams.get('reason');
 
     if (!orderId) {
@@ -403,67 +364,48 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const orderIndex = orders.findIndex(order => order.id === orderId);
-    if (orderIndex === -1) {
+    // Check if order exists and can be cancelled
+    const orderResult = await query(
+      `SELECT status FROM orders WHERE id = $1`,
+      [orderId]
+    );
+
+    if (orderResult.rows.length === 0) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    const order = orders[orderIndex];
-
-    // Check if order can be canceled
-    if (!['pending', 'confirmed'].includes(order.status)) {
+    const currentStatus = orderResult.rows[0].status;
+    
+    // Only allow cancellation of pending or confirmed orders
+    if (!['pending', 'confirmed'].includes(currentStatus)) {
       return NextResponse.json(
-        { error: 'Order cannot be canceled in current status' },
+        { error: 'Order cannot be cancelled in current status' },
         { status: 400 }
       );
     }
 
-    // Update order status to canceled
-    orders[orderIndex] = {
-      ...order,
-      status: 'canceled',
-      notes: reason ? `Canceled: ${reason}` : 'Order canceled',
-      updated_at: new Date().toISOString()
-    };
-
-    try {
-      // Try to update in Supabase
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: 'canceled',
-          notes: orders[orderIndex].notes,
-          updated_at: orders[orderIndex].updated_at
-        })
-        .eq('id', orderId);
-
-      if (error) {
-        console.log('Supabase update error:', error.message);
-      }
-    } catch (dbError) {
-      console.log('Database update failed, using mock storage');
-    }
-
-    // Process refund if payment was made
-    if (order.payment_status === 'paid' && order.payment_intent_id) {
-      console.log(`💰 Refund initiated for payment intent: ${order.payment_intent_id}`);
-      // In production, process actual refund through Stripe
-    }
-
-    // Send cancellation notifications
-    console.log(`📧 Order cancellation email sent to ${order.customer_info.email}`);
+    // Update order status to cancelled
+    const updateResult = await query(
+      `UPDATE orders 
+       SET status = 'cancelled', 
+           notes = COALESCE(notes || ' ', '') || $1,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [reason ? `Cancelled: ${reason}` : 'Order cancelled', orderId]
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Order canceled successfully',
-      order: orders[orderIndex]
+      message: 'Order cancelled successfully',
+      order: updateResult.rows[0]
     });
 
-  } catch (error) {
-    console.error('Error canceling order:', error);
+  } catch (error: any) {
+    console.error('Error cancelling order:', error);
     return NextResponse.json(
       { error: 'Failed to cancel order' },
       { status: 500 }

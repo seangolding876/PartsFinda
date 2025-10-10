@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 interface PartRequestData {
   partName: string;
@@ -22,107 +22,37 @@ interface PartRequestData {
   deadline?: string;
 }
 
-interface PartRequest extends PartRequestData {
-  id: string;
-  status: 'active' | 'in_progress' | 'fulfilled' | 'expired';
-  created_at: string;
-  updated_at: string;
-  responses_count: number;
-  expires_at: string;
-}
-
-// Mock database for part requests
-let partRequests: PartRequest[] = [
-  {
-    id: '1',
-    partName: 'Front Brake Pads',
-    partNumber: 'BP-123456',
-    vehicleMake: 'Toyota',
-    vehicleModel: 'Camry',
-    vehicleYear: 2020,
-    vehicleTrim: 'LE',
-    condition: 'new',
-    description: 'Need OEM or equivalent quality front brake pads for my 2020 Toyota Camry LE. Must be ceramic compound.',
-    budget: 150,
-    urgency: 'medium',
-    buyerName: 'John Doe',
-    buyerEmail: 'john.doe@email.com',
-    buyerPhone: '+1-555-0123',
-    location: 'Los Angeles, CA',
-    preferredContactMethod: 'email',
-    status: 'active',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    responses_count: 3,
-    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-    deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days from now
-  },
-  {
-    id: '2',
-    partName: 'Headlight Assembly',
-    vehicleMake: 'Honda',
-    vehicleModel: 'Civic',
-    vehicleYear: 2019,
-    condition: 'used',
-    description: 'Looking for a driver side headlight assembly. Small crack in current one, needs replacement.',
-    budget: 200,
-    urgency: 'high',
-    buyerName: 'Jane Smith',
-    buyerEmail: 'jane.smith@email.com',
-    location: 'Houston, TX',
-    preferredContactMethod: 'phone',
-    status: 'active',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    responses_count: 1,
-    expires_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-  }
-];
-
-function generateId(): string {
-  return Math.random().toString(36).substr(2, 9);
-}
-
-async function notifySellers(partRequest: PartRequest) {
-  try {
-    // Send notifications to relevant sellers
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/notifications`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: 'part-request',
-        data: partRequest
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to send seller notifications');
-      return false;
-    }
-
-    const result = await response.json();
-    console.log(`✅ Notified ${result.notificationsSent} sellers about part request ${partRequest.id}`);
-    return true;
-  } catch (error) {
-    console.error('Error sending seller notifications:', error);
-    return false;
-  }
-}
-
+// Create new part request
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const partRequestData: PartRequestData = body;
+    const body: PartRequestData = await request.json();
+    const {
+      partName,
+      partNumber,
+      vehicleMake,
+      vehicleModel,
+      vehicleYear,
+      vehicleTrim,
+      oem_number,
+      condition,
+      description,
+      budget,
+      urgency,
+      buyerName,
+      buyerEmail,
+      buyerPhone,
+      location,
+      preferredContactMethod,
+      images,
+      deadline
+    } = body;
 
     // Validate required fields
     const requiredFields = ['partName', 'vehicleMake', 'vehicleModel', 'vehicleYear', 'description', 'buyerName', 'buyerEmail'];
     for (const field of requiredFields) {
-      if (!partRequestData[field as keyof PartRequestData]) {
+      if (!body[field as keyof PartRequestData]) {
         return NextResponse.json(
-          { error: `Missing required field: ${field}` },
+          { success: false, error: `Missing required field: ${field}` },
           { status: 400 }
         );
       }
@@ -130,56 +60,43 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(partRequestData.buyerEmail)) {
+    if (!emailRegex.test(buyerEmail)) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { success: false, error: 'Invalid email format' },
         { status: 400 }
       );
     }
 
     // Validate vehicle year
     const currentYear = new Date().getFullYear();
-    if (partRequestData.vehicleYear < 1900 || partRequestData.vehicleYear > currentYear + 1) {
+    if (vehicleYear < 1900 || vehicleYear > currentYear + 1) {
       return NextResponse.json(
-        { error: 'Invalid vehicle year' },
+        { success: false, error: 'Invalid vehicle year' },
         { status: 400 }
       );
     }
 
-    // Create new part request
-    const newPartRequest: PartRequest = {
-      id: generateId(),
-      ...partRequestData,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      responses_count: 0,
-      expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
-    };
+    // Insert into database
+    const result = await query(
+      `INSERT INTO part_requests (
+        part_name, part_number, vehicle_make, vehicle_model, vehicle_year,
+        vehicle_trim, oem_number, condition, description, budget, urgency,
+        buyer_name, buyer_email, buyer_phone, location, preferred_contact_method,
+        images, deadline
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING id, part_name, vehicle_make, vehicle_model, status, created_at, expires_at`,
+      [
+        partName, partNumber, vehicleMake, vehicleModel, vehicleYear,
+        vehicleTrim, oem_number, condition, description, budget, urgency,
+        buyerName, buyerEmail, buyerPhone, location, preferredContactMethod,
+        images, deadline ? new Date(deadline) : null
+      ]
+    );
 
-    try {
-      // Try to save to Supabase
-      const { data, error } = await supabase
-        .from('part_requests')
-        .insert([newPartRequest])
-        .select()
-        .single();
+    const newRequest = result.rows[0];
 
-      if (error) {
-        console.log('Supabase error, using mock database:', error.message);
-        // Fall back to mock database
-        partRequests.push(newPartRequest);
-      } else {
-        console.log('Part request saved to database');
-      }
-    } catch (dbError) {
-      console.log('Database unavailable, using mock storage');
-      // Fall back to mock database
-      partRequests.push(newPartRequest);
-    }
-
-    // Send notifications to sellers (async, don't block response)
-    notifySellers(newPartRequest).catch(error => {
+    // Notify sellers (async - don't block response)
+    notifySellers(newRequest).catch(error => {
       console.error('Failed to notify sellers:', error);
     });
 
@@ -187,22 +104,35 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Part request submitted successfully',
       data: {
-        id: newPartRequest.id,
-        status: newPartRequest.status,
-        created_at: newPartRequest.created_at,
-        expires_at: newPartRequest.expires_at
+        id: newRequest.id,
+        partName: newRequest.part_name,
+        vehicleMake: newRequest.vehicle_make,
+        vehicleModel: newRequest.vehicle_model,
+        status: newRequest.status,
+        created_at: newRequest.created_at,
+        expires_at: newRequest.expires_at
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating part request:', error);
+    
+    // Handle specific database errors
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Part request already exists' },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create part request' },
+      { success: false, error: 'Failed to create part request' },
       { status: 500 }
     );
   }
 }
 
+// Get part requests with filters
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -210,68 +140,126 @@ export async function GET(request: NextRequest) {
     const vehicleMake = searchParams.get('make');
     const vehicleModel = searchParams.get('model');
     const urgency = searchParams.get('urgency');
+    const buyerEmail = searchParams.get('buyerEmail');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let filteredRequests = [...partRequests];
+    let whereConditions: string[] = [];
+    let queryParams: any[] = [];
+    let paramCount = 0;
 
-    // Apply filters
+    // Build WHERE clause based on filters
     if (status && status !== 'all') {
-      filteredRequests = filteredRequests.filter(req => req.status === status);
+      paramCount++;
+      whereConditions.push(`status = $${paramCount}`);
+      queryParams.push(status);
     }
 
     if (vehicleMake && vehicleMake !== 'all') {
-      filteredRequests = filteredRequests.filter(req =>
-        req.vehicleMake.toLowerCase().includes(vehicleMake.toLowerCase())
-      );
+      paramCount++;
+      whereConditions.push(`LOWER(vehicle_make) LIKE LOWER($${paramCount})`);
+      queryParams.push(`%${vehicleMake}%`);
     }
 
     if (vehicleModel && vehicleModel !== 'all') {
-      filteredRequests = filteredRequests.filter(req =>
-        req.vehicleModel.toLowerCase().includes(vehicleModel.toLowerCase())
-      );
+      paramCount++;
+      whereConditions.push(`LOWER(vehicle_model) LIKE LOWER($${paramCount})`);
+      queryParams.push(`%${vehicleModel}%`);
     }
 
     if (urgency && urgency !== 'all') {
-      filteredRequests = filteredRequests.filter(req => req.urgency === urgency);
+      paramCount++;
+      whereConditions.push(`urgency = $${paramCount}`);
+      queryParams.push(urgency);
     }
 
-    // Sort by creation date (newest first)
-    filteredRequests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    if (buyerEmail) {
+      paramCount++;
+      whereConditions.push(`buyer_email = $${paramCount}`);
+      queryParams.push(buyerEmail);
+    }
 
-    // Apply pagination
-    const paginatedRequests = filteredRequests.slice(offset, offset + limit);
+    // Only show non-expired requests by default
+    if (!status || status === 'active') {
+      whereConditions.push(`(expires_at IS NULL OR expires_at > NOW())`);
+    }
 
-    // Calculate stats
-    const stats = {
-      total: filteredRequests.length,
-      active: filteredRequests.filter(req => req.status === 'active').length,
-      in_progress: filteredRequests.filter(req => req.status === 'in_progress').length,
-      fulfilled: filteredRequests.filter(req => req.status === 'fulfilled').length,
-      expired: filteredRequests.filter(req => req.status === 'expired').length,
-    };
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(' AND ')}` 
+      : 'WHERE (expires_at IS NULL OR expires_at > NOW())';
+
+    // Get requests
+    const requestsResult = await query(
+      `SELECT * FROM part_requests 
+       ${whereClause}
+       ORDER BY 
+         CASE urgency 
+           WHEN 'high' THEN 1 
+           WHEN 'medium' THEN 2 
+           WHEN 'low' THEN 3 
+         END,
+         created_at DESC
+       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`,
+      [...queryParams, limit, offset]
+    );
+
+    // Get total count
+    const countResult = await query(
+      `SELECT COUNT(*) FROM part_requests ${whereClause}`,
+      queryParams
+    );
+
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Get responses count for each request
+    const requestsWithStats = [];
+    for (const req of requestsResult.rows) {
+      const responsesResult = await query(
+        `SELECT COUNT(*) FROM request_responses WHERE request_id = $1`,
+        [req.id]
+      );
+
+      requestsWithStats.push({
+        ...req,
+        responses_count: parseInt(responsesResult.rows[0].count)
+      });
+    }
+
+    // Calculate overall stats
+    const statsResult = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'active' AND (expires_at IS NULL OR expires_at > NOW()) THEN 1 END) as active,
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+        COUNT(CASE WHEN status = 'fulfilled' THEN 1 END) as fulfilled,
+        COUNT(CASE WHEN status = 'expired' OR (expires_at IS NOT NULL AND expires_at <= NOW()) THEN 1 END) as expired
+      FROM part_requests
+    `);
+
+    const stats = statsResult.rows[0];
 
     return NextResponse.json({
       success: true,
-      data: paginatedRequests,
+      data: requestsWithStats,
       pagination: {
-        total: filteredRequests.length,
+        total: totalCount,
         limit,
         offset,
-        hasMore: offset + limit < filteredRequests.length
+        hasMore: offset + limit < totalCount
       },
       stats
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching part requests:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch part requests' },
+      { success: false, error: 'Failed to fetch part requests' },
       { status: 500 }
     );
   }
 }
 
+// Update part request
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
@@ -279,67 +267,69 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Part request ID is required' },
+        { success: false, error: 'Part request ID is required' },
         { status: 400 }
       );
     }
 
-    const requestIndex = partRequests.findIndex(req => req.id === id);
-    if (requestIndex === -1) {
-      return NextResponse.json(
-        { error: 'Part request not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update part request
-    const updatedRequest = { ...partRequests[requestIndex] };
+    // Build update query dynamically
+    const updateFields: string[] = [];
+    const queryParams: any[] = [];
+    let paramCount = 0;
 
     if (status) {
-      updatedRequest.status = status;
+      paramCount++;
+      updateFields.push(`status = $${paramCount}`);
+      queryParams.push(status);
     }
 
     if (typeof responses_count === 'number') {
-      updatedRequest.responses_count = responses_count;
+      paramCount++;
+      updateFields.push(`responses_count = $${paramCount}`);
+      queryParams.push(responses_count);
     }
 
-    updatedRequest.updated_at = new Date().toISOString();
+    if (updateFields.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No fields to update' },
+        { status: 400 }
+      );
+    }
 
-    partRequests[requestIndex] = updatedRequest;
+    paramCount++;
+    queryParams.push(id);
 
-    try {
-      // Try to update in Supabase
-      const { error } = await supabase
-        .from('part_requests')
-        .update({
-          status: updatedRequest.status,
-          responses_count: updatedRequest.responses_count,
-          updated_at: updatedRequest.updated_at
-        })
-        .eq('id', id);
+    const updateResult = await query(
+      `UPDATE part_requests 
+       SET ${updateFields.join(', ')}
+       WHERE id = $${paramCount}
+       RETURNING *`,
+      queryParams
+    );
 
-      if (error) {
-        console.log('Supabase update error:', error.message);
-      }
-    } catch (dbError) {
-      console.log('Database update failed, using mock storage');
+    if (updateResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Part request not found' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       success: true,
       message: 'Part request updated successfully',
-      data: updatedRequest
+      data: updateResult.rows[0]
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating part request:', error);
     return NextResponse.json(
-      { error: 'Failed to update part request' },
+      { success: false, error: 'Failed to update part request' },
       { status: 500 }
     );
   }
 }
 
+// Delete part request
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -347,34 +337,21 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Part request ID is required' },
+        { success: false, error: 'Part request ID is required' },
         { status: 400 }
       );
     }
 
-    const requestIndex = partRequests.findIndex(req => req.id === id);
-    if (requestIndex === -1) {
+    const deleteResult = await query(
+      `DELETE FROM part_requests WHERE id = $1 RETURNING id`,
+      [id]
+    );
+
+    if (deleteResult.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Part request not found' },
+        { success: false, error: 'Part request not found' },
         { status: 404 }
       );
-    }
-
-    // Remove from mock database
-    partRequests.splice(requestIndex, 1);
-
-    try {
-      // Try to delete from Supabase
-      const { error } = await supabase
-        .from('part_requests')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.log('Supabase delete error:', error.message);
-      }
-    } catch (dbError) {
-      console.log('Database delete failed, using mock storage');
     }
 
     return NextResponse.json({
@@ -382,11 +359,40 @@ export async function DELETE(request: NextRequest) {
       message: 'Part request deleted successfully'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting part request:', error);
     return NextResponse.json(
-      { error: 'Failed to delete part request' },
+      { success: false, error: 'Failed to delete part request' },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to notify sellers
+async function notifySellers(partRequest: any) {
+  try {
+    // Get relevant sellers based on part type, location, etc.
+    const sellersResult = await query(
+      `SELECT id, name, email FROM profiles 
+       WHERE role = 'seller' 
+       AND (specialties IS NULL OR specialties @> ARRAY[$1]::varchar[])
+       LIMIT 10`,
+      [partRequest.vehicle_make]
+    );
+
+    const sellers = sellersResult.rows;
+    
+    // In real app, send emails or push notifications
+    console.log(`🔔 Notifying ${sellers.length} sellers about new part request: ${partRequest.part_name}`);
+    
+    // Log notification (in real app, this would be email/notification service)
+    for (const seller of sellers) {
+      console.log(`📧 Notified seller: ${seller.name} (${seller.email})`);
+    }
+
+    return { notificationsSent: sellers.length };
+  } catch (error) {
+    console.error('Error notifying sellers:', error);
+    return { notificationsSent: 0 };
   }
 }
