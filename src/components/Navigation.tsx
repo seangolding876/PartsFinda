@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageSquare, Settings, Users } from 'lucide-react';
+import { MessageSquare, Settings, Users , Car } from 'lucide-react';
 import { cwd } from 'process';
 import { log } from 'console';
 import { verifyToken } from '@/lib/jwt';
@@ -204,6 +204,20 @@ console.log(payload);
                     Admin
                   </Link>
                 )}
+
+
+           {userRole === 'admin' && (
+               <Link 
+                    href="/admin/cars" 
+                    className="hover:text-blue-600 flex items-center gap-1 transition-colors">
+                      <Car className="w-4 h-4" />
+                      Manage Cars
+                    </Link>
+                )}
+             
+             
+         
+                
               </>
             )}
           </div>
@@ -251,6 +265,8 @@ console.log(payload);
                     <Settings className="w-4 h-4" />
                     Admin
                   </Link>
+
+                  
                 ) : (
                   <Link
                     href="/request-part"
@@ -341,6 +357,13 @@ console.log(payload);
                     <Users className="w-3 h-3" />
                     Admin
                   </Link>
+                )}
+
+                {userRole === 'admin' && (
+                   <Link href="/admin/cars" className="hover:text-blue-600 flex items-center gap-1 transition-colors">
+      <Car className="w-3 h-3" />
+      Manage Cars
+    </Link>
                 )}
 
                 {/* Mobile user info */}
