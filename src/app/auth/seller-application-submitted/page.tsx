@@ -1,14 +1,11 @@
 'use client';
-import { Suspense } from 'react';
 import Link from 'next/link';
-import { CheckCircle, Mail, Clock, Phone, User, Building } from 'lucide-react';
+import { CheckCircle, Clock, Mail, Phone } from 'lucide-react';
 
-// Main component jo suspense ke andar hoga
-function ApplicationDetails() {
+export default function SellerApplicationSubmitted() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="flex items-center justify-center gap-2 mb-6">
             <div className="bg-blue-600 text-white px-3 py-1 rounded font-bold text-xl">
@@ -20,7 +17,6 @@ function ApplicationDetails() {
           </Link>
         </div>
 
-        {/* Success Card */}
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
@@ -36,33 +32,10 @@ function ApplicationDetails() {
             Thank you for your interest in becoming a PartFinda Jamaica supplier.
           </p>
 
-          {/* Application Details */}
-          <div className="bg-blue-50 rounded-lg p-6 mb-8 text-left">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Building className="w-5 h-5" />
-              Application Submitted
-            </h2>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status:</span>
-                <span className="font-semibold text-orange-600">Email Verification Pending</span>
-              </div>
-              
-              <div className="text-sm text-gray-600 mt-4">
-                <p>✅ We have sent a verification link to your email address.</p>
-                <p>✅ Please check your inbox and click the verification link.</p>
-                <p>✅ After verification, your application will be reviewed.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Next Steps */}
-          <div className="bg-gray-50 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
-              <Clock className="w-5 h-5" />
+          <div className="bg-blue-50 rounded-lg p-6 mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
               What Happens Next?
-            </h3>
+            </h2>
             
             <div className="space-y-4 text-left">
               <div className="flex items-start gap-3">
@@ -70,9 +43,9 @@ function ApplicationDetails() {
                   1
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Check Your Email</p>
+                  <p className="font-medium text-gray-800">Application Review</p>
                   <p className="text-sm text-gray-600">
-                    Look for verification email from PartFinda Jamaica
+                    Our team will review your application within 2-3 business days
                   </p>
                 </div>
               </div>
@@ -82,9 +55,9 @@ function ApplicationDetails() {
                   2
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Verify Your Email</p>
+                  <p className="font-medium text-gray-800">Verification</p>
                   <p className="text-sm text-gray-600">
-                    Click the verification link in the email
+                    We'll verify your business details and contact information
                   </p>
                 </div>
               </div>
@@ -94,19 +67,17 @@ function ApplicationDetails() {
                   3
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Application Review</p>
+                  <p className="font-medium text-gray-800">Account Activation</p>
                   <p className="text-sm text-gray-600">
-                    Our team will review within 2-3 business days
+                    You'll receive an email with login details once approved
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Contact Info */}
           <div className="border border-gray-200 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
-              <User className="w-5 h-5" />
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
               Need Help?
             </h3>
             
@@ -123,7 +94,6 @@ function ApplicationDetails() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
@@ -142,36 +112,5 @@ function ApplicationDetails() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Loading component
-function LoadingFallback() {
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="animate-pulse">
-            <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-6"></div>
-            <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-8"></div>
-            <div className="space-y-3">
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Main export with Suspense
-export default function SellerApplicationSubmittedPage() {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <ApplicationDetails />
-    </Suspense>
   );
 }

@@ -264,7 +264,8 @@ const handleSubmit = async () => {
       agreeToVerification: formData.agreeToVerification
     };
 
-    const response = await fetch('/api/seller/register', {
+    // ✅ YAHAN CHANGE KARNA HAI - /api/seller/register se /api/auth/seller-register
+    const response = await fetch('/api/auth/seller-register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -293,6 +294,8 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
+
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
