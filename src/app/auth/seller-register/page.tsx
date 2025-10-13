@@ -88,33 +88,32 @@ export default function SellerSignupPage() {
     'Mazda', 'Subaru', 'Suzuki', 'Isuzu'
   ];
 
-  const membershipPlans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: 'J$0',
-      period: '/month',
-      features: ['Basic listing', '24-hour response delay', 'Email notifications', 'Basic analytics'],
-      recommended: false
-    },
-    {
-      id: 'basic',
-      name: 'Basic',
-      price: 'J$2,500',
-      period: '/month',
-      features: ['Priority listing', 'Instant notifications', 'Advanced analytics', 'Customer support'],
-      recommended: true
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: 'J$5,000',
-      period: '/month',
-      features: ['Top placement', 'Featured supplier badge', 'Bulk messaging', 'Dedicated account manager'],
-      recommended: false
-    }
-  ];
-
+const membershipPlans = [
+  {
+    id: 'basic',  // 'free' ki jagah 'basic'
+    name: 'Basic',
+    price: 'J$0',
+    period: '/month',
+    features: ['Basic listing', '24-hour response delay', 'Email notifications', 'Basic analytics'],
+    recommended: false
+  },
+  {
+    id: 'premium',  // 'basic' ki jagah 'premium'
+    name: 'Premium', 
+    price: 'J$2,500',
+    period: '/month',
+    features: ['Priority listing', 'Instant notifications', 'Advanced analytics', 'Customer support'],
+    recommended: true
+  },
+  {
+    id: 'enterprise',  // 'premium' ki jagah 'enterprise'
+    name: 'Enterprise',
+    price: 'J$5,000', 
+    period: '/month',
+    features: ['Top placement', 'Featured supplier badge', 'Bulk messaging', 'Dedicated account manager'],
+    recommended: false
+  }
+];
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
 
