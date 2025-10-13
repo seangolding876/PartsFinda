@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     console.log('Received data:', {
       email: body.email,
       businessName: body.businessName,
+      ownerName: body.ownerName,
       specializations: body.specializations?.length,
       vehicleBrands: body.vehicleBrands?.length
     });
@@ -103,16 +104,12 @@ export async function POST(request: NextRequest) {
 
     try {
       // Handle file fields - convert to string or null
-      const businessLicenseValue = body.businessLicense ? 
-        (typeof body.businessLicense === 'string' ? body.businessLicense : 'uploaded') : null;
-      
-      const taxCertificateValue = body.taxCertificate ? 
-        (typeof body.taxCertificate === 'string' ? body.taxCertificate : 'uploaded') : null;
-      
-      const insuranceCertificateValue = body.insuranceCertificate ? 
-        (typeof body.insuranceCertificate === 'string' ? body.insuranceCertificate : 'uploaded') : null;
+      const businessLicenseValue = body.businessLicense ? 'uploaded' : null;
+      const taxCertificateValue = body.taxCertificate ? 'uploaded' : null;
+      const insuranceCertificateValue = body.insuranceCertificate ? 'uploaded' : null;
 
       // Create user account with seller role and all business details
+      // ✅ IMPORTANT: name = ownerName, role = 'seller'
       const userResult = await query(
         `INSERT INTO users (
           email, password, name, phone, role, owner_name, business_name, 
@@ -124,34 +121,34 @@ export async function POST(request: NextRequest) {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
         RETURNING id, business_name, email, membership_plan`,
         [
-          body.email,
-          hashedPassword,
-          body.ownerName,
-          body.phone,
-          'seller',
-          body.ownerName,
-          body.businessName,
-          body.businessType,
-          body.businessRegistrationNumber || null,
-          body.taxId || null,
-          yearsInBusinessInt,
-          body.address,
-          body.parish,
-          body.city,
-          body.postalCode || null,
-          body.businessPhone,
-          body.businessEmail || null,
-          body.website || null,
-          body.specializations || [],
-          body.vehicleBrands || [],
-          body.partCategories || [],
-          businessLicenseValue,
-          taxCertificateValue,
-          insuranceCertificateValue,
-          body.membershipPlan,
-          body.agreeToTerms,
-          body.agreeToVerification,
-          false
+          body.email,                    // $1 - email
+          hashedPassword,                // $2 - password
+          body.ownerName,                // $3 - name (required field)
+          body.phone,                    // $4 - phone
+          'seller',                      // $5 - role (set to 'seller')
+          body.ownerName,                // $6 - owner_name
+          body.businessName,             // $7 - business_name
+          body.businessType,             // $8 - business_type
+          body.businessRegistrationNumber || null, // $9 - business_registration_number
+          body.taxId || null,            // $10 - tax_id
+          yearsInBusinessInt,            // $11 - years_in_business
+          body.address,                  // $12 - address
+          body.parish,                   // $13 - parish
+          body.city,                     // $14 - city
+          body.postalCode || null,       // $15 - postal_code
+          body.businessPhone,            // $16 - business_phone
+          body.businessEmail || null,    // $17 - business_email
+          body.website || null,          // $18 - website
+          body.specializations || [],    // $19 - specializations
+          body.vehicleBrands || [],      // $20 - vehicle_brands
+          body.partCategories || [],     // $21 - part_categories
+          businessLicenseValue,          // $22 - business_license
+          taxCertificateValue,           // $23 - tax_certificate
+          insuranceCertificateValue,     // $24 - insurance_certificate
+          body.membershipPlan,           // $25 - membership_plan
+          body.agreeToTerms,             // $26 - agree_to_terms
+          body.agreeToVerification,      // $27 - agree_to_verification
+          false                          // $28 - email_verified
         ]
       );
 
@@ -180,6 +177,13 @@ export async function POST(request: NextRequest) {
       if (error.message.includes('unique constraint')) {
         return NextResponse.json(
           { success: false, error: 'Email or business name already exists' },
+          { status: 400 }
+        );
+      }
+      
+      if (error.message.includes('null value in column "name"')) {
+        return NextResponse.json(
+          { success: false, error: 'Name field is required' },
           { status: 400 }
         );
       }

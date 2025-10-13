@@ -257,12 +257,12 @@ const handleSubmit = async () => {
       
       specializations: formData.specializations,
       vehicleBrands: formData.vehicleBrands,
-      partCategories: formData.partCategories || [], // Add this line
+      partCategories: formData.partCategories || [],
       
-      // File fields - temporarily as simple values
-      businessLicense: formData.businessLicense ? 1 : null,
-      taxCertificate: formData.taxCertificate ? 1 : null,
-      insuranceCertificate: formData.insuranceCertificate ? 1 : null,
+      // File fields - simple boolean values
+      businessLicense: formData.businessLicense ? true : false,
+      taxCertificate: formData.taxCertificate ? true : false,
+      insuranceCertificate: formData.insuranceCertificate ? true : false,
       
       membershipPlan: formData.membershipPlan,
       
@@ -302,7 +302,6 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
