@@ -2,13 +2,18 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { MessageSquare, Settings, Users, Car } from 'lucide-react';
+import { MessageSquare, Settings, Users, Car, Crown } from 'lucide-react';
 
 export default function Navigation() {
   const { user, logout, isLoading } = useAuth();
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleUpgradeToPro = () => {
+    // Subscription page ko open karega
+    window.open('/subscription', '_blank');
   };
 
   return (
@@ -45,9 +50,20 @@ export default function Navigation() {
                 </Link>
 
                 {user.role === 'buyer' && (
-                  <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
-                    My Requests
-                  </Link>
+                  <>
+                    <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
+                      My Requests
+                    </Link>
+                    
+                    {/* Upgrade to Pro Button - Only for buyer */}
+                    <button
+                      onClick={handleUpgradeToPro}
+                      className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 py-1 rounded-full text-sm font-medium"
+                    >
+                      <Crown className="w-4 h-4" />
+                      Upgrade to Pro
+                    </button>
+                  </>
                 )}
 
                 {user.role === 'seller' && (
@@ -98,12 +114,23 @@ export default function Navigation() {
 
                 {/* Role-based primary action button */}
                 {user.role === 'buyer' ? (
-                  <Link
-                    href="/my-requests"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
-                  >
-                    My Requests
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/my-requests"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                    >
+                      My Requests
+                    </Link>
+                    
+                    {/* Upgrade to Pro Button for Desktop */}
+                    <button
+                      onClick={handleUpgradeToPro}
+                      className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-4 py-2 rounded-lg hover:from-yellow-500 hover:to-yellow-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Crown className="w-4 h-4" />
+                      Upgrade to Pro
+                    </button>
+                  </div>
                 ) : user.role === 'seller' ? (
                   <Link
                     href="/seller/dashboard"
@@ -174,9 +201,20 @@ export default function Navigation() {
                 </Link>
 
                 {user.role === 'buyer' && (
-                  <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
-                    My Requests
-                  </Link>
+                  <>
+                    <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
+                      My Requests
+                    </Link>
+                    
+                    {/* Mobile Upgrade to Pro Button */}
+                    <button
+                      onClick={handleUpgradeToPro}
+                      className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-2 py-1 rounded-full text-xs font-medium"
+                    >
+                      <Crown className="w-3 h-3" />
+                      Upgrade Pro
+                    </button>
+                  </>
                 )}
                 {user.role === 'seller' && (
                   <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
