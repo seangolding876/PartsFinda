@@ -1,156 +1,182 @@
 'use client';
-
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle, Clock, Mail, Phone, FileText, ArrowRight, Home, MessageSquare } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { CheckCircle, Mail, Clock, Phone, User, Building } from 'lucide-react';
 
-export default function SellerApplicationSubmittedPage() {
+export default function SellerApplicationSubmitted() {
+  const searchParams = useSearchParams();
+  const [applicationDetails, setApplicationDetails] = useState({
+    applicationId: '',
+    businessName: '',
+    email: '',
+    membershipPlan: ''
+  });
+
+  useEffect(() => {
+    setApplicationDetails({
+      applicationId: searchParams.get('applicationId') || '',
+      businessName: decodeURIComponent(searchParams.get('businessName') || ''),
+      email: decodeURIComponent(searchParams.get('email') || ''),
+      membershipPlan: decodeURIComponent(searchParams.get('membershipPlan') || '')
+    });
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link href="/" className="flex items-center justify-center gap-2 mb-6">
+            <div className="bg-blue-600 text-white px-3 py-1 rounded font-bold text-xl">
+              PartFinda
+            </div>
+            <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs font-semibold">
+              Jamaica
+            </div>
+          </Link>
+        </div>
+
+        {/* Success Card */}
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          {/* Success Icon */}
-          <div className="mb-8">
-            <div className="bg-green-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">Application Submitted Successfully!</h1>
-            <p className="text-xl text-gray-600">
-              Thank you for applying to become a verified supplier on PartFinda
-            </p>
-          </div>
-
-          {/* What Happens Next */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">What Happens Next?</h2>
-
-            <div className="grid md:grid-cols-3 gap-6 text-left">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-gray-800 mb-2">1. Application Review</h3>
-                <p className="text-sm text-gray-600">
-                  Our team will review your application and verify your business information within 2-3 business days.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
-                  <Mail className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-800 mb-2">2. Email Confirmation</h3>
-                <p className="text-sm text-gray-600">
-                  You'll receive an email with your application status and next steps if approved.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
-                  <CheckCircle className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="font-semibold text-gray-800 mb-2">3. Account Activation</h3>
-                <p className="text-sm text-gray-600">
-                  Once approved, your supplier account will be activated and you can start receiving requests.
-                </p>
-              </div>
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
           </div>
+
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            Application Submitted Successfully!
+          </h1>
+
+          <p className="text-lg text-gray-600 mb-8">
+            Thank you for your interest in becoming a PartFinda Jamaica supplier.
+          </p>
 
           {/* Application Details */}
+          <div className="bg-blue-50 rounded-lg p-6 mb-8 text-left">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Building className="w-5 h-5" />
+              Application Details
+            </h2>
+            
+            <div className="space-y-3">
+              {applicationDetails.businessName && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Business Name:</span>
+                  <span className="font-semibold">{applicationDetails.businessName}</span>
+                </div>
+              )}
+              
+              {applicationDetails.applicationId && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Application ID:</span>
+                  <span className="font-semibold text-blue-600">{applicationDetails.applicationId}</span>
+                </div>
+              )}
+              
+              {applicationDetails.email && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Email:</span>
+                  <span className="font-semibold">{applicationDetails.email}</span>
+                </div>
+              )}
+              
+              {applicationDetails.membershipPlan && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Membership Plan:</span>
+                  <span className="font-semibold capitalize">{applicationDetails.membershipPlan}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between">
+                <span className="text-gray-600">Status:</span>
+                <span className="font-semibold text-orange-600">Under Review</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Next Steps */}
           <div className="bg-gray-50 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Application Details</h3>
-            <div className="grid md:grid-cols-2 gap-4 text-left">
-              <div>
-                <p className="text-sm text-gray-600">Application ID</p>
-                <p className="font-semibold text-gray-800">SUP-{Date.now().toString().slice(-8)}</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
+              <Clock className="w-5 h-5" />
+              What Happens Next?
+            </h3>
+            
+            <div className="space-y-4 text-left">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
+                  1
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Application Review</p>
+                  <p className="text-sm text-gray-600">
+                    Our team will review your application within 2-3 business days
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Submitted On</p>
-                <p className="font-semibold text-gray-800">{new Date().toLocaleDateString()}</p>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
+                  2
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Verification Check</p>
+                  <p className="text-sm text-gray-600">
+                    We'll verify your business details and contact information
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Expected Response Time</p>
-                <p className="font-semibold text-gray-800">2-3 Business Days</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Status</p>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-yellow-500" />
-                  <span className="font-semibold text-yellow-600">Under Review</span>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5 flex-shrink-0">
+                  3
+                </div>
+                <div>
+                  <p className="font-medium text-gray-800">Account Activation</p>
+                  <p className="text-sm text-gray-600">
+                    You'll receive an email with login details once approved
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Contact Information */}
+          {/* Contact Info */}
           <div className="border border-gray-200 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Need Help?</h3>
-            <p className="text-gray-600 mb-4">
-              If you have any questions about your application or need assistance, please contact us:
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <div className="flex items-center justify-center gap-2 text-blue-600">
-                <Mail className="w-5 h-5" />
-                <span className="font-semibold">support@partfinda.com</span>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
+              <User className="w-5 h-5" />
+              Need Help?
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-3">
+                <Mail className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-700">support@partfinda.jm</span>
               </div>
-              <div className="flex items-center justify-center gap-2 text-blue-600">
-                <Phone className="w-5 h-5" />
-                <span className="font-semibold">+876 219 3329</span>
+              
+              <div className="flex items-center justify-center gap-3">
+                <Phone className="w-5 h-5 text-gray-500" />
+                <span className="text-gray-700">+1 (876) 555-0100</span>
               </div>
             </div>
-          </div>
-
-          {/* Important Notes */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8 text-left">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              Important Notes
-            </h3>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 font-bold">•</span>
-                Please ensure your email address is active as we'll send all communications there
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 font-bold">•</span>
-                Applications are processed Monday-Friday during business hours
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 font-bold">•</span>
-                Having business documents ready speeds up the verification process
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 font-bold">•</span>
-                You can track your application status by contacting our support team
-              </li>
-            </ul>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <Home className="w-5 h-5" />
-              Return to Homepage
+              Back to Home
             </Link>
-
+            
             <Link
-              href="/contact"
-              className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-8 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              href="/auth/login"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <MessageSquare className="w-5 h-5" />
-              Contact Support
+              Go to Login
             </Link>
-          </div>
-
-          {/* Footer Message */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
-              Thank you for choosing PartFinda. We look forward to having you as part of Jamaica's premier car parts marketplace.
-            </p>
           </div>
         </div>
       </div>

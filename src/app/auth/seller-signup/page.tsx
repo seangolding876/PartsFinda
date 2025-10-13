@@ -222,31 +222,77 @@ export default function SellerSignupPage() {
     setError('');
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep(6)) {
-      setError('Please complete all required fields and agree to the terms.');
-      return;
+const handleSubmit = async () => {
+  if (!validateStep(6)) {
+    setError('Please complete all required fields and agree to the terms.');
+    return;
+  }
+
+  setLoading(true);
+  setError('');
+
+  try {
+    console.log('Submitting supplier application...', formData);
+
+    // Prepare data for API - match your database structure
+    const submissionData = {
+      ownerName: formData.ownerName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      
+      businessName: formData.businessName,
+      businessType: formData.businessType,
+      businessRegistrationNumber: formData.businessRegistrationNumber || undefined,
+      taxId: formData.taxId || undefined,
+      yearsInBusiness: formData.yearsInBusiness,
+      
+      address: formData.address,
+      parish: formData.parish,
+      city: formData.city,
+      postalCode: formData.postalCode || undefined,
+      businessPhone: formData.businessPhone,
+      businessEmail: formData.businessEmail || undefined,
+      website: formData.website || undefined,
+      
+      specializations: formData.specializations,
+      vehicleBrands: formData.vehicleBrands,
+      
+      membershipPlan: formData.membershipPlan,
+      
+      agreeToTerms: formData.agreeToTerms,
+      agreeToVerification: formData.agreeToVerification
+    };
+
+    const response = await fetch('/api/seller/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(submissionData),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to submit application');
     }
 
-    setLoading(true);
-    setError('');
-
-    try {
-      console.log('Submitting supplier application...', formData);
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      alert('Application submitted successfully! We will review your application and contact you within 2-3 business days.');
-      router.push('/auth/seller-application-submitted');
-    } catch (err: any) {
-      console.error('Application submission error:', err);
-      setError('Failed to submit application. Please try again.');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      // Redirect to success page with application details
+      const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
+      router.push(successUrl);
+    } else {
+      throw new Error(result.error || 'Application submission failed');
     }
-  };
 
+  } catch (err: any) {
+    console.error('Application submission error:', err);
+    setError(err.message || 'Failed to submit application. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
