@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { MessageSquare, Settings, Users, Car } from 'lucide-react';
 
 export default function Navigation() {
