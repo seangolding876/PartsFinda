@@ -24,9 +24,9 @@ interface SellerRegistrationData {
   specializations: string[];
   vehicleBrands: string[];
   partCategories: string[];
-  businessLicense?: any;
-  taxCertificate?: any;
-  insuranceCertificate?: any;
+  businessLicense?: string; // File URL
+  taxCertificate?: string;  // File URL
+  insuranceCertificate?: string; // File URL
   membershipPlan: string;
   agreeToTerms: boolean;
   agreeToVerification: boolean;
@@ -41,8 +41,9 @@ export async function POST(request: NextRequest) {
       email: body.email,
       businessName: body.businessName,
       ownerName: body.ownerName,
-      specializations: body.specializations?.length,
-      vehicleBrands: body.vehicleBrands?.length
+      businessLicense: body.businessLicense ? 'File URL provided' : 'No file',
+      taxCertificate: body.taxCertificate ? 'File URL provided' : 'No file',
+      insuranceCertificate: body.insuranceCertificate ? 'File URL provided' : 'No file'
     });
 
     // Validate required fields
@@ -103,13 +104,12 @@ export async function POST(request: NextRequest) {
     const yearsInBusinessInt = yearsInBusinessMap[body.yearsInBusiness] || 1;
 
     try {
-      // Handle file fields - convert to string or null
-      const businessLicenseValue = body.businessLicense ? 'uploaded' : null;
-      const taxCertificateValue = body.taxCertificate ? 'uploaded' : null;
-      const insuranceCertificateValue = body.insuranceCertificate ? 'uploaded' : null;
+      // Use actual file URLs from file upload
+      const businessLicenseValue = body.businessLicense || null;
+      const taxCertificateValue = body.taxCertificate || null;
+      const insuranceCertificateValue = body.insuranceCertificate || null;
 
       // Create user account with seller role and all business details
-      // ✅ IMPORTANT: name = ownerName, role = 'seller'
       const userResult = await query(
         `INSERT INTO users (
           email, password, name, phone, role, owner_name, business_name, 
@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
           body.specializations || [],    // $19 - specializations
           body.vehicleBrands || [],      // $20 - vehicle_brands
           body.partCategories || [],     // $21 - part_categories
-          businessLicenseValue,          // $22 - business_license
-          taxCertificateValue,           // $23 - tax_certificate
-          insuranceCertificateValue,     // $24 - insurance_certificate
+          businessLicenseValue,          // $22 - business_license (ACTUAL FILE URL)
+          taxCertificateValue,           // $23 - tax_certificate (ACTUAL FILE URL)
+          insuranceCertificateValue,     // $24 - insurance_certificate (ACTUAL FILE URL)
           body.membershipPlan,           // $25 - membership_plan
           body.agreeToTerms,             // $26 - agree_to_terms
           body.agreeToVerification,      // $27 - agree_to_verification
@@ -156,6 +156,11 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Seller registration completed successfully');
       console.log('New user ID:', newUser.id);
+      console.log('File URLs saved:', {
+        businessLicense: businessLicenseValue,
+        taxCertificate: taxCertificateValue,
+        insuranceCertificate: insuranceCertificateValue
+      });
 
       return NextResponse.json({
         success: true,

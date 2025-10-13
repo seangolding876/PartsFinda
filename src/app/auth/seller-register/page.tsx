@@ -231,9 +231,53 @@ const handleSubmit = async () => {
   setError('');
 
   try {
-    console.log('Submitting supplier application...', formData);
+    console.log('🚀 Starting seller registration with file uploads...');
 
-    // Prepare data for API - file fields temporarily excluded
+    // File upload function
+    const uploadFile = async (file: File | null, type: string): Promise<string | null> => {
+      if (!file) {
+        console.log(`📄 No ${type} file to upload`);
+        return null;
+      }
+
+      console.log(`📤 Uploading ${type}:`, file.name);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', type);
+      formData.append('sellerEmail', formData.email); // Seller email for folder creation
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Failed to upload ${type}`);
+      }
+
+      console.log(`✅ ${type} uploaded successfully:`, result.fileUrl);
+      return result.fileUrl;
+    };
+
+    // Upload all files in parallel
+    const uploadPromises = [
+      uploadFile(formData.businessLicense, 'business_license'),
+      uploadFile(formData.taxCertificate, 'tax_certificate'),
+      uploadFile(formData.insuranceCertificate, 'insurance_certificate'),
+    ];
+
+    const [businessLicenseUrl, taxCertificateUrl, insuranceCertificateUrl] = await Promise.all(uploadPromises);
+
+    console.log('📁 All files uploaded:', {
+      businessLicense: businessLicenseUrl,
+      taxCertificate: taxCertificateUrl,
+      insuranceCertificate: insuranceCertificateUrl
+    });
+
+    // Prepare registration data with actual file URLs
     const submissionData = {
       ownerName: formData.ownerName,
       email: formData.email,
@@ -258,10 +302,10 @@ const handleSubmit = async () => {
       vehicleBrands: formData.vehicleBrands,
       partCategories: formData.partCategories || [],
       
-      // File fields - simple boolean values
-      businessLicense: formData.businessLicense ? true : false,
-      taxCertificate: formData.taxCertificate ? true : false,
-      insuranceCertificate: formData.insuranceCertificate ? true : false,
+      // ACTUAL FILE URLs
+      businessLicense: businessLicenseUrl,
+      taxCertificate: taxCertificateUrl,
+      insuranceCertificate: insuranceCertificateUrl,
       
       membershipPlan: formData.membershipPlan,
       
@@ -269,7 +313,7 @@ const handleSubmit = async () => {
       agreeToVerification: formData.agreeToVerification
     };
 
-    console.log('Sending data to API:', submissionData);
+    console.log('📨 Sending registration data to API...');
 
     const response = await fetch('/api/auth/seller-register', {
       method: 'POST',
@@ -287,7 +331,6 @@ const handleSubmit = async () => {
 
     if (result.success) {
       console.log('✅ Application submitted successfully:', result);
-      // Redirect to success page with application details
       const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
       router.push(successUrl);
     } else {
@@ -295,7 +338,7 @@ const handleSubmit = async () => {
     }
 
   } catch (err: any) {
-    console.error('Application submission error:', err);
+    console.error('❌ Application submission error:', err);
     setError(err.message || 'Failed to submit application. Please try again.');
   } finally {
     setLoading(false);
