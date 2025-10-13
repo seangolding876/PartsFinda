@@ -114,23 +114,7 @@ export default function Navigation() {
 
                 {/* Role-based primary action button */}
                 {user.role === 'buyer' ? (
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/my-requests"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
-                    >
-                      My Requests
-                    </Link>
                     
-                    {/* Upgrade to Pro Button for Desktop */}
-                    <button
-                      onClick={handleUpgradeToPro}
-                      className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-4 py-2 rounded-lg hover:from-yellow-500 hover:to-yellow-700 text-sm font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Crown className="w-4 h-4" />
-                      Upgrade to Pro
-                    </button>
-                  </div>
                 ) : user.role === 'seller' ? (
                   <Link
                     href="/seller/dashboard"
