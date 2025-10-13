@@ -114,7 +114,7 @@ export default function Navigation() {
 
                 {/* Role-based primary action button */}
                 {user.role === 'buyer' ? (
-                    
+                  <></>
                 ) : user.role === 'seller' ? (
                   <Link
                     href="/seller/dashboard"
