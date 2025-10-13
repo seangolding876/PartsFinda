@@ -76,12 +76,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Logout function
-  const logout = () => {
-    localStorage.removeItem('authData');
-    setUser(null);
-    window.dispatchEvent(new CustomEvent('authChange'));
-    window.location.href = '/';
-  };
+const logout = () => {
+  // Remove all stored auth info
+  localStorage.removeItem('authData');
+  sessionStorage.removeItem('authData');
+
+  // Clear user state
+  setUser(null);
+
+  // Optional: dispatch event if your app uses it
+  window.dispatchEvent(new CustomEvent('authChange'));
+
+  // Force reload to clear all cached state
+  window.location.replace('/');
+};
 
   // Listen for storage changes (across tabs)
   useEffect(() => {
