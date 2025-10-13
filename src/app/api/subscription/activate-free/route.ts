@@ -8,13 +8,17 @@ export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     const userInfo = verifyToken(token);
 
     const { planId } = await request.json();
+
+    if (!planId) {
+      return NextResponse.json({ success: false, error: 'Plan ID is required' }, { status: 400 });
+    }
 
     // Get plan details
     const planResult = await query(
@@ -23,10 +27,15 @@ export async function POST(request: NextRequest) {
     );
 
     if (planResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid plan' }, { status: 400 });
     }
 
     const plan = planResult.rows[0];
+
+    // Check if plan is actually free
+    if (parseFloat(plan.price) > 0) {
+      return NextResponse.json({ success: false, error: 'This is not a free plan' }, { status: 400 });
+    }
 
     // Deactivate existing subscriptions
     await query(
@@ -54,6 +63,14 @@ export async function POST(request: NextRequest) {
       [plan.plan_name, userInfo.userId]
     );
 
+    // Create notification
+    await query(
+      `INSERT INTO notification_queue (
+        user_id, type, message, status
+      ) VALUES ($1, $2, $3, $4)`,
+      [userInfo.userId, 'subscription_activated', `Your ${plan.plan_name} subscription has been activated!`, 'pending']
+    );
+
     return NextResponse.json({
       success: true,
       data: subscriptionResult.rows[0],
@@ -63,7 +80,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Free plan activation error:', error);
     return NextResponse.json(
-      { error: 'Failed to activate free plan' },
+      { success: false, error: 'Failed to activate free plan' },
       { status: 500 }
     );
   }

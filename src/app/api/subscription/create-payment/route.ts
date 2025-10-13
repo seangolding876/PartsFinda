@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { stripe } from '@/lib/stripe';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
@@ -6,36 +7,19 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
     const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    let userInfo;
-    
-    try {
-      userInfo = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-    
-    const { planId, paymentMethod } = await request.json();
+    const userInfo = verifyToken(token);
+
+    const { planId } = await request.json();
 
     if (!planId) {
-      return NextResponse.json(
-        { success: false, error: 'Plan ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
     }
-
 
     // Get plan details
     const planResult = await query(
@@ -44,65 +28,54 @@ export async function POST(request: NextRequest) {
     );
 
     if (planResult.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid plan' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
     const plan = planResult.rows[0];
+    const amount = Math.round(parseFloat(plan.price) * 100); // Convert to cents
 
-    // Check if user already has active subscription
-    const existingSubResult = await query(
-      'SELECT id FROM supplier_subscription WHERE user_id = $1 AND is_active = true',
-      [userInfo.userId]
-    );
+    // Create Stripe Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      metadata: {
+        plan_id: planId.toString(),
+        user_id: userInfo.userId.toString(),
+        plan_name: plan.plan_name
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
 
-    // Calculate dates
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.duration_days);
+    console.log('Stripe payment intent created:', paymentIntent.id);
 
-    // Create payment record
-    const paymentResult = await query(
-      `INSERT INTO payment_records (
-        user_id, amount, currency, payment_method, status
-      ) VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, transaction_id`,
+    // Save payment record in database
+    await query(
+      `INSERT INTO payments (
+        user_id, stripe_payment_id, amount, currency, status, description
+      ) VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         userInfo.userId,
+        paymentIntent.id,
         plan.price,
         'USD',
-        paymentMethod || 'stripe',
-        'pending'
+        'pending',
+        `Subscription: ${plan.plan_name}`
       ]
     );
 
-    const paymentRecord = paymentResult.rows[0];
-
     return NextResponse.json({
-      success: true,
-      data: {
-        paymentId: paymentRecord.id,
-        amount: plan.price,
-        currency: 'USD',
-        plan: {
-          id: plan.plan_id,
-          name: plan.plan_name,
-          duration_days: plan.duration_days
-        },
-        clientSecret: null // You'll integrate with Stripe here
-      }
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      amount: plan.price,
+      planName: plan.plan_name
     });
 
   } catch (error: any) {
-    console.error('Error creating payment:', error);
+    console.error('Stripe payment intent error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to create payment',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: 'Failed to create payment intent: ' + error.message },
       { status: 500 }
     );
   }

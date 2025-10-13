@@ -108,12 +108,7 @@ function StripeCheckoutForm({
           <div className="mb-6">
             <PaymentElement 
               options={{
-                layout: 'tabs',
-                fields: {
-                  billingDetails: {
-                    address: 'never'
-                  }
-                }
+                layout: 'tabs'
               }}
             />
           </div>
@@ -153,12 +148,6 @@ function StripeCheckoutForm({
         <div className="px-6 pb-6">
           <div className="text-center text-xs text-gray-500">
             <p>Secure payment powered by Stripe</p>
-            <div className="flex justify-center items-center mt-2 space-x-2">
-              <div className="w-8 h-5 bg-gray-200 rounded"></div>
-              <div className="w-8 h-5 bg-gray-200 rounded"></div>
-              <div className="w-8 h-5 bg-gray-200 rounded"></div>
-              <div className="w-8 h-5 bg-gray-200 rounded"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -191,7 +180,6 @@ export default function SubscriptionPage() {
 
   const isSeller = () => {
     const authData = getAuthData();
-    console.log('Auth data:', authData);
     return authData?.role === 'seller';
   };
 
@@ -233,8 +221,6 @@ export default function SubscriptionPage() {
         return;
       }
 
-      console.log('Fetching subscription data with token:', authData.token);
-
       // Fetch plans and current subscription in parallel
       const [plansResponse, currentSubResponse] = await Promise.all([
         fetch('/api/subscription/plans'),
@@ -245,30 +231,25 @@ export default function SubscriptionPage() {
         })
       ]);
 
-      console.log('Plans response:', plansResponse.status);
-      console.log('Current sub response:', currentSubResponse.status);
-
       if (!plansResponse.ok) {
         throw new Error(`Failed to fetch plans: ${plansResponse.status}`);
       }
 
       const plansResult = await plansResponse.json();
-      console.log('Plans result:', plansResult);
+      console.log('Plans loaded:', plansResult);
 
       if (plansResult.success) {
         setPlans(plansResult.data);
       }
 
-      // Handle current subscription (might return 404 if no subscription)
+      // Handle current subscription
       if (currentSubResponse.ok) {
         const currentSubResult = await currentSubResponse.json();
-        console.log('Current sub result:', currentSubResult);
+        console.log('Current subscription:', currentSubResult);
         
         if (currentSubResult.success && currentSubResult.data) {
           setCurrentSubscription(currentSubResult.data);
         }
-      } else if (currentSubResponse.status !== 404) {
-        console.error('Failed to fetch current subscription:', currentSubResponse.status);
       }
 
     } catch (error) {
@@ -312,12 +293,14 @@ export default function SubscriptionPage() {
         });
 
         const result = await response.json();
+        console.log('Free plan activation result:', result);
+
         if (result.success) {
           alert('Free plan activated successfully!');
           setCurrentSubscription(result.data);
           fetchSubscriptionData();
         } else {
-          throw new Error(result.error);
+          throw new Error(result.error || 'Failed to activate free plan');
         }
         return;
       }
@@ -337,12 +320,14 @@ export default function SubscriptionPage() {
       const paymentResult = await paymentResponse.json();
       console.log('Stripe payment intent result:', paymentResult);
 
+      // Check if clientSecret properly mil raha hai
       if (paymentResult.clientSecret) {
         setSelectedPlan(plan);
         setClientSecret(paymentResult.clientSecret);
         setShowStripeCheckout(true);
       } else {
-        throw new Error(paymentResult.error || 'Failed to create payment');
+        console.error('No clientSecret received:', paymentResult);
+        throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
       }
 
     } catch (error: any) {
@@ -359,6 +344,11 @@ export default function SubscriptionPage() {
     try {
       const authData = getAuthData();
       
+      // Extract payment intent ID from client secret
+      const paymentIntentId = clientSecret.split('_secret')[0];
+      
+      console.log('Confirming payment with ID:', paymentIntentId);
+
       // Confirm payment and activate subscription
       const response = await fetch('/api/stripe/confirm-payment', {
         method: 'POST',
@@ -368,7 +358,7 @@ export default function SubscriptionPage() {
         },
         body: JSON.stringify({ 
           planId: selectedPlan.id,
-          paymentIntentId: clientSecret.split('_secret')[0]
+          paymentIntentId: paymentIntentId
         })
       });
 
@@ -383,7 +373,7 @@ export default function SubscriptionPage() {
         setCurrentSubscription(result.data);
         fetchSubscriptionData();
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || 'Payment confirmation failed');
       }
     } catch (error: any) {
       console.error('Payment confirmation error:', error);
