@@ -116,14 +116,24 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-
+{/* 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-semibold text-blue-800 mb-2">New to PartsFinda?</h3>
           <div className="text-sm text-blue-700 space-y-1">
             <p>Create an account to start buying or selling auto parts in Jamaica</p>
             <p className="text-xs mt-2">For suppliers: <Link href="/auth/seller-signup" className="font-medium text-blue-600 hover:text-blue-500">Apply as a verified seller</Link></p>
           </div>
-        </div>
+        </div> */}
+
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+  <h3 className="text-sm font-semibold text-green-800 mb-2">New to PartsFinda?</h3>
+  <p className="text-sm text-green-700 mb-2">
+    Create an account to start <strong>buying</strong> or <strong>selling</strong> auto parts in Jamaica.
+  </p>
+  <p className="text-sm text-green-700">
+    For suppliers: Apply as a <strong>verified seller</strong> to list your products and reach buyers faster.
+  </p>
+</div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">

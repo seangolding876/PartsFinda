@@ -130,13 +130,22 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-semibold text-blue-800 mb-2">Demo Mode Active</h3>
           <p className="text-sm text-blue-700">
             Use any email and password (min 6 characters) to create an account.
             For testing: buyer@test.com or seller@test.com with password "password123"
           </p>
-        </div>
+        </div> */}
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+  <h3 className="text-sm font-semibold text-blue-800 mb-2">Buyer Account Info</h3>
+  <p className="text-sm text-blue-700">
+    Normal Buyer Accounts are free, but their requests will be sent to suppliers <strong>after 24 hours</strong>.
+    <br />
+    To have your requests sent <strong>immediately</strong>, you need to upgrade to the Pro Package.
+  </p>
+</div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
