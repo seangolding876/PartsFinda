@@ -55,6 +55,15 @@ export default function Navigation() {
                       My Requests
                     </Link>
                     
+                  
+                  </>
+                )}
+
+                {user.role === 'seller' && (
+                  <> 
+                       <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
+                    Dashboard
+                  </Link>
                     {/* Upgrade to Pro Button - Only for buyer */}
                     <button
                       onClick={handleUpgradeToPro}
@@ -64,12 +73,7 @@ export default function Navigation() {
                       Upgrade to Pro
                     </button>
                   </>
-                )}
-
-                {user.role === 'seller' && (
-                  <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
-                    Dashboard
-                  </Link>
+             
                 )}
 
                 {/* Admin Dashboard - Only for admin users */}
@@ -190,7 +194,15 @@ export default function Navigation() {
                       My Requests
                     </Link>
                     
-                    {/* Mobile Upgrade to Pro Button */}
+            
+                  </>
+                )}
+                {user.role === 'seller' && (
+                  <>
+                  <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
+                    Dashboard
+                  </Link>
+                          {/* Mobile Upgrade to Pro Button */}
                     <button
                       onClick={handleUpgradeToPro}
                       className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-2 py-1 rounded-full text-xs font-medium"
@@ -199,11 +211,6 @@ export default function Navigation() {
                       Upgrade Pro
                     </button>
                   </>
-                )}
-                {user.role === 'seller' && (
-                  <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
-                    Dashboard
-                  </Link>
                 )}
                 {user.role === 'admin' && (
                   <>
