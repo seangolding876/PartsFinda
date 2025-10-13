@@ -234,7 +234,7 @@ const handleSubmit = async () => {
   try {
     console.log('Submitting supplier application...', formData);
 
-    // Prepare data for API - match your database structure
+    // Prepare data for API - file fields temporarily excluded
     const submissionData = {
       ownerName: formData.ownerName,
       email: formData.email,
@@ -257,6 +257,12 @@ const handleSubmit = async () => {
       
       specializations: formData.specializations,
       vehicleBrands: formData.vehicleBrands,
+      partCategories: formData.partCategories || [], // Add this line
+      
+      // File fields - temporarily as simple values
+      businessLicense: formData.businessLicense ? 1 : null,
+      taxCertificate: formData.taxCertificate ? 1 : null,
+      insuranceCertificate: formData.insuranceCertificate ? 1 : null,
       
       membershipPlan: formData.membershipPlan,
       
@@ -264,7 +270,8 @@ const handleSubmit = async () => {
       agreeToVerification: formData.agreeToVerification
     };
 
-    // ✅ YAHAN CHANGE KARNA HAI - /api/seller/register se /api/auth/seller-register
+    console.log('Sending data to API:', submissionData);
+
     const response = await fetch('/api/auth/seller-register', {
       method: 'POST',
       headers: {
@@ -280,6 +287,7 @@ const handleSubmit = async () => {
     }
 
     if (result.success) {
+      console.log('✅ Application submitted successfully:', result);
       // Redirect to success page with application details
       const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
       router.push(successUrl);
@@ -294,7 +302,6 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
-
 
   const renderStepContent = () => {
     switch (currentStep) {
