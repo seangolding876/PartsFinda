@@ -13,7 +13,7 @@ export default function Navigation() {
 
   const handleUpgradeToPro = () => {
     // Subscription page ko open karega
-    window.open('/subscription', '_blank');
+    window.open('/seller/subscription', '_blank');
   };
 
   return (
