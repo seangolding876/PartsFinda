@@ -171,7 +171,7 @@ export default function Navigation() {
                     Sign Up
                   </Link>
                   <Link
-                    href="/auth/seller-signup"
+                    href="/auth/seller-register"
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
                   >
                     Become Supplier
