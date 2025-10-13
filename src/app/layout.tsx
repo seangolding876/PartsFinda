@@ -19,11 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-<Navigation />
-    <AuthProvider>
-        {children}
-    </AuthProvider>
+        {/* ✅ Navigation ko AuthProvider ke ANDAR rakhein */}
+        <AuthProvider>
+          <Navigation />
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </AuthProvider>
 
+        {/* Footer AuthProvider ke bahar bhi ho sakta hai */}
         <footer className="bg-gray-900 text-white py-12 mt-20">
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-4 gap-8">
