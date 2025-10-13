@@ -10,7 +10,7 @@ export default function SellerSignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({
+  const [sellerForm, setSellerForm] = useState({
     // Personal Information
     ownerName: '',
     email: '',
@@ -88,43 +88,44 @@ export default function SellerSignupPage() {
     'Mazda', 'Subaru', 'Suzuki', 'Isuzu'
   ];
 
-const membershipPlans = [
-  {
-    id: 'basic',  // 'free' ki jagah 'basic'
-    name: 'Basic',
-    price: 'J$0',
-    period: '/month',
-    features: ['Basic listing', '24-hour response delay', 'Email notifications', 'Basic analytics'],
-    recommended: false
-  },
-  {
-    id: 'premium',  // 'basic' ki jagah 'premium'
-    name: 'Premium', 
-    price: 'J$2,500',
-    period: '/month',
-    features: ['Priority listing', 'Instant notifications', 'Advanced analytics', 'Customer support'],
-    recommended: true
-  },
-  {
-    id: 'enterprise',  // 'premium' ki jagah 'enterprise'
-    name: 'Enterprise',
-    price: 'J$5,000', 
-    period: '/month',
-    features: ['Top placement', 'Featured supplier badge', 'Bulk messaging', 'Dedicated account manager'],
-    recommended: false
-  }
-];
+  const membershipPlans = [
+    {
+      id: 'basic',
+      name: 'Basic',
+      price: 'J$0',
+      period: '/month',
+      features: ['Basic listing', '24-hour response delay', 'Email notifications', 'Basic analytics'],
+      recommended: false
+    },
+    {
+      id: 'premium',
+      name: 'Premium', 
+      price: 'J$2,500',
+      period: '/month',
+      features: ['Priority listing', 'Instant notifications', 'Advanced analytics', 'Customer support'],
+      recommended: true
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 'J$5,000', 
+      period: '/month',
+      features: ['Top placement', 'Featured supplier badge', 'Bulk messaging', 'Dedicated account manager'],
+      recommended: false
+    }
+  ];
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({
+      setSellerForm(prev => ({
         ...prev,
         [name]: checked
       }));
     } else {
-      setFormData(prev => ({
+      setSellerForm(prev => ({
         ...prev,
         [name]: value
       }));
@@ -132,7 +133,7 @@ const membershipPlans = [
   };
 
   const handleMultiSelect = (field: string, value: string) => {
-    setFormData(prev => ({
+    setSellerForm(prev => ({
       ...prev,
       [field]: prev[field].includes(value)
         ? prev[field].filter(item => item !== value)
@@ -161,7 +162,7 @@ const membershipPlans = [
       console.log('✅ File valid:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
     }
 
-    setFormData(prev => ({
+    setSellerForm(prev => ({
       ...prev,
       [field]: file
     }));
@@ -189,19 +190,19 @@ const membershipPlans = [
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        return !!(formData.ownerName && formData.email && formData.phone &&
-               formData.password && formData.confirmPassword &&
-               formData.password === formData.confirmPassword);
+        return !!(sellerForm.ownerName && sellerForm.email && sellerForm.phone &&
+               sellerForm.password && sellerForm.confirmPassword &&
+               sellerForm.password === sellerForm.confirmPassword);
       case 2:
-        return !!(formData.businessName && formData.businessType && formData.yearsInBusiness);
+        return !!(sellerForm.businessName && sellerForm.businessType && sellerForm.yearsInBusiness);
       case 3:
-        return !!(formData.address && formData.parish && formData.city && formData.businessPhone);
+        return !!(sellerForm.address && sellerForm.parish && sellerForm.city && sellerForm.businessPhone);
       case 4:
-        return formData.specializations.length > 0;
+        return sellerForm.specializations.length > 0;
       case 5:
         return true; // Documents are optional for now
       case 6:
-        return !!(formData.membershipPlan && formData.agreeToTerms && formData.agreeToVerification);
+        return !!(sellerForm.membershipPlan && sellerForm.agreeToTerms && sellerForm.agreeToVerification);
       default:
         return false;
     }
@@ -221,129 +222,130 @@ const membershipPlans = [
     setError('');
   };
 
-const handleSubmit = async () => {
-  if (!validateStep(6)) {
-    setError('Please complete all required fields and agree to the terms.');
-    return;
-  }
+  const handleSubmit = async () => {
+    if (!validateStep(6)) {
+      setError('Please complete all required fields and agree to the terms.');
+      return;
+    }
 
-  setLoading(true);
-  setError('');
+    setLoading(true);
+    setError('');
 
-  try {
-    console.log('🚀 Starting seller registration with file uploads...');
+    try {
+      console.log('🚀 Starting seller registration with file uploads...');
 
-    // File upload function
-    const uploadFile = async (file: File | null, type: string): Promise<string | null> => {
-      if (!file) {
-        console.log(`📄 No ${type} file to upload`);
-        return null;
-      }
+      // File upload function
+      const uploadFile = async (file: File | null, type: string): Promise<string | null> => {
+        if (!file) {
+          console.log(`📄 No ${type} file to upload`);
+          return null;
+        }
 
-      console.log(`📤 Uploading ${type}:`, file.name);
+        console.log(`📤 Uploading ${type}:`, file.name);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', type);
-      formData.append('sellerEmail', formData.email); // Seller email for folder creation
+        const uploadFormData = new FormData(); // ✅ Different variable name
+        uploadFormData.append('file', file);
+        uploadFormData.append('type', type);
+        uploadFormData.append('sellerEmail', sellerForm.email); // ✅ sellerForm use karein
 
-      const response = await fetch('/api/upload', {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || `Failed to upload ${type}`);
+        }
+
+        console.log(`✅ ${type} uploaded successfully:`, result.fileUrl);
+        return result.fileUrl;
+      };
+
+      // Upload all files in parallel
+      const uploadPromises = [
+        uploadFile(sellerForm.businessLicense, 'business_license'),
+        uploadFile(sellerForm.taxCertificate, 'tax_certificate'),
+        uploadFile(sellerForm.insuranceCertificate, 'insurance_certificate'),
+      ];
+
+      const [businessLicenseUrl, taxCertificateUrl, insuranceCertificateUrl] = await Promise.all(uploadPromises);
+
+      console.log('📁 All files uploaded:', {
+        businessLicense: businessLicenseUrl,
+        taxCertificate: taxCertificateUrl,
+        insuranceCertificate: insuranceCertificateUrl
+      });
+
+      // Prepare registration data with actual file URLs
+      const submissionData = {
+        ownerName: sellerForm.ownerName,
+        email: sellerForm.email,
+        phone: sellerForm.phone,
+        password: sellerForm.password,
+        
+        businessName: sellerForm.businessName,
+        businessType: sellerForm.businessType,
+        businessRegistrationNumber: sellerForm.businessRegistrationNumber || undefined,
+        taxId: sellerForm.taxId || undefined,
+        yearsInBusiness: sellerForm.yearsInBusiness,
+        
+        address: sellerForm.address,
+        parish: sellerForm.parish,
+        city: sellerForm.city,
+        postalCode: sellerForm.postalCode || undefined,
+        businessPhone: sellerForm.businessPhone,
+        businessEmail: sellerForm.businessEmail || undefined,
+        website: sellerForm.website || undefined,
+        
+        specializations: sellerForm.specializations,
+        vehicleBrands: sellerForm.vehicleBrands,
+        partCategories: sellerForm.partCategories || [],
+        
+        // ACTUAL FILE URLs
+        businessLicense: businessLicenseUrl,
+        taxCertificate: taxCertificateUrl,
+        insuranceCertificate: insuranceCertificateUrl,
+        
+        membershipPlan: sellerForm.membershipPlan,
+        
+        agreeToTerms: sellerForm.agreeToTerms,
+        agreeToVerification: sellerForm.agreeToVerification
+      };
+
+      console.log('📨 Sending registration data to API...');
+
+      const response = await fetch('/api/auth/seller-register', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || `Failed to upload ${type}`);
+        throw new Error(result.error || 'Failed to submit application');
       }
 
-      console.log(`✅ ${type} uploaded successfully:`, result.fileUrl);
-      return result.fileUrl;
-    };
+      if (result.success) {
+        console.log('✅ Application submitted successfully:', result);
+        const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
+        router.push(successUrl);
+      } else {
+        throw new Error(result.error || 'Application submission failed');
+      }
 
-    // Upload all files in parallel
-    const uploadPromises = [
-      uploadFile(formData.businessLicense, 'business_license'),
-      uploadFile(formData.taxCertificate, 'tax_certificate'),
-      uploadFile(formData.insuranceCertificate, 'insurance_certificate'),
-    ];
-
-    const [businessLicenseUrl, taxCertificateUrl, insuranceCertificateUrl] = await Promise.all(uploadPromises);
-
-    console.log('📁 All files uploaded:', {
-      businessLicense: businessLicenseUrl,
-      taxCertificate: taxCertificateUrl,
-      insuranceCertificate: insuranceCertificateUrl
-    });
-
-    // Prepare registration data with actual file URLs
-    const submissionData = {
-      ownerName: formData.ownerName,
-      email: formData.email,
-      phone: formData.phone,
-      password: formData.password,
-      
-      businessName: formData.businessName,
-      businessType: formData.businessType,
-      businessRegistrationNumber: formData.businessRegistrationNumber || undefined,
-      taxId: formData.taxId || undefined,
-      yearsInBusiness: formData.yearsInBusiness,
-      
-      address: formData.address,
-      parish: formData.parish,
-      city: formData.city,
-      postalCode: formData.postalCode || undefined,
-      businessPhone: formData.businessPhone,
-      businessEmail: formData.businessEmail || undefined,
-      website: formData.website || undefined,
-      
-      specializations: formData.specializations,
-      vehicleBrands: formData.vehicleBrands,
-      partCategories: formData.partCategories || [],
-      
-      // ACTUAL FILE URLs
-      businessLicense: businessLicenseUrl,
-      taxCertificate: taxCertificateUrl,
-      insuranceCertificate: insuranceCertificateUrl,
-      
-      membershipPlan: formData.membershipPlan,
-      
-      agreeToTerms: formData.agreeToTerms,
-      agreeToVerification: formData.agreeToVerification
-    };
-
-    console.log('📨 Sending registration data to API...');
-
-    const response = await fetch('/api/auth/seller-register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(submissionData),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to submit application');
+    } catch (err: any) {
+      console.error('❌ Application submission error:', err);
+      setError(err.message || 'Failed to submit application. Please try again.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (result.success) {
-      console.log('✅ Application submitted successfully:', result);
-      const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
-      router.push(successUrl);
-    } else {
-      throw new Error(result.error || 'Application submission failed');
-    }
-
-  } catch (err: any) {
-    console.error('❌ Application submission error:', err);
-    setError(err.message || 'Failed to submit application. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -360,7 +362,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="ownerName"
-                  value={formData.ownerName}
+                  value={sellerForm.ownerName}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -373,7 +375,7 @@ const handleSubmit = async () => {
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={sellerForm.email}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -386,7 +388,7 @@ const handleSubmit = async () => {
                 <input
                   type="tel"
                   name="phone"
-                  value={formData.phone}
+                  value={sellerForm.phone}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -399,7 +401,7 @@ const handleSubmit = async () => {
                 <input
                   type="password"
                   name="password"
-                  value={formData.password}
+                  value={sellerForm.password}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -412,13 +414,13 @@ const handleSubmit = async () => {
                 <input
                   type="password"
                   name="confirmPassword"
-                  value={formData.confirmPassword}
+                  value={sellerForm.confirmPassword}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Repeat your password"
                 />
-                {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                {sellerForm.password && sellerForm.confirmPassword && sellerForm.password !== sellerForm.confirmPassword && (
                   <p className="text-red-600 text-sm mt-1">Passwords do not match</p>
                 )}
               </div>
@@ -440,7 +442,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="businessName"
-                  value={formData.businessName}
+                  value={sellerForm.businessName}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -452,7 +454,7 @@ const handleSubmit = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Business Type *</label>
                 <select
                   name="businessType"
-                  value={formData.businessType}
+                  value={sellerForm.businessType}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -467,7 +469,7 @@ const handleSubmit = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Years in Business *</label>
                 <select
                   name="yearsInBusiness"
-                  value={formData.yearsInBusiness}
+                  value={sellerForm.yearsInBusiness}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -486,7 +488,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="businessRegistrationNumber"
-                  value={formData.businessRegistrationNumber}
+                  value={sellerForm.businessRegistrationNumber}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Company registration number"
@@ -498,7 +500,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="taxId"
-                  value={formData.taxId}
+                  value={sellerForm.taxId}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Tax Registration Number"
@@ -508,7 +510,6 @@ const handleSubmit = async () => {
           </div>
         );
 
-      // Continue with cases 3-6...
       case 3:
         return (
           <div className="space-y-6">
@@ -523,7 +524,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="address"
-                  value={formData.address}
+                  value={sellerForm.address}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -535,7 +536,7 @@ const handleSubmit = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Parish *</label>
                 <select
                   name="parish"
-                  value={formData.parish}
+                  value={sellerForm.parish}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -552,7 +553,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="city"
-                  value={formData.city}
+                  value={sellerForm.city}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -565,7 +566,7 @@ const handleSubmit = async () => {
                 <input
                   type="tel"
                   name="businessPhone"
-                  value={formData.businessPhone}
+                  value={sellerForm.businessPhone}
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -578,7 +579,7 @@ const handleSubmit = async () => {
                 <input
                   type="email"
                   name="businessEmail"
-                  value={formData.businessEmail}
+                  value={sellerForm.businessEmail}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="info@business.com"
@@ -590,7 +591,7 @@ const handleSubmit = async () => {
                 <input
                   type="url"
                   name="website"
-                  value={formData.website}
+                  value={sellerForm.website}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="https://www.business.com"
@@ -602,7 +603,7 @@ const handleSubmit = async () => {
                 <input
                   type="text"
                   name="postalCode"
-                  value={formData.postalCode}
+                  value={sellerForm.postalCode}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Kingston 10"
@@ -629,7 +630,7 @@ const handleSubmit = async () => {
                     <label key={spec} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.specializations.includes(spec)}
+                        checked={sellerForm.specializations.includes(spec)}
                         onChange={() => handleMultiSelect('specializations', spec)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
@@ -647,7 +648,7 @@ const handleSubmit = async () => {
                     <label key={brand} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.vehicleBrands.includes(brand)}
+                        checked={sellerForm.vehicleBrands.includes(brand)}
                         onChange={() => handleMultiSelect('vehicleBrands', brand)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
@@ -700,22 +701,22 @@ const handleSubmit = async () => {
                   <p className="text-sm text-gray-600 mb-4">Upload your business license or registration certificate</p>
                   <div
                     className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                      formData.businessLicense
+                      sellerForm.businessLicense
                         ? 'border-green-400 bg-green-50 hover:border-green-500'
                         : 'border-gray-300 hover:border-blue-400'
                     }`}
                     onClick={() => triggerFileInput('businessLicense')}
                   >
-                    {formData.businessLicense ? (
+                    {sellerForm.businessLicense ? (
                       <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
                     ) : (
                       <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     )}
-                    <p className={`text-sm ${formData.businessLicense ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
-                      {formData.businessLicense ? `✅ ${formData.businessLicense.name}` : 'Click to upload or drag and drop'}
+                    <p className={`text-sm ${sellerForm.businessLicense ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
+                      {sellerForm.businessLicense ? `✅ ${sellerForm.businessLicense.name}` : 'Click to upload or drag and drop'}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 5MB</p>
-                    {formData.businessLicense && (
+                    {sellerForm.businessLicense && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -746,7 +747,7 @@ const handleSubmit = async () => {
                   >
                     <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">
-                      {formData.taxCertificate ? formData.taxCertificate.name : 'Click to upload or drag and drop'}
+                      {sellerForm.taxCertificate ? sellerForm.taxCertificate.name : 'Click to upload or drag and drop'}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 5MB</p>
                   </div>
@@ -768,7 +769,7 @@ const handleSubmit = async () => {
                   >
                     <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">
-                      {formData.insuranceCertificate ? formData.insuranceCertificate.name : 'Click to upload or drag and drop'}
+                      {sellerForm.insuranceCertificate ? sellerForm.insuranceCertificate.name : 'Click to upload or drag and drop'}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG up to 5MB</p>
                   </div>
@@ -798,11 +799,11 @@ const handleSubmit = async () => {
                 <div
                   key={plan.id}
                   className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
-                    formData.membershipPlan === plan.id
+                    sellerForm.membershipPlan === plan.id
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
                   } ${plan.recommended ? 'relative' : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, membershipPlan: plan.id }))}
+                  onClick={() => setSellerForm(prev => ({ ...prev, membershipPlan: plan.id }))}
                 >
                   {plan.recommended && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -831,11 +832,11 @@ const handleSubmit = async () => {
 
                   <div className="mt-6">
                     <div className={`w-4 h-4 rounded-full border-2 mx-auto ${
-                      formData.membershipPlan === plan.id
+                      sellerForm.membershipPlan === plan.id
                         ? 'bg-blue-500 border-blue-500'
                         : 'border-gray-300'
                     }`}>
-                      {formData.membershipPlan === plan.id && (
+                      {sellerForm.membershipPlan === plan.id && (
                         <Check className="w-3 h-3 text-white m-0.5" />
                       )}
                     </div>
@@ -851,7 +852,7 @@ const handleSubmit = async () => {
                 <input
                   type="checkbox"
                   name="agreeToTerms"
-                  checked={formData.agreeToTerms}
+                  checked={sellerForm.agreeToTerms}
                   onChange={handleChange}
                   className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
@@ -865,7 +866,7 @@ const handleSubmit = async () => {
                 <input
                   type="checkbox"
                   name="agreeToVerification"
-                  checked={formData.agreeToVerification}
+                  checked={sellerForm.agreeToVerification}
                   onChange={handleChange}
                   className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
