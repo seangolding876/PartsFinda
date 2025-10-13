@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -14,8 +16,18 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
+    let userInfo;
     
+    try {
+      userInfo = verifyToken(token);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+    
+
     const { paymentId, transactionId, planId } = await request.json();
 
     if (!paymentId || !transactionId || !planId) {

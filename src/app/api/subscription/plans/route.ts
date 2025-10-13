@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Fetch all subscription plans with their features
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
       duration_days: plan.duration_days,
       request_delay_hours: plan.request_delay_hours,
       features: plan.features.filter((f: any) => f.feature_id !== null),
-      recommended: plan.plan_name === 'premium' // Mark premium as recommended
+      recommended: plan.plan_name === 'premium'
     }));
 
     return NextResponse.json({
