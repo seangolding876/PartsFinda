@@ -49,6 +49,7 @@ export default function SubscriptionPage() {
 
   const isSeller = () => {
     const authData = getAuthData();
+    console.log('Auth data:', authData);
     return authData?.role === 'seller';
   };
 
