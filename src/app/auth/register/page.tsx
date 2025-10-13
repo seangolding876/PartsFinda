@@ -74,7 +74,8 @@ export default function RegisterPage() {
         // Small delay to ensure cookies are set
         setTimeout(() => {
           // Redirect to My Requests for buyers, or seller dashboard for sellers
-          const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' : '/my-requests';
+          const redirectTo = '/auth/login';
+          // const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' : '/my-requests';
           router.push(redirectTo);
         }, 1000);
       } else {
