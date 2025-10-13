@@ -3,7 +3,15 @@ const nextConfig = {
   reactStrictMode: true,
   trailingSlash: false,
 
-
+  experimental: {
+    serverComponentsExternalPackages: ['nodemailer'],
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
 
   images: {
     remotePatterns: [

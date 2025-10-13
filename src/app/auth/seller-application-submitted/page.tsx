@@ -1,27 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { CheckCircle, Mail, Clock, Phone, User, Building } from 'lucide-react';
 
-export default function SellerApplicationSubmitted() {
-  const searchParams = useSearchParams();
-  const [applicationDetails, setApplicationDetails] = useState({
-    applicationId: '',
-    businessName: '',
-    email: '',
-    membershipPlan: ''
-  });
-
-  useEffect(() => {
-    setApplicationDetails({
-      applicationId: searchParams.get('applicationId') || '',
-      businessName: decodeURIComponent(searchParams.get('businessName') || ''),
-      email: decodeURIComponent(searchParams.get('email') || ''),
-      membershipPlan: decodeURIComponent(searchParams.get('membershipPlan') || '')
-    });
-  }, [searchParams]);
-
+// Main component jo suspense ke andar hoga
+function ApplicationDetails() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
@@ -57,41 +40,19 @@ export default function SellerApplicationSubmitted() {
           <div className="bg-blue-50 rounded-lg p-6 mb-8 text-left">
             <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <Building className="w-5 h-5" />
-              Application Details
+              Application Submitted
             </h2>
             
             <div className="space-y-3">
-              {applicationDetails.businessName && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Business Name:</span>
-                  <span className="font-semibold">{applicationDetails.businessName}</span>
-                </div>
-              )}
-              
-              {applicationDetails.applicationId && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Application ID:</span>
-                  <span className="font-semibold text-blue-600">{applicationDetails.applicationId}</span>
-                </div>
-              )}
-              
-              {applicationDetails.email && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Email:</span>
-                  <span className="font-semibold">{applicationDetails.email}</span>
-                </div>
-              )}
-              
-              {applicationDetails.membershipPlan && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Membership Plan:</span>
-                  <span className="font-semibold capitalize">{applicationDetails.membershipPlan}</span>
-                </div>
-              )}
-              
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <span className="font-semibold text-orange-600">Under Review</span>
+                <span className="font-semibold text-orange-600">Email Verification Pending</span>
+              </div>
+              
+              <div className="text-sm text-gray-600 mt-4">
+                <p>✅ We have sent a verification link to your email address.</p>
+                <p>✅ Please check your inbox and click the verification link.</p>
+                <p>✅ After verification, your application will be reviewed.</p>
               </div>
             </div>
           </div>
@@ -109,9 +70,9 @@ export default function SellerApplicationSubmitted() {
                   1
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Application Review</p>
+                  <p className="font-medium text-gray-800">Check Your Email</p>
                   <p className="text-sm text-gray-600">
-                    Our team will review your application within 2-3 business days
+                    Look for verification email from PartFinda Jamaica
                   </p>
                 </div>
               </div>
@@ -121,9 +82,9 @@ export default function SellerApplicationSubmitted() {
                   2
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Verification Check</p>
+                  <p className="font-medium text-gray-800">Verify Your Email</p>
                   <p className="text-sm text-gray-600">
-                    We'll verify your business details and contact information
+                    Click the verification link in the email
                   </p>
                 </div>
               </div>
@@ -133,9 +94,9 @@ export default function SellerApplicationSubmitted() {
                   3
                 </div>
                 <div>
-                  <p className="font-medium text-gray-800">Account Activation</p>
+                  <p className="font-medium text-gray-800">Application Review</p>
                   <p className="text-sm text-gray-600">
-                    You'll receive an email with login details once approved
+                    Our team will review within 2-3 business days
                   </p>
                 </div>
               </div>
@@ -181,5 +142,36 @@ export default function SellerApplicationSubmitted() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading component
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-2xl mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="animate-pulse">
+            <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto mb-8"></div>
+            <div className="space-y-3">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense
+export default function SellerApplicationSubmittedPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ApplicationDetails />
+    </Suspense>
   );
 }

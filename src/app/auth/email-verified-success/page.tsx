@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { CheckCircle, Mail, Clock } from 'lucide-react';
+import { CheckCircle, Clock } from 'lucide-react';
 
 export default function EmailVerifiedSuccess() {
   return (

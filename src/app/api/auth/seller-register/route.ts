@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '@/lib/email';
+import { generateVerificationToken } from '@/lib/email-verification';
 
 interface SellerRegistrationData {
   // Personal Information
@@ -37,7 +38,7 @@ interface SellerRegistrationData {
   agreeToTerms: boolean;
   agreeToVerification: boolean;
 }
-
+export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body: SellerRegistrationData = await request.json();

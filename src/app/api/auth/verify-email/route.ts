@@ -3,12 +3,16 @@ import { query } from '@/lib/db';
 import { verifyEmailToken, markTokenAsUsed } from '@/lib/email-verification';
 import { sendEmail } from '@/lib/email';
 
+// Dynamic rendering force karein
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
 
     if (!token) {
+      // Return JSON response instead of redirect for API route
       return NextResponse.json(
         { success: false, error: 'Verification token is required' },
         { status: 400 }
@@ -83,25 +87,9 @@ export async function GET(request: NextRequest) {
       `
     });
 
-    // Also notify admin about email verification
-    await sendEmail({
-      to: 'admin@partfinda.jm',
-      subject: 'Seller Email Verified - Application Ready for Review',
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Seller Email Verified - Ready for Review</h2>
-          <p><strong>Business:</strong> ${user.business_name}</p>
-          <p><strong>Owner:</strong> ${user.name}</p>
-          <p><strong>Email:</strong> ${user.email}</p>
-          <p><strong>Membership Plan:</strong> ${user.membership_plan}</p>
-          <p><strong>Status:</strong> Ready for application review</p>
-        </div>
-      `
-    });
-
-    // Redirect to success page
+    // Redirect to success page using 302 redirect
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/email-verified-success`
+      new URL('/auth/email-verified-success', request.url)
     );
 
   } catch (error: any) {
@@ -109,7 +97,7 @@ export async function GET(request: NextRequest) {
     
     // Redirect to error page
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/verification-error?error=${encodeURIComponent(error.message)}`
+      new URL(`/auth/verification-error?error=${encodeURIComponent(error.message)}`, request.url)
     );
   }
 }
