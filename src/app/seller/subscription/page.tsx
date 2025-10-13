@@ -1,407 +1,359 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 
-export default function SellerSubscriptionPage() {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [selectedPlan, setSelectedPlan] = useState('');
+interface SubscriptionPlan {
+  id: number;
+  name: string;
+  price: number;
+  duration_days: number;
+  request_delay_hours: number;
+  features: Array<{
+    feature_id: number;
+    feature_text: string;
+  }>;
+  recommended?: boolean;
+}
 
-  const subscriptionPlans = [
-    {
-      name: 'Basic',
-      id: 'basic',
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      color: 'gray',
-      badge: '',
-      features: [
-        '✅ List up to 10 parts',
-        '✅ Basic seller profile',
-        '✅ Standard search ranking',
-        '⏰ Part requests after 24-48 hours',
-        '❌ No featured listings',
-        '❌ No priority support',
-        '❌ No analytics dashboard',
-        '❌ No bulk upload',
-        '5% commission on sales'
-      ],
-      limitations: [
-        'Limited visibility',
-        'Delayed notifications',
-        'Basic features only'
-      ]
-    },
-    {
-      name: 'Silver',
-      id: 'silver',
-      monthlyPrice: 2999,
-      yearlyPrice: 29990,
-      color: 'blue',
-      badge: 'POPULAR',
-      features: [
-        '✅ List up to 50 parts',
-        '✅ Enhanced seller profile with badges',
-        '✅ Better search ranking',
-        '🔥 Instant urgent part request notifications',
-        '✅ 2 featured listings per month',
-        '✅ Basic analytics dashboard',
-        '✅ Priority email support',
-        '✅ Bulk upload (up to 20 items)',
-        '✅ Seller verification badge',
-        '4% commission on sales'
-      ],
-      limitations: []
-    },
-    {
-      name: 'Gold',
-      id: 'gold',
-      monthlyPrice: 5999,
-      yearlyPrice: 59990,
-      color: 'yellow',
-      badge: 'BEST VALUE',
-      features: [
-        '✅ List up to 200 parts',
-        '✅ Premium seller profile with custom branding',
-        '✅ Top search ranking priority',
-        '⚡ Instant ALL part request notifications',
-        '✅ 10 featured listings per month',
-        '✅ Advanced analytics & insights',
-        '✅ 24/7 priority phone support',
-        '✅ Unlimited bulk upload',
-        '✅ Gold verification badge',
-        '✅ Custom store URL',
-        '✅ Promotional tools',
-        '3% commission on sales'
-      ],
-      limitations: []
-    },
-    {
-      name: 'Platinum',
-      id: 'platinum',
-      monthlyPrice: 14999,
-      yearlyPrice: 149990,
-      color: 'purple',
-      badge: 'ENTERPRISE',
-      features: [
-        '✅ Unlimited part listings',
-        '✅ Full custom storefront',
-        '✅ Guaranteed top search placement',
-        '⚡ First priority on ALL requests',
-        '✅ Unlimited featured listings',
-        '✅ Real-time analytics & API access',
-        '✅ Dedicated account manager',
-        '✅ Custom integration support',
-        '✅ Platinum badge & verification',
-        '✅ Marketing campaign support',
-        '✅ Exclusive seller events',
-        '✅ Free professional photography',
-        '2% commission on sales',
-        '✅ Custom payment terms'
-      ],
-      limitations: []
+interface CurrentSubscription {
+  id: number;
+  plan_name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  price: number;
+  duration_days: number;
+}
+
+function SubscriptionPageContent() {
+  const router = useRouter();
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+
+  // Auth utility
+  const getAuthData = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const authData = localStorage.getItem('authData');
+      return authData ? JSON.parse(authData) : null;
+    } catch (error) {
+      return null;
     }
-  ];
-
-  const additionalRevenue = [
-    {
-      title: 'Featured Listings',
-      description: 'Boost individual parts to top of search',
-      pricing: '$500 JMD per part per week'
-    },
-    {
-      title: 'Homepage Banner Ads',
-      description: 'Premium advertising space on homepage',
-      pricing: '$25,000 JMD per month'
-    },
-    {
-      title: 'Category Sponsorship',
-      description: 'Be the exclusive featured seller in a category',
-      pricing: '$15,000 JMD per month'
-    },
-    {
-      title: 'Email Marketing',
-      description: 'Include your parts in our weekly newsletter',
-      pricing: '$5,000 JMD per campaign'
-    },
-    {
-      title: 'Express Verification',
-      description: 'Fast-track seller verification process',
-      pricing: '$2,500 JMD one-time'
-    }
-  ];
-
-  const calculateSavings = (monthlyPrice: number, yearlyPrice: number) => {
-    const yearlyCostIfMonthly = monthlyPrice * 12;
-    const savings = yearlyCostIfMonthly - yearlyPrice;
-    const percentSaved = monthlyPrice > 0 ? Math.round((savings / yearlyCostIfMonthly) * 100) : 0;
-    return { savings, percentSaved };
   };
 
-  const handleSubscribe = (planId: string) => {
-    setSelectedPlan(planId);
-    // In production, this would integrate with payment gateway
-    alert(`Redirecting to payment for ${planId} plan (${billingCycle})`);
+  const isSeller = () => {
+    const authData = getAuthData();
+    return authData?.role === 'seller';
   };
+
+  useEffect(() => {
+    if (!isSeller()) {
+      alert('This page is for sellers only');
+      router.push('/auth/login');
+      return;
+    }
+    fetchSubscriptionData();
+  }, [router]);
+
+  const fetchSubscriptionData = async () => {
+    try {
+      setLoading(true);
+      const authData = getAuthData();
+
+      // Fetch plans and current subscription in parallel
+      const [plansResponse, currentSubResponse] = await Promise.all([
+        fetch('/api/subscription/plans'),
+        fetch('/api/subscription/current', {
+          headers: {
+            'Authorization': `Bearer ${authData.token}`
+          }
+        })
+      ]);
+
+      const plansResult = await plansResponse.json();
+      const currentSubResult = await currentSubResponse.json();
+
+      if (plansResult.success) {
+        setPlans(plansResult.data);
+      }
+
+      if (currentSubResult.success && currentSubResult.data) {
+        setCurrentSubscription(currentSubResult.data);
+        setSelectedPlan(
+          plansResult.data.find((p: SubscriptionPlan) => 
+            p.name === currentSubResult.data.plan_name
+          )?.id || null
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching subscription data:', error);
+      alert('Failed to load subscription data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubscribe = async (planId: number) => {
+    if (processing) return;
+
+    try {
+      setProcessing(true);
+      const authData = getAuthData();
+      const selectedPlanData = plans.find(p => p.id === planId);
+
+      if (!selectedPlanData) {
+        alert('Invalid plan selected');
+        return;
+      }
+
+      // Create payment intent
+      const paymentResponse = await fetch('/api/subscription/create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          planId: planId,
+          paymentMethod: 'stripe'
+        })
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error);
+      }
+
+      // Here you would integrate with Stripe
+      // For now, we'll simulate successful payment
+      const confirmResponse = await fetch('/api/subscription/confirm-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          paymentId: paymentResult.data.paymentId,
+          transactionId: `txn_${Date.now()}`,
+          planId: planId
+        })
+      });
+
+      const confirmResult = await confirmResponse.json();
+
+      if (confirmResult.success) {
+        alert('Subscription activated successfully!');
+        setCurrentSubscription(confirmResult.data);
+        router.refresh();
+      } else {
+        throw new Error(confirmResult.error);
+      }
+
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      alert(error.message || 'Failed to process subscription');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price);
+  };
+
+  const getPlanPeriod = (durationDays: number) => {
+    if (durationDays === 30) return '/month';
+    if (durationDays === 365) return '/year';
+    return `/${durationDays} days`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading subscription plans...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <section className="bg-gradient-to-br from-blue-900 via-blue-700 to-teal-600 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-5xl font-bold mb-4">Seller Subscription Plans</h1>
-          <p className="text-xl mb-8">Join Jamaica's fastest-growing auto parts marketplace</p>
-          <div className="inline-flex items-center gap-6 bg-white/10 backdrop-blur-sm rounded-lg px-6 py-3">
-            <div>
-              <div className="text-3xl font-bold">5,000+</div>
-              <div className="text-sm">Active Sellers</div>
-            </div>
-            <div className="w-px h-12 bg-white/30"></div>
-            <div>
-              <div className="text-3xl font-bold">$2.5M+</div>
-              <div className="text-sm">Monthly Sales</div>
-            </div>
-            <div className="w-px h-12 bg-white/30"></div>
-            <div>
-              <div className="text-3xl font-bold">50,000+</div>
-              <div className="text-sm">Part Requests/Month</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Billing Toggle */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex rounded-lg border-2 border-gray-200 p-1 bg-white">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-3 rounded-lg font-medium transition ${
-                billingCycle === 'monthly'
-                  ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Monthly Billing
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-3 rounded-lg font-medium transition ${
-                billingCycle === 'yearly'
-                  ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Yearly Billing (Save up to 17%)
-            </button>
-          </div>
-        </div>
-
-        {/* Subscription Plans */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {subscriptionPlans.map((plan) => {
-            const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-            const { percentSaved } = calculateSavings(plan.monthlyPrice, plan.yearlyPrice);
-
-            return (
-              <div
-                key={plan.id}
-                className={`bg-white rounded-lg shadow-lg overflow-hidden transform transition hover:scale-105 ${
-                  plan.name === 'Gold' ? 'ring-4 ring-yellow-400' : ''
-                }`}
-              >
-                {plan.badge && (
-                  <div className={`text-center py-2 text-white text-sm font-bold ${
-                    plan.badge === 'BEST VALUE' ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                    plan.badge === 'POPULAR' ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
-                    'bg-gradient-to-r from-purple-600 to-pink-600'
-                  }`}>
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold">
-                      ${price.toLocaleString()}
-                    </span>
-                    <span className="text-gray-600 ml-2">
-                      JMD/{billingCycle === 'monthly' ? 'mo' : 'yr'}
-                    </span>
-                  </div>
-
-                  {billingCycle === 'yearly' && percentSaved > 0 && (
-                    <div className="text-sm text-green-600 font-semibold mb-4">
-                      Save {percentSaved}% with yearly billing
-                    </div>
-                  )}
-
-                  <div className="space-y-2 mb-6">
-                    {plan.features.map((feature, index) => (
-                      <div key={index} className="text-sm">
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-
-                  {plan.limitations.length > 0 && (
-                    <div className="border-t pt-4 mb-4">
-                      <div className="text-xs text-gray-500">
-                        {plan.limitations.map((limit, index) => (
-                          <div key={index}>• {limit}</div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => handleSubscribe(plan.id)}
-                    className={`w-full py-3 rounded-lg font-semibold transition ${
-                      plan.name === 'Basic'
-                        ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        : 'bg-gradient-to-r from-blue-600 to-teal-600 text-white hover:from-blue-700 hover:to-teal-700'
-                    }`}
-                  >
-                    {plan.name === 'Basic' ? 'Start Free' : 'Subscribe Now'}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Part Request Notification System */}
-        <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl p-8 mb-12">
-          <h2 className="text-3xl font-bold mb-6 text-center">💰 Part Request Notification System</h2>
-          <p className="text-center text-gray-700 mb-8">
-            Our unique monetization model: Buyers can pay for urgent requests, and you get notified based on your tier!
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg p-6">
-              <div className="text-2xl mb-3">🆓 Free Requests</div>
-              <div className="text-gray-700">
-                <p className="mb-2">Standard buyer requests</p>
-                <div className="text-sm space-y-1">
-                  <div>• Basic tier: 24-48hr delay</div>
-                  <div>• Silver/Gold: Next day</div>
-                  <div>• Platinum: Same day</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6">
-              <div className="text-2xl mb-3">🔥 Urgent Requests ($500)</div>
-              <div className="text-gray-700">
-                <p className="mb-2">Buyer pays for urgency</p>
-                <div className="text-sm space-y-1">
-                  <div>• Basic tier: No notification</div>
-                  <div className="font-semibold text-green-600">• Silver/Gold: Instant alert!</div>
-                  <div className="font-semibold text-green-600">• Platinum: Priority alert!</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg p-6">
-              <div className="text-2xl mb-3">⭐ Premium Requests ($1000)</div>
-              <div className="text-gray-700">
-                <p className="mb-2">Featured buyer requests</p>
-                <div className="text-sm space-y-1">
-                  <div>• Basic tier: No notification</div>
-                  <div className="font-semibold text-purple-600">• ALL paid tiers: Instant priority!</div>
-                  <div className="font-semibold text-purple-600">• Featured for 7 days</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Additional Revenue Opportunities */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-bold mb-6 text-center">📈 Additional Revenue Boosters</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {additionalRevenue.map((item, index) => (
-              <div key={index} className="bg-white rounded-lg shadow p-6">
-                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                <p className="text-gray-600 text-sm mb-3">{item.description}</p>
-                <div className="text-teal-600 font-bold">{item.pricing}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Commission Structure */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-12">
-          <h2 className="text-3xl font-bold mb-6 text-center">Commission Structure</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2">
-                  <th className="text-left py-3">Subscription Tier</th>
-                  <th className="text-center py-3">Commission Rate</th>
-                  <th className="text-center py-3">Monthly Sales $10,000</th>
-                  <th className="text-center py-3">Monthly Sales $50,000</th>
-                  <th className="text-center py-3">Monthly Sales $100,000</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-3 font-medium">Basic (Free)</td>
-                  <td className="text-center text-red-600 font-bold">5%</td>
-                  <td className="text-center">$500</td>
-                  <td className="text-center">$2,500</td>
-                  <td className="text-center">$5,000</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 font-medium">Silver ($2,999/mo)</td>
-                  <td className="text-center text-orange-600 font-bold">4%</td>
-                  <td className="text-center">$400</td>
-                  <td className="text-center">$2,000</td>
-                  <td className="text-center">$4,000</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-3 font-medium">Gold ($5,999/mo)</td>
-                  <td className="text-center text-yellow-600 font-bold">3%</td>
-                  <td className="text-center">$300</td>
-                  <td className="text-center">$1,500</td>
-                  <td className="text-center">$3,000</td>
-                </tr>
-                <tr>
-                  <td className="py-3 font-medium">Platinum ($14,999/mo)</td>
-                  <td className="text-center text-green-600 font-bold">2%</td>
-                  <td className="text-center">$200</td>
-                  <td className="text-center">$1,000</td>
-                  <td className="text-center">$2,000</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="text-sm text-gray-600 mt-4 text-center">
-            * Higher tier = Lower commission = More profit for you!
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Choose Your Subscription Plan
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Upgrade your seller account to get more visibility, faster response times, and premium features.
           </p>
         </div>
 
-        {/* CTA Section */}
-        <div className="bg-gradient-to-br from-blue-900 to-teal-700 text-white rounded-xl p-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Grow Your Auto Parts Business?</h2>
-          <p className="text-xl mb-6">Join 5,000+ sellers already making money on PartsFinda</p>
-          <div className="flex gap-4 justify-center">
-            <Link
-              href="/seller/register"
-              className="bg-white text-blue-900 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100"
+        {/* Current Subscription Banner */}
+        {currentSubscription && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900">
+                  Current Plan: {currentSubscription.plan_name.toUpperCase()}
+                </h3>
+                <p className="text-blue-700">
+                  Active until {new Date(currentSubscription.end_date).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  Active
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscription Plans Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {plans.map(plan => (
+            <div
+              key={plan.id}
+              className={`bg-white rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
+                selectedPlan === plan.id
+                  ? 'border-blue-500 ring-2 ring-blue-200'
+                  : plan.recommended
+                  ? 'border-green-500'
+                  : 'border-gray-200'
+              } ${plan.recommended ? 'relative transform scale-105' : ''}`}
             >
-              Start Selling Now
-            </Link>
-            <Link
-              href="/contact"
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10"
-            >
-              Contact Sales
-            </Link>
+              {plan.recommended && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-green-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+
+              <div className="p-8">
+                {/* Plan Header */}
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    {plan.name}
+                  </h3>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-4xl font-bold text-green-600">
+                      {formatPrice(plan.price)}
+                    </span>
+                    <span className="text-lg text-gray-500">
+                      {getPlanPeriod(plan.duration_days)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Features List */}
+                <ul className="space-y-4 mb-8">
+                  {plan.features.map((feature) => (
+                    <li key={feature.feature_id} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">{feature.feature_text}</span>
+                    </li>
+                  ))}
+                  
+                  {/* Additional dynamic features based on plan */}
+                  <li className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-700">
+                      Request delay: {plan.request_delay_hours === 0 ? 'Instant' : `${plan.request_delay_hours} hours`}
+                    </span>
+                  </li>
+                  
+                  <li className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-gray-700">
+                      Duration: {plan.duration_days} days
+                    </span>
+                  </li>
+                </ul>
+
+                {/* Action Button */}
+                <button
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={processing || (currentSubscription?.plan_name === plan.name)}
+                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
+                    currentSubscription?.plan_name === plan.name
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : plan.recommended
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed`}
+                >
+                  {processing ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : currentSubscription?.plan_name === plan.name ? (
+                    'Current Plan'
+                  ) : (
+                    'Subscribe Now'
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Additional Information */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Subscription Benefits</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">For All Plans</h4>
+              <ul className="space-y-2 text-gray-600">
+                <li>• Access to part requests in your area</li>
+                <li>• Direct communication with buyers</li>
+                <li>• Business profile listing</li>
+                <li>• Basic analytics</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-2">Premium Features</h4>
+              <ul className="space-y-2 text-gray-600">
+                <li>• Early access to part requests</li>
+                <li>• Priority in search results</li>
+                <li>• Advanced analytics</li>
+                <li>• Premium support</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SubscriptionPageContent />
+    </Suspense>
   );
 }
