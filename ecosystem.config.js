@@ -18,12 +18,13 @@ module.exports = {
       time: true
     },
 
-    // ---- BACKGROUND WORKER ----
+    // ---- BACKGROUND WORKER (COMPILED) ----
     {
       name: 'partsfinda-worker',
-      script: './scripts/start-worker.mjs',
-      interpreter: 'node',
+      script: './dist-worker/start_worker.js', // ✅ COMPILED JS
       cwd: '/var/www/partsfinda',
+      instances: 1,
+      exec_mode: 'fork',
       watch: false,
       env: {
         NODE_ENV: 'production'
