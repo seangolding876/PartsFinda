@@ -182,8 +182,8 @@ async function scheduleRequestInQueue(partRequestId: number, sellers: any[], del
 }
 
 // Enhanced POST handler with comprehensive error handling
+// Enhanced POST handler with comprehensive error handling
 export async function POST(request: NextRequest) {
-  let client;
   try {
     // Authorization
     const authHeader = request.headers.get('authorization');
@@ -297,22 +297,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get database client for transaction
-    const { pool } = require('@/lib/db');
-    client = await pool.connect();
-
-    // Start transaction
-    await client.query('BEGIN');
+    // Start transaction using the existing query function
+    await query('BEGIN');
 
     try {
       // Check user exists and get membership
-      const userCheck = await client.query(
+      const userCheck = await query(
         'SELECT id, email, membership_plan FROM users WHERE id = $1', 
         [userId]
       );
       
       if (userCheck.rows.length === 0) {
-        await client.query('ROLLBACK');
+        await query('ROLLBACK');
         return NextResponse.json({ 
           success: false, 
           error: 'User not found' 
@@ -322,13 +318,13 @@ export async function POST(request: NextRequest) {
       const userMembership = userCheck.rows[0].membership_plan || 'free';
 
       // Check make exists
-      const makeCheck = await client.query(
+      const makeCheck = await query(
         'SELECT id, name FROM makes WHERE id = $1', 
         [body.makeId]
       );
       
       if (makeCheck.rows.length === 0) {
-        await client.query('ROLLBACK');
+        await query('ROLLBACK');
         return NextResponse.json({ 
           success: false, 
           error: 'Invalid make ID' 
@@ -336,13 +332,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Check model exists and belongs to make
-      const modelCheck = await client.query(
+      const modelCheck = await query(
         'SELECT id, name FROM models WHERE id = $1 AND make_id = $2', 
         [body.modelId, body.makeId]
       );
       
       if (modelCheck.rows.length === 0) {
-        await client.query('ROLLBACK');
+        await query('ROLLBACK');
         return NextResponse.json({ 
           success: false, 
           error: 'Invalid model ID or model does not belong to make' 
@@ -388,7 +384,7 @@ export async function POST(request: NextRequest) {
 
       console.log('💾 Inserting part request with params:', insertParams);
 
-      const result = await client.query(insertQuery, insertParams);
+      const result = await query(insertQuery, insertParams);
       
       if (result.rows.length === 0) {
         throw new Error('Failed to insert part request - no rows returned');
@@ -412,7 +408,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Commit transaction
-      await client.query('COMMIT');
+      await query('COMMIT');
       console.log('✅ Transaction committed successfully');
 
       // Prepare response message based on membership
@@ -446,14 +442,9 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
       // Rollback transaction in case of error
-      await client.query('ROLLBACK');
+      await query('ROLLBACK');
       console.error('❌ Transaction rolled back due to error:', error);
       throw error;
-    } finally {
-      // Release client back to pool
-      if (client) {
-        client.release();
-      }
     }
 
   } catch (error: any) {
@@ -467,6 +458,8 @@ export async function POST(request: NextRequest) {
       errorMessage = 'Duplicate request detected';
     } else if (error.message.includes('null value')) {
       errorMessage = 'Required fields are missing';
+    } else if (error.message.includes('connection') || error.message.includes('ECONNREFUSED')) {
+      errorMessage = 'Database connection failed';
     }
 
     return NextResponse.json({
@@ -480,7 +473,6 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
 // Enhanced PATCH handler
 export async function PATCH(request: NextRequest) {
   try {
