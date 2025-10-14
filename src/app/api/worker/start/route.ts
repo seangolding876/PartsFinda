@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import RequestProcessor from '../../../../../worker/requestProcessor';
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
-// Simple mock worker for now
-let workerStatus = {
-  isRunning: false,
-  processed: 0,
-  failed: 0,
-  retried: 0,
-  lastUpdated: new Date().toISOString()
-};
+let processor: RequestProcessor | null = null;
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,65 +9,65 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'start') {
-      workerStatus = {
-        isRunning: true,
-        processed: 0,
-        failed: 0,
-        retried: 0,
-        lastUpdated: new Date().toISOString()
-      };
+      if (!processor) {
+        processor = new RequestProcessor();
+        await processor.start();
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Production worker started successfully',
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV
+        });
+      }
       
       return NextResponse.json({ 
         success: true, 
-        message: 'Worker started successfully',
-        status: workerStatus
+        message: 'Worker is already running',
+        timestamp: new Date().toISOString()
       });
     }
 
     if (action === 'status') {
-      // Mock data for demonstration
-      const mockStats = {
-        status: [
-          { status: 'pending', count: '5', avg_delay_seconds: 3600, max_retries: 0 },
-          { status: 'processed', count: '25', avg_delay_seconds: 120, max_retries: 0 },
-          { status: 'failed', count: '2', avg_delay_seconds: null, max_retries: 3 }
-        ],
-        pendingDetails: {
-          total_pending: '5',
-          avg_delay_seconds: 3600,
-          oldest_pending: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        workerStats: workerStatus
-      };
-
+      if (!processor) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Worker not started',
+          workerRunning: false
+        });
+      }
+      
+      const queueStatus = await processor.getQueueStatus();
+      
       return NextResponse.json({
         success: true,
-        ...mockStats
+        workerRunning: true,
+        ...queueStatus,
+        timestamp: new Date().toISOString()
       });
     }
 
     if (action === 'stop') {
-      workerStatus.isRunning = false;
+      processor = null;
       return NextResponse.json({
         success: true,
         message: 'Worker stopped',
-        status: workerStatus
+        timestamp: new Date().toISOString()
       });
     }
 
-    // Default response
     return NextResponse.json({
-      success: true,
-      message: 'Worker API is running',
-      available_actions: ['start', 'status', 'stop'],
-      current_status: workerStatus
-    });
+      success: false,
+      error: 'Invalid action. Use: start, status, or stop'
+    }, { status: 400 });
 
   } catch (error: any) {
     console.error('Error in worker API:', error);
     return NextResponse.json({ 
       success: false, 
-      error: error.message 
+      error: error.message,
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic';
