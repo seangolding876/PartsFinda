@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
 interface PartRequestData {
   partName: string;
   partNumber?: string;
@@ -134,11 +131,10 @@ function calculateDeliverySchedule(membershipPlan: string): Date {
   return deliveryTime;
 }
 
-// Helper function to get ALL active sellers (modified to ensure we always get sellers)
-async function getAllActiveSellers(userParish: string) {
+// Helper function to get relevant sellers for a part request
+async function getRelevantSellers(partRequestData: PartRequestData, userParish: string) {
   try {
-    console.log('🔍 Fetching active sellers for parish:', userParish);
-    
+    // Yeh query optimize kar sakte hain based on your business logic
     const sellers = await query(
       `SELECT 
         u.id, u.name, u.email, u.membership_plan,
@@ -146,51 +142,28 @@ async function getAllActiveSellers(userParish: string) {
        FROM users u
        WHERE u.role = 'seller' 
        AND u.email_verified = true
-       AND u.membership_plan IN ('Basic', 'Premium', 'Enterprise')
-       AND u.account_status = 'active'
+       AND u.membership_plan IN ('basic', 'premium', 'enterprise')
+       AND (u.parish = $1 OR u.parish IS NULL OR u.parish = '')
        ORDER BY 
          CASE 
            WHEN u.parish = $1 THEN 1
-           WHEN u.membership_plan = 'Enterprise' THEN 2
-           WHEN u.membership_plan = 'Premium' THEN 3
-           WHEN u.membership_plan = 'Basic' THEN 4
-           ELSE 5
+           WHEN u.membership_plan = 'enterprise' THEN 2
+           WHEN u.membership_plan = 'premium' THEN 3
+           ELSE 4
          END`,
       [userParish]
     );
     
-    console.log(`✅ Found ${sellers.rows.length} active sellers`);
     return sellers.rows;
   } catch (error) {
-    console.error('❌ Error fetching sellers:', error);
-    // Return empty array as fallback
+    console.error('Error fetching relevant sellers:', error);
     return [];
   }
 }
 
-// Enhanced helper function to schedule request in queue - HAR REQUEST KE LIYE
+// Helper function to schedule request in queue
 async function scheduleRequestInQueue(partRequestId: number, sellers: any[], deliverySchedule: Date) {
   try {
-    console.log(`📦 Scheduling request ${partRequestId} for ${sellers.length} sellers`);
-    
-    if (sellers.length === 0) {
-      console.log('⚠️ No sellers found, creating a fallback queue entry');
-      
-      // Fallback: Create at least one queue entry with NULL seller_id
-      // This ensures the background worker can still process the request
-      const fallbackResult = await query(
-        `INSERT INTO request_queue 
-         (part_request_id, seller_id, scheduled_delivery_time, status, notes) 
-         VALUES ($1, NULL, $2, 'pending', 'Fallback entry - no sellers available') 
-         RETURNING id`,
-        [partRequestId, deliverySchedule]
-      );
-      
-      console.log(`✅ Created fallback queue entry: ${fallbackResult.rows[0].id}`);
-      return 1;
-    }
-    
-    // Normal case: Schedule for all found sellers
     const queuePromises = sellers.map(seller => 
       query(
         `INSERT INTO request_queue 
@@ -205,27 +178,12 @@ async function scheduleRequestInQueue(partRequestId: number, sellers: any[], del
     
     return sellers.length;
   } catch (error) {
-    console.error('❌ Error scheduling request in queue:', error);
-    
-    // Even if there's an error, try to create at least one fallback entry
-    try {
-      const fallbackResult = await query(
-        `INSERT INTO request_queue 
-         (part_request_id, seller_id, scheduled_delivery_time, status, notes) 
-         VALUES ($1, NULL, $2, 'pending', 'Error recovery entry') 
-         RETURNING id`,
-        [partRequestId, deliverySchedule]
-      );
-      console.log(`✅ Created error recovery queue entry: ${fallbackResult.rows[0].id}`);
-      return 1;
-    } catch (fallbackError) {
-      console.error('❌ Failed to create fallback queue entry:', fallbackError);
-      throw error; // Re-throw original error
-    }
+    console.error('Error scheduling request in queue:', error);
+    throw error;
   }
 }
 
-// Enhanced POST handler with guaranteed queue entry creation
+// Enhanced POST handler with membership-based delivery
 export async function POST(request: NextRequest) {
   try {
     // Authorization
@@ -246,7 +204,7 @@ export async function POST(request: NextRequest) {
     const body: PartRequestData = await request.json();
 
     // Required fields check
-    const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description', 'parish'];
+    const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description'];
     for (const field of requiredFields) {
       if (!body[field as keyof PartRequestData]) {
         return NextResponse.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 });
@@ -339,25 +297,26 @@ export async function POST(request: NextRequest) {
       );
 
       const newRequest = result.rows[0];
-      console.log(`✅ Part request created: ${newRequest.id}`);
 
-      // Get ALL active sellers (modified to ensure we get sellers)
-      const activeSellers = await getAllActiveSellers(body.parish);
+      // Get relevant sellers for this request
+      const relevantSellers = await getRelevantSellers(body, body.parish);
       
-      // HAR REQUEST KE LIYE QUEUE ENTRY CREATE KARO - guaranteed
-      const scheduledSellersCount = await scheduleRequestInQueue(
-        newRequest.id, 
-        activeSellers, 
-        deliverySchedule
-      );
+      // Schedule request for sellers
+      let scheduledSellersCount = 0;
+      if (relevantSellers.length > 0) {
+        scheduledSellersCount = await scheduleRequestInQueue(
+          newRequest.id, 
+          relevantSellers, 
+          deliverySchedule
+        );
+      }
 
       // Commit transaction
       await query('COMMIT');
-      console.log(`✅ Transaction committed for request: ${newRequest.id}`);
 
       // Prepare response message based on membership
       let deliveryMessage = '';
-      switch (userMembership.toLowerCase()) {
+      switch (userMembership) {
         case 'free':
           deliveryMessage = 'Your request will be delivered to sellers in 48 hours';
           break;
@@ -380,15 +339,13 @@ export async function POST(request: NextRequest) {
           scheduled_sellers_count: scheduledSellersCount,
           user_membership: userMembership,
           delivery_message: deliveryMessage,
-          estimated_delivery_time: deliverySchedule,
-          total_sellers_found: activeSellers.length
+          estimated_delivery_time: deliverySchedule
         }
       });
 
     } catch (error) {
       // Rollback transaction in case of error
       await query('ROLLBACK');
-      console.error('❌ Transaction rolled back due to error:', error);
       throw error;
     }
 
