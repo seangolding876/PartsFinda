@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User } from 'lucide-react';
 import Link from 'next/link';
+import BuyerProfile from '@/components/buyerprofile';
 
 // Auth utility
 const getAuthData = () => {
@@ -437,12 +438,19 @@ function BuyerDashboard() {
               </div>
             )}
 
-            {activeTab === 'profile' && (
+            {/* {activeTab === 'profile' && (
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h3>
                 <p className="text-gray-600">Profile settings and preferences will be available here.</p>
               </div>
-            )}
+            )} */}
+
+            {activeTab === 'profile' && (
+  <div className="bg-white rounded-lg shadow-lg p-6">
+    <h3 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h3>
+    <BuyerProfile />
+  </div>
+)}
           </div>
         </div>
       </div>
