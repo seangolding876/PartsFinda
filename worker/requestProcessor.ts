@@ -1,4 +1,4 @@
-import { query } from '@/lib/db';
+import { query } from '../src/lib/db';
 
 interface QueueItem {
   id: string;
