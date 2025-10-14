@@ -37,7 +37,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "out/types/**/*.ts"
-  ],
+, "ecosystem.config.js"  ],
   "exclude": [
     "node_modules"
   ]
