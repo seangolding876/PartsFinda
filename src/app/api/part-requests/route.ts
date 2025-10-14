@@ -131,7 +131,7 @@ function calculateDeliverySchedule(membershipPlan: string): Date {
 }
 
 // Helper function to get relevant sellers for a part request
-async function getRelevantSellers(partRequestData: PartRequestData, userParish: string) {
+async function getRelevantSellers(partRequestData: PartRequestData) {
   try {
     const sellers = await query(
       `SELECT 
@@ -141,9 +141,8 @@ async function getRelevantSellers(partRequestData: PartRequestData, userParish: 
        WHERE u.role = 'seller' 
        AND u.email_verified = true
        AND u.membership_plan IN ('Basic', 'Premium', 'Enterprise')
-       --AND (u.parish = $1 OR u.parish IS NULL OR u.parish = '')
-      `,
-      [userParish]
+       `,
+   
     );
     
     return sellers.rows;
@@ -388,7 +387,7 @@ export async function POST(request: NextRequest) {
       console.log('✅ Part request inserted:', newRequest);
 
       // Get relevant sellers for this request
-      const relevantSellers = await getRelevantSellers(body, body.parish);
+      const relevantSellers = await getRelevantSellers(body);
       console.log(`🔍 Found ${relevantSellers.length} relevant sellers`);
       
       // Schedule request for sellers
