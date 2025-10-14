@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error confirming payment:', error);
+    console.error('Error confirming payment:', error.message, error.stack);
     return NextResponse.json(
       { 
         success: false, 
