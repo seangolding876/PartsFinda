@@ -22,7 +22,7 @@ useEffect(() => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: 'seangolding@hotmail.com',
+          to: 'adnan.shafi91@gmail.com',
           subject: 'PartsFinda Page Opened',
           html: `
             <div style="font-family: Arial; padding: 16px;">
