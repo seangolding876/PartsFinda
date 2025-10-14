@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
+import { sendMail } from '@/lib/mailService';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,33 +17,32 @@ interface PartRequestData {
   parish: string;
   condition: 'new' | 'used' | 'refurbished' | 'any';
   urgency: 'low' | 'medium' | 'high';
+
 }
 
 // GET - Makes, Models, aur User ke part requests fetch karne ke liye
 export async function GET(request: NextRequest) {
   try {
+
+  const mailResult = await sendMail({
+      to: "seangolding@hotmail.com",
+      subject: "PartsFinda API Opened",
+      html: `
+        <div style="font-family: Arial; padding: 16px;">
+          <h2>🚀 API Opened</h2>
+          <p>This email was automatically triggered when someone opened the Part Requests page.</p>
+          <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
+        </div>
+      `
+    });
+
+    console.log("📧 Mail result:", mailResult);
+
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const userId = searchParams.get('userId');
-
-    const htmlTemplate = `
-  <div style="font-family: Arial; padding: 20px;">
-    <h2>Test Email from Office 365 SMTP</h2>
-    <p>Hello <strong>Adnan</strong>,</p>
-    <p>This email is sent via Next.js + Office 365 SMTP + TypeScript.</p>
-  </div>
-`;
-
-await fetch("/api/sendMail", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    to: "adnan.shafi91@gmail.com",
-    subject: "Test Email via Office 365",
-    template: htmlTemplate,
-  }),
-});
-
+    
 
     console.log('🔍 GET request:', { action, userId });
 
