@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.duration_days);
 
+    console.log('Activating free plan for user:', userInfo.userId, plan.plan_name, startDate, endDate, true, 0);
     // Create free subscription
     const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
