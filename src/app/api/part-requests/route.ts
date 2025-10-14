@@ -25,6 +25,25 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
     const userId = searchParams.get('userId');
 
+    const htmlTemplate = `
+  <div style="font-family: Arial; padding: 20px;">
+    <h2>Test Email from Office 365 SMTP</h2>
+    <p>Hello <strong>Adnan</strong>,</p>
+    <p>This email is sent via Next.js + Office 365 SMTP + TypeScript.</p>
+  </div>
+`;
+
+await fetch("/api/sendMail", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    to: "adnan.shafi91@gmail.com",
+    subject: "Test Email via Office 365",
+    template: htmlTemplate,
+  }),
+});
+
+
     console.log('🔍 GET request:', { action, userId });
 
     if (action === 'getMakes') {
@@ -127,6 +146,8 @@ function calculateSellerDeliverySchedule(sellerMembership: string): Date {
   
   return deliveryTime;
 }
+
+
 
 // Helper function to get ALL active sellers
 async function getAllActiveSellers() {
