@@ -90,7 +90,9 @@ function StripeCheckoutForm({
 if (stripeError) {
   console.error('Stripe Error:', stripeError);
   alert(`Payment failed: ${stripeError.message}`);
+  setError(stripeError.message || 'Payment failed. Please try again.');
 } else {
+  onSuccess();
   console.log('Payment successful:', paymentIntent);
 }
 
