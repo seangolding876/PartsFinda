@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { sendMail } from '@/lib/mailService';
-
+export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+
 
 interface PartRequestData {
   partName: string;

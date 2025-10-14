@@ -1,4 +1,5 @@
-import nodemailer from "nodemailer";
+"use server";
+const nodemailer = await import("nodemailer");
 
 interface SendMailParams {
   to: string;
