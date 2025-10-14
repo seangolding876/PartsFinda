@@ -1,17 +1,23 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+// src/app/api/send-email/route.ts
+import { NextResponse } from "next/server";
 import { sendMail } from "@/lib/mailService";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { to, subject, template } = req.body;
-
+export async function POST(req: Request) {
   try {
-    const result = await sendMail({ to, subject, html: template });
-    return res.status(200).json(result);
+    const { to, subject, template } = await req.json();
+
+    const result = await sendMail({
+      to,
+      subject,
+      html: template,
+    });
+
+    return NextResponse.json(result, { status: 200 });
   } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.message });
+    console.error("❌ Email sending failed:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
