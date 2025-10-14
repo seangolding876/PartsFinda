@@ -15,34 +15,35 @@ const getAuthData = () => {
   }
 };
 
-useEffect(() => {
-  const sendNotificationEmail = async () => {
-    try {
-      const response = await fetch('/api/send-mail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: 'adnan.shafi91@gmail.com',
-          subject: 'PartsFinda Page Opened',
-          html: `
-            <div style="font-family: Arial; padding: 16px;">
-              <h2>🚀 Page Opened</h2>
-              <p>This email was automatically triggered when someone opened the Part Requests page.</p>
-              <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
-            </div>
-          `,
-        }),
-      });
+//Send Email Demo
+// useEffect(() => {
+//   const sendNotificationEmail = async () => {
+//     try {
+//       const response = await fetch('/api/send-mail', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           to: 'adnan.shafi91@gmail.com',
+//           subject: 'PartsFinda Page Opened',
+//           html: `
+//             <div style="font-family: Arial; padding: 16px;">
+//               <h2>🚀 Page Opened</h2>
+//               <p>This email was automatically triggered when someone opened the Part Requests page.</p>
+//               <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
+//             </div>
+//           `,
+//         }),
+//       });
 
-      const result = await response.json();
-      console.log('📧 Mail result:', result);
-    } catch (error) {
-      console.error('❌ Failed to send email:', error);
-    }
-  };
+//       const result = await response.json();
+//       console.log('📧 Mail result:', result);
+//     } catch (error) {
+//       console.error('❌ Failed to send email:', error);
+//     }
+//   };
 
-  sendNotificationEmail();
-}, []);
+//   sendNotificationEmail();
+// }, []);
 
 const isAuthenticated = () => {
   const authData = getAuthData();
