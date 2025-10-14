@@ -109,127 +109,86 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function - Seller ke membership ke hisaab se delivery time calculate karein
-function calculateSellerDeliveryTime(sellerMembership: string): Date {
+// Helper function to calculate delivery schedule based on membership
+function calculateDeliverySchedule(membershipPlan: string): Date {
   const deliveryTime = new Date();
   
-  // Case-insensitive check karein
-  const membership = sellerMembership.toLowerCase();
-  
-  if (membership === 'basic') {
-    // Basic seller: 24 hours baad
-    deliveryTime.setHours(deliveryTime.getHours() + 24);
-    console.log(`   ⏰ Basic seller - Scheduled for: ${deliveryTime.toISOString()}`);
-  } else {
-    // Premium, Enterprise, etc.: Immediately (2 minutes mein)
-    deliveryTime.setMinutes(deliveryTime.getMinutes() + 2);
-    console.log(`   ⚡ Premium/Enterprise seller - Scheduled for: ${deliveryTime.toISOString()}`);
+  switch (membershipPlan.toLowerCase()) {
+    case 'free':
+      deliveryTime.setHours(deliveryTime.getHours() + 48); // 48 hours
+      break;
+    case 'basic':
+      deliveryTime.setHours(deliveryTime.getHours() + 24); // 24 hours
+      break;
+    case 'premium':
+    case 'enterprise':
+      deliveryTime.setMinutes(deliveryTime.getMinutes() + 5); // 5 minutes for immediate processing
+      break;
+    default:
+      deliveryTime.setHours(deliveryTime.getHours() + 24); // Default 24 hours
   }
   
   return deliveryTime;
 }
 
-// Helper function - Relevant sellers find karein
-async function getRelevantSellers(partRequestData: PartRequestData) {
+// Helper function to get relevant sellers for a part request
+async function getRelevantSellers(partRequestData: PartRequestData, userParish: string) {
   try {
-    console.log(`🔍 Finding relevant sellers for parish: ${partRequestData.parish}`);
-    
+    // Yeh query optimize kar sakte hain based on your business logic
     const sellers = await query(
       `SELECT 
-        id, name, email, membership_plan,
-        specializations, vehicle_brands, part_categories, parish
-       FROM users 
-       WHERE role = 'seller' 
-       AND email_verified = true
-       AND membership_plan IN ('Basic', 'Premium', 'Enterprise')
-       AND status = 'active'
+        u.id, u.name, u.email, u.membership_plan,
+        u.specializations, u.vehicle_brands, u.part_categories, u.parish
+       FROM users u
+       WHERE u.role = 'seller' 
+       AND u.email_verified = true
+       AND u.membership_plan IN ('Basic', 'Premium', 'Enterprise')
+       AND (u.parish = $1 OR u.parish IS NULL OR u.parish = '')
        ORDER BY 
          CASE 
-           WHEN parish = $1 THEN 1
-           WHEN membership_plan = 'Enterprise' THEN 2
-           WHEN membership_plan = 'Premium' THEN 3
+           WHEN u.parish = $1 THEN 1
+           WHEN u.membership_plan = 'Premium' THEN 2
+           WHEN u.membership_plan = 'Enterprise' THEN 3
            ELSE 4
          END`,
-      [partRequestData.parish]
+      [userParish]
     );
-    
-    console.log(`✅ Found ${sellers.rows.length} relevant sellers`);
-    
-    // Seller types count karein
-    const basicSellers = sellers.rows.filter(s => s.membership_plan.toLowerCase() === 'basic');
-    const premiumSellers = sellers.rows.filter(s => s.membership_plan.toLowerCase() === 'premium');
-    const enterpriseSellers = sellers.rows.filter(s => s.membership_plan.toLowerCase() === 'enterprise');
-    
-    console.log(`   👑 Enterprise: ${enterpriseSellers.length}`);
-    console.log(`   ⭐ Premium: ${premiumSellers.length}`);
-    console.log(`   🔹 Basic: ${basicSellers.length}`);
     
     return sellers.rows;
   } catch (error) {
-    console.error('❌ Error fetching relevant sellers:', error);
+    console.error('Error fetching relevant sellers:', error);
     return [];
   }
 }
 
-// Helper function - Request queue mein schedule karein
-async function scheduleRequestToSellers(partRequestId: number, sellers: any[]) {
+// Helper function to schedule request in queue
+async function scheduleRequestInQueue(partRequestId: number, sellers: any[], deliverySchedule: Date) {
   try {
-    let basicSellersCount = 0;
-    let premiumSellersCount = 0;
-    let enterpriseSellersCount = 0;
-    
-    console.log(`📦 Scheduling request ${partRequestId} for ${sellers.length} sellers...`);
-    
-    for (const seller of sellers) {
-      // Har seller ke liye alag delivery time calculate karein
-      const deliveryTime = calculateSellerDeliveryTime(seller.membership_plan);
-      
-      await query(
+    const queuePromises = sellers.map(seller => 
+      query(
         `INSERT INTO request_queue 
          (part_request_id, seller_id, scheduled_delivery_time, status) 
          VALUES ($1, $2, $3, 'pending')`,
-        [partRequestId, seller.id, deliveryTime]
-      );
-      
-      // Count track karein
-      const membership = seller.membership_plan.toLowerCase();
-      if (membership === 'basic') {
-        basicSellersCount++;
-      } else if (membership === 'premium') {
-        premiumSellersCount++;
-      } else if (membership === 'enterprise') {
-        enterpriseSellersCount++;
-      }
-    }
+        [partRequestId, seller.id, deliverySchedule]
+      )
+    );
     
-    console.log(`🎯 Request ${partRequestId} scheduled successfully:`);
-    console.log(`   👑 Enterprise: ${enterpriseSellersCount} sellers (immediate delivery)`);
-    console.log(`   ⭐ Premium: ${premiumSellersCount} sellers (immediate delivery)`);
-    console.log(`   🔹 Basic: ${basicSellersCount} sellers (24 hours delivery)`);
+    await Promise.all(queuePromises);
+    console.log(`✅ Scheduled request ${partRequestId} for ${sellers.length} sellers at ${deliverySchedule}`);
     
-    return { 
-      basicSellersCount, 
-      premiumSellersCount, 
-      enterpriseSellersCount,
-      totalSellers: sellers.length
-    };
-    
+    return sellers.length;
   } catch (error) {
-    console.error('❌ Error scheduling request to sellers:', error);
+    console.error('Error scheduling request in queue:', error);
     throw error;
   }
 }
 
-// POST handler - Production ready with seller-based delivery
+// Enhanced POST handler with membership-based delivery
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  console.log('\n🚀 ===== NEW PART REQUEST RECEIVED =====');
-  
   try {
-    // Authorization check
+    // Authorization
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Authentication failed: No token provided');
       return NextResponse.json({ success: false, error: 'Authentication token required' }, { status: 401 });
     }
 
@@ -238,19 +197,16 @@ export async function POST(request: NextRequest) {
     try {
       userInfo = verifyToken(token);
     } catch (error: any) {
-      console.log('❌ Authentication failed: Invalid token');
       return NextResponse.json({ success: false, error: error.message || 'Invalid token' }, { status: 401 });
     }
     const userId = parseInt(userInfo.userId, 10);
 
     const body: PartRequestData = await request.json();
-    console.log(`📝 Request from user ${userId}: ${body.partName}`);
 
     // Required fields check
     const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description'];
     for (const field of requiredFields) {
       if (!body[field as keyof PartRequestData]) {
-        console.log(`❌ Validation failed: Missing ${field}`);
         return NextResponse.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 });
       }
     }
@@ -259,7 +215,6 @@ export async function POST(request: NextRequest) {
     const budget = body.budget !== undefined ? parseFloat(body.budget as any) : null;
     const vehicleYear = parseInt(body.vehicleYear as any, 10);
     if (isNaN(vehicleYear) || (budget !== null && isNaN(budget))) {
-      console.log('❌ Validation failed: Invalid numeric values');
       return NextResponse.json({ success: false, error: 'Invalid numeric values' }, { status: 400 });
     }
 
@@ -275,20 +230,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid vehicle year' }, { status: 400 });
     }
 
-    // Check user exists
-    const userCheck = await query('SELECT id, email, name FROM users WHERE id = $1', [userId]);
+    // Check user exists and get membership
+    const userCheck = await query(
+      'SELECT id, email, membership_plan FROM users WHERE id = $1', 
+      [userId]
+    );
     if (userCheck.rows.length === 0) {
-      console.log(`❌ User not found: ${userId}`);
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    const buyer = userCheck.rows[0];
-    console.log(`👤 Buyer: ${buyer.name} (${buyer.email})`);
+    const userMembership = userCheck.rows[0].membership_plan;
 
     // Check make & model exist
     const makeCheck = await query('SELECT id, name FROM makes WHERE id = $1', [body.makeId]);
     if (makeCheck.rows.length === 0) {
-      console.log(`❌ Invalid make ID: ${body.makeId}`);
       return NextResponse.json({ success: false, error: 'Invalid make ID' }, { status: 400 });
     }
 
@@ -297,29 +252,31 @@ export async function POST(request: NextRequest) {
       [body.modelId, body.makeId]
     );
     if (modelCheck.rows.length === 0) {
-      console.log(`❌ Invalid model ID: ${body.modelId} for make: ${body.makeId}`);
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid model ID or model does not belong to make' 
       }, { status: 400 });
     }
 
+    // Calculate delivery schedule based on membership
+    const deliverySchedule = calculateDeliverySchedule(userMembership);
+    
     // Expiry 30 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Start transaction
-    console.log('💾 Starting database transaction...');
+    // Start transaction for atomic operations
     await query('BEGIN');
 
     try {
-      // Insert part request
+      // Insert part request with delivery schedule
       const result = await query(
         `INSERT INTO part_requests (
           user_id, make_id, model_id, vehicle_year, part_name, part_number, description, 
-          budget, parish, status, expires_at, condition, urgency
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-        RETURNING id, part_name, created_at, expires_at, status`,
+          budget, parish, status, expires_at, condition, urgency,
+          delivery_schedule, membership_plan_at_request
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        RETURNING id, part_name, created_at, expires_at, status, delivery_schedule`,
         [
           userId,
           body.makeId,
@@ -333,70 +290,67 @@ export async function POST(request: NextRequest) {
           'open',
           expiresAt,
           body.condition,
-          body.urgency
+          body.urgency,
+          deliverySchedule,
+          userMembership
         ]
       );
 
       const newRequest = result.rows[0];
-      console.log(`✅ Part request created: ID ${newRequest.id}`);
 
-      // Get relevant sellers
-      const relevantSellers = await getRelevantSellers(body);
+      // Get relevant sellers for this request
+      const relevantSellers = await getRelevantSellers(body, body.parish);
       
-      // Schedule request for sellers with their respective delivery times
-      let scheduledCounts = { 
-        basicSellersCount: 0, 
-        premiumSellersCount: 0, 
-        enterpriseSellersCount: 0,
-        totalSellers: 0 
-      };
-      
+      // Schedule request for sellers
+      let scheduledSellersCount = 0;
       if (relevantSellers.length > 0) {
-        scheduledCounts = await scheduleRequestToSellers(newRequest.id, relevantSellers);
-      } else {
-        console.log('⚠️  No relevant sellers found for this request');
+        scheduledSellersCount = await scheduleRequestInQueue(
+          newRequest.id, 
+          relevantSellers, 
+          deliverySchedule
+        );
       }
 
       // Commit transaction
       await query('COMMIT');
-      console.log('✅ Database transaction committed');
 
-      const endTime = Date.now();
-      console.log(`🎉 Request processing completed in ${endTime - startTime}ms`);
-      console.log('===== REQUEST PROCESSING FINISHED =====\n');
+      // Prepare response message based on membership
+      let deliveryMessage = '';
+      switch (userMembership.toLowerCase()) {
+        case 'free':
+          deliveryMessage = 'Your request will be delivered to sellers in 48 hours';
+          break;
+        case 'basic':
+          deliveryMessage = 'Your request will be delivered to sellers in 24 hours';
+          break;
+        case 'premium':
+        case 'enterprise':
+          deliveryMessage = 'Your request is being delivered to sellers immediately';
+          break;
+        default:
+          deliveryMessage = 'Your request will be processed shortly';
+      }
 
       return NextResponse.json({
         success: true,
         message: 'Part request submitted successfully',
         data: {
           ...newRequest,
-          sellers_scheduled: {
-            total: scheduledCounts.totalSellers,
-            enterprise: scheduledCounts.enterpriseSellersCount,
-            premium: scheduledCounts.premiumSellersCount,
-            basic: scheduledCounts.basicSellersCount
-          },
-          delivery_info: {
-            enterprise_sellers: 'Delivered immediately (within 2 minutes)',
-            premium_sellers: 'Delivered immediately (within 2 minutes)', 
-            basic_sellers: 'Delivered after 24 hours'
-          },
-          processing_time: `${endTime - startTime}ms`
+          scheduled_sellers_count: scheduledSellersCount,
+          user_membership: userMembership,
+          delivery_message: deliveryMessage,
+          estimated_delivery_time: deliverySchedule
         }
       });
 
     } catch (error) {
       // Rollback transaction in case of error
       await query('ROLLBACK');
-      console.error('❌ Transaction rolled back due to error');
       throw error;
     }
 
   } catch (error: any) {
-    const endTime = Date.now();
-    console.error(`💥 Request failed after ${endTime - startTime}ms:`, error);
-    console.log('===== REQUEST FAILED =====\n');
-    
+    console.error('❌ Error creating part request:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to create part request',
@@ -452,6 +406,41 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    if (action === 'upgrade') {
+      // Upgrade logic for faster delivery
+      const upgradeResult = await query(
+        `INSERT INTO listing_upgrade 
+         (part_request_id, user_id, amount, payment_status, upgraded_at) 
+         VALUES ($1, $2, $3, $4, NOW())
+         RETURNING id`,
+        [requestId, userId, 500.00, 'paid']
+      );
+
+      // Update delivery schedule to immediate
+      const immediateDelivery = new Date();
+      immediateDelivery.setMinutes(immediateDelivery.getMinutes() + 5);
+
+      await query(
+        'UPDATE part_requests SET delivery_schedule = $1, upgrade_paid = $2 WHERE id = $3',
+        [immediateDelivery, true, requestId]
+      );
+
+      // Update queue items to deliver immediately
+      await query(
+        'UPDATE request_queue SET scheduled_delivery_time = $1 WHERE part_request_id = $2 AND status = $3',
+        [immediateDelivery, requestId, 'pending']
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'Request upgraded for immediate delivery',
+        data: {
+          upgrade_id: upgradeResult.rows[0].id,
+          new_delivery_time: immediateDelivery
+        }
+      });
+    }
+
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
 
   } catch (error: any) {
@@ -463,6 +452,3 @@ export async function PATCH(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
-// Force dynamic rendering for production
-export const dynamic = 'force-dynamic';
