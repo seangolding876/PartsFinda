@@ -138,7 +138,7 @@ async function getAllActiveSellers() {
        FROM users 
        WHERE role = 'seller' 
        AND email_verified = true
-       AND status = 'active'`
+      --AND status = 'active'`
     );
     
     console.log(`✅ Found ${sellers.rows.length} active sellers`);
