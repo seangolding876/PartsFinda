@@ -21,7 +21,9 @@ module.exports = {
     // ---- BACKGROUND WORKER ----
     {
       name: 'partsfinda-worker',
-       script: 'src/workers/requestProcessor.ts',
+      script: 'ts-node', // or use compiled JS
+      args: 'src/workers/requestProcessor.ts',
+      interpreter: 'node',
       instances: 1,
       cwd: '/var/www/partsfinda',
       watch: false,

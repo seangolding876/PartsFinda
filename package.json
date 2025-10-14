@@ -7,7 +7,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "node worker.js",
     "lint": "next lint"
   },
   "dependencies": {
