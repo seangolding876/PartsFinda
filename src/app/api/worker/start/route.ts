@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import RequestProcessor from '../../../../../worker/requestProcessor';
 
+
 let processor: RequestProcessor | null = null;
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
