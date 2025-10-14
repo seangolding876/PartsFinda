@@ -141,14 +141,8 @@ async function getRelevantSellers(partRequestData: PartRequestData, userParish: 
        WHERE u.role = 'seller' 
        AND u.email_verified = true
        AND u.membership_plan IN ('Basic', 'Premium', 'Enterprise')
-       AND (u.parish = $1 OR u.parish IS NULL OR u.parish = '')
-       ORDER BY 
-         CASE 
-           WHEN u.parish = $1 THEN 1
-           WHEN u.membership_plan = 'Premium' THEN 2
-           WHEN u.membership_plan = 'Enterprise' THEN 3
-           ELSE 4
-         END`,
+       --AND (u.parish = $1 OR u.parish IS NULL OR u.parish = '')
+      `,
       [userParish]
     );
     
