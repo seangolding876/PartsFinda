@@ -108,77 +108,79 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function to calculate delivery schedule based on membership
-function calculateDeliverySchedule(membershipPlan: string): Date {
+// Helper function to calculate delivery schedule based on SELLER membership
+function calculateSellerDeliverySchedule(sellerMembership: string): Date {
   const deliveryTime = new Date();
   
-  switch (membershipPlan.toLowerCase()) {
-    case 'free':
-      deliveryTime.setHours(deliveryTime.getHours() + 48);
-      break;
+  // Seller ke membership ke hisaab se delivery time
+  switch (sellerMembership.toLowerCase()) {
     case 'basic':
-      deliveryTime.setHours(deliveryTime.getHours() + 24);
+      deliveryTime.setHours(deliveryTime.getHours() + 24); // 24 hours for basic sellers
       break;
     case 'premium':
     case 'enterprise':
-      deliveryTime.setMinutes(deliveryTime.getMinutes() + 5);
+      deliveryTime.setMinutes(deliveryTime.getMinutes() + 5); // 5 minutes for premium/enterprise
       break;
     default:
-      deliveryTime.setHours(deliveryTime.getHours() + 24);
+      deliveryTime.setHours(deliveryTime.getHours() + 48); // 48 hours for free/default
   }
   
   return deliveryTime;
 }
 
-// Helper function to get relevant sellers for a part request
-async function getRelevantSellers(partRequestData: PartRequestData) {
+// Helper function to get ALL active sellers
+async function getAllActiveSellers() {
   try {
     const sellers = await query(
       `SELECT 
-        u.id, u.name, u.email, u.membership_plan,
-        u.specializations, u.vehicle_brands, u.part_categories, u.parish
-       FROM users u
-       WHERE u.role = 'seller' 
-       AND u.email_verified = true
-       AND u.membership_plan IN ('Basic', 'Premium', 'Enterprise')
-       `,
-   
+        id, name, email, membership_plan,
+        specializations, vehicle_brands, part_categories, parish
+       FROM users 
+       WHERE role = 'seller' 
+       AND email_verified = true
+       AND status = 'active'`
     );
-    console.log(`✅ Found ${sellers.rows.length} potential sellers before filtering`);
+    
+    console.log(`✅ Found ${sellers.rows.length} active sellers`);
     return sellers.rows;
   } catch (error) {
-    console.error('❌ Error fetching relevant sellers:', error);
+    console.error('❌ Error fetching sellers:', error);
     return [];
   }
 }
 
-// Helper function to schedule request in queue
-async function scheduleRequestInQueue(partRequestId: number, sellers: any[], deliverySchedule: Date) {
+// Helper function to schedule request in queue for EACH seller with their own delivery time
+async function scheduleRequestForAllSellers(partRequestId: number, sellers: any[]) {
   try {
-    const queuePromises = sellers.map(seller => 
-      query(
+    let scheduledCount = 0;
+    
+    // Har seller ke liye individually schedule karen with their own delivery time
+    for (const seller of sellers) {
+      const sellerDeliveryTime = calculateSellerDeliverySchedule(seller.membership_plan);
+      
+      await query(
         `INSERT INTO request_queue 
          (part_request_id, seller_id, scheduled_delivery_time, status) 
          VALUES ($1, $2, $3, 'pending')`,
-        [partRequestId, seller.id, deliverySchedule]
-      )
-    );
+        [partRequestId, seller.id, sellerDeliveryTime]
+      );
+      
+      scheduledCount++;
+      console.log(`📅 Scheduled for seller ${seller.name} (${seller.membership_plan}) at ${sellerDeliveryTime}`);
+    }
     
-    await Promise.all(queuePromises);
-    console.log(`✅ Scheduled request ${partRequestId} for ${sellers.length} sellers at ${deliverySchedule}`);
-    
-    return sellers.length;
+    console.log(`✅ Scheduled request ${partRequestId} for ${scheduledCount} sellers`);
+    return scheduledCount;
   } catch (error) {
     console.error('❌ Error scheduling request in queue:', error);
     throw error;
   }
 }
 
-// Enhanced POST handler with comprehensive error handling
-// Enhanced POST handler with comprehensive error handling
+// Enhanced POST handler - Buyer membership check removed
 export async function POST(request: NextRequest) {
   try {
-    // Authorization
+    // Authorization - sirf token check karen
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ 
@@ -290,13 +292,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Start transaction using the existing query function
+    // Start transaction
     await query('BEGIN');
 
     try {
-      // Check user exists and get membership
+      // Check user exists (sirf verify karen ke user hai)
       const userCheck = await query(
-        'SELECT id, email, membership_plan FROM users WHERE id = $1', 
+        'SELECT id, email FROM users WHERE id = $1', 
         [userId]
       );
       
@@ -307,8 +309,6 @@ export async function POST(request: NextRequest) {
           error: 'User not found' 
         }, { status: 404 });
       }
-
-      const userMembership = userCheck.rows[0].membership_plan || 'free';
 
       // Check make exists
       const makeCheck = await query(
@@ -338,23 +338,17 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Calculate delivery schedule based on membership
-      const deliverySchedule = calculateDeliverySchedule(userMembership);
-      
       // Set expiry to 30 days from now
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
 
-      console.log('🗓️ Calculated schedules:', { deliverySchedule, expiresAt });
-
-      // Insert part request
+      // Insert part request - NO delivery_schedule aur NO membership_plan_at_request
       const insertQuery = `
         INSERT INTO part_requests (
           user_id, make_id, model_id, vehicle_year, part_name, part_number, description, 
-          budget, parish, status, expires_at, condition, urgency,
-          delivery_schedule, membership_plan_at_request
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        RETURNING id, part_name, created_at, expires_at, status, delivery_schedule
+          budget, parish, status, expires_at, condition, urgency
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id, part_name, created_at, expires_at, status
       `;
 
       const insertParams = [
@@ -370,9 +364,7 @@ export async function POST(request: NextRequest) {
         'open',
         expiresAt,
         body.condition,
-        body.urgency,
-        deliverySchedule,
-        userMembership
+        body.urgency
       ];
 
       console.log('💾 Inserting part request with params:', insertParams);
@@ -386,40 +378,19 @@ export async function POST(request: NextRequest) {
       const newRequest = result.rows[0];
       console.log('✅ Part request inserted:', newRequest);
 
-      // Get relevant sellers for this request
-      const relevantSellers = await getRelevantSellers(body);
-      console.log(`🔍 Found ${relevantSellers.length} relevant sellers`);
+      // Get ALL active sellers
+      const allSellers = await getAllActiveSellers();
+      console.log(`🔍 Found ${allSellers.length} active sellers`);
       
-      // Schedule request for sellers
+      // Schedule request for ALL sellers with their individual delivery times
       let scheduledSellersCount = 0;
-      if (relevantSellers.length > 0) {
-        scheduledSellersCount = await scheduleRequestInQueue(
-          newRequest.id, 
-          relevantSellers, 
-          deliverySchedule
-        );
+      if (allSellers.length > 0) {
+        scheduledSellersCount = await scheduleRequestForAllSellers(newRequest.id, allSellers);
       }
 
       // Commit transaction
       await query('COMMIT');
       console.log('✅ Transaction committed successfully');
-
-      // Prepare response message based on membership
-      let deliveryMessage = '';
-      switch (userMembership.toLowerCase()) {
-        case 'free':
-          deliveryMessage = 'Your request will be delivered to sellers in 48 hours';
-          break;
-        case 'basic':
-          deliveryMessage = 'Your request will be delivered to sellers in 24 hours';
-          break;
-        case 'premium':
-        case 'enterprise':
-          deliveryMessage = 'Your request is being delivered to sellers immediately';
-          break;
-        default:
-          deliveryMessage = 'Your request will be processed shortly';
-      }
 
       return NextResponse.json({
         success: true,
@@ -427,9 +398,8 @@ export async function POST(request: NextRequest) {
         data: {
           ...newRequest,
           scheduled_sellers_count: scheduledSellersCount,
-          user_membership: userMembership,
-          delivery_message: deliveryMessage,
-          estimated_delivery_time: deliverySchedule
+          total_sellers: allSellers.length,
+          note: 'Request queued for all active sellers with individual delivery times based on their membership plans'
         }
       });
 
@@ -466,126 +436,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
-// Enhanced PATCH handler
-export async function PATCH(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Authentication required' 
-      }, { status: 401 });
-    }
 
-    const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
-    const userId = parseInt(userInfo.userId, 10);
-
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Invalid JSON in request body' 
-      }, { status: 400 });
-    }
-
-    const { requestId, action } = body;
-
-    if (!requestId || !action) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Request ID and action are required' 
-      }, { status: 400 });
-    }
-
-    // Verify user owns this request
-    const requestCheck = await query(
-      'SELECT id, status FROM part_requests WHERE id = $1 AND user_id = $2',
-      [requestId, userId]
-    );
-
-    if (requestCheck.rows.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Request not found or access denied' 
-      }, { status: 404 });
-    }
-
-    const currentStatus = requestCheck.rows[0].status;
-    
-    if (action === 'cancel') {
-      if (currentStatus === 'cancelled') {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Request is already cancelled' 
-        }, { status: 400 });
-      }
-
-      await query(
-        'UPDATE part_requests SET status = $1, updated_at = NOW() WHERE id = $2',
-        ['cancelled', requestId]
-      );
-
-      // Also cancel any pending queue items
-      await query(
-        'UPDATE request_queue SET status = $1 WHERE part_request_id = $2 AND status = $3',
-        ['cancelled', requestId, 'pending']
-      );
-
-      return NextResponse.json({
-        success: true,
-        message: 'Request cancelled successfully'
-      });
-    }
-
-    if (action === 'upgrade') {
-      // Upgrade logic for faster delivery
-      const upgradeResult = await query(
-        `INSERT INTO listing_upgrade 
-         (part_request_id, user_id, amount, payment_status, upgraded_at) 
-         VALUES ($1, $2, $3, $4, NOW())
-         RETURNING id`,
-        [requestId, userId, 500.00, 'paid']
-      );
-
-      // Update delivery schedule to immediate
-      const immediateDelivery = new Date();
-      immediateDelivery.setMinutes(immediateDelivery.getMinutes() + 5);
-
-      await query(
-        'UPDATE part_requests SET delivery_schedule = $1, upgrade_paid = $2 WHERE id = $3',
-        [immediateDelivery, true, requestId]
-      );
-
-      // Update queue items to deliver immediately
-      await query(
-        'UPDATE request_queue SET scheduled_delivery_time = $1 WHERE part_request_id = $2 AND status = $3',
-        [immediateDelivery, requestId, 'pending']
-      );
-
-      return NextResponse.json({
-        success: true,
-        message: 'Request upgraded for immediate delivery',
-        data: {
-          upgrade_id: upgradeResult.rows[0].id,
-          new_delivery_time: immediateDelivery
-        }
-      });
-    }
-
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Invalid action' 
-    }, { status: 400 });
-
-  } catch (error: any) {
-    console.error('❌ Error in PATCH /api/part-requests:', error.message, error.stack);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to update request',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    }, { status: 500 });
-  }
-}
+// PATCH temporarily removed as requested
