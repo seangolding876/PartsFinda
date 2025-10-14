@@ -18,6 +18,12 @@ export async function sendMail({ to, subject, html }: { to: string; subject: str
     html,
   });
 
+  console.log("📨 Using SMTP config:", {
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  user: process.env.SMTP_USER,
+});
+
   console.log("📧 Email sent:", info.messageId);
   return { success: true, messageId: info.messageId };
 }
