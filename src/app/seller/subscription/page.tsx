@@ -66,20 +66,34 @@ function StripeCheckoutForm({
     setError('');
 
     try {
-      const { error: stripeError } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/seller/subscription/success`,
-        },
-        redirect: 'if_required',
-      });
+      // const { error: stripeError } = await stripe.confirmPayment({
+      //   elements,
+      //   confirmParams: {
+      //     return_url: `${window.location.origin}/seller/subscription/success`,
+      //   },
+      //   redirect: 'if_required',
+      // });
 
-      if (stripeError) {
-        setError(stripeError.message || 'Payment failed. Please try again.');
-      } else {
-        // Payment successful
-        onSuccess();
-      }
+      // if (stripeError) {
+      //   setError(stripeError.message || 'Payment failed. Please try again.');
+      // } else {
+      //   // Payment successful
+      //   onSuccess();
+      // }
+
+      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+  elements,
+  confirmParams: { return_url: window.location.origin + '/seller/subscription/success' },
+  redirect: 'if_required',
+});
+
+if (stripeError) {
+  console.error('Stripe Error:', stripeError);
+  alert(`Payment failed: ${stripeError.message}`);
+} else {
+  console.log('Payment successful:', paymentIntent);
+}
+
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     } finally {
