@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Simple mock worker for now
 let workerStatus = {
   isRunning: false,
@@ -41,7 +45,7 @@ export async function GET(request: NextRequest) {
         pendingDetails: {
           total_pending: '5',
           avg_delay_seconds: 3600,
-          oldest_pending: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
+          oldest_pending: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
         },
         workerStats: workerStatus
       };
@@ -61,10 +65,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Default response
     return NextResponse.json({
-      success: false,
-      error: 'Invalid action. Use: start, status, or stop'
-    }, { status: 400 });
+      success: true,
+      message: 'Worker API is running',
+      available_actions: ['start', 'status', 'stop'],
+      current_status: workerStatus
+    });
 
   } catch (error: any) {
     console.error('Error in worker API:', error);
