@@ -1,17 +1,13 @@
 {
+  "name": "partsfinda-marketplace",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "node --loader ts-node/esm src/start_worker.mjs",
-    "worker:dev": "node --loader ts-node/esm --transpile-only src/start_worker.mjs",
-    "lint": "next lint",
-    
-    "build:worker": "tsc --project tsconfig.worker.json --outDir ./dist-worker",
-    "start:worker": "node dist-worker/start_worker.js",
-    "build:all": "npm run build && npm run build:worker"
-  }
-,
+    "lint": "next lint"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
     "@stripe/react-stripe-js": "^2.4.0",
@@ -22,7 +18,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.5",
     "bcryptjs": "^3.0.2",
-    "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.344.0",
@@ -34,7 +29,6 @@
     "resend": "^2.0.0",
     "same-runtime": "^0.0.1",
     "stripe": "^18.5.0",
-    "tsconfig-paths": "^4.2.0",
     "zod": "^3.22.4",
     "zustand": "^4.5.2"
   },
