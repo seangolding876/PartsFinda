@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "target": "ES2020"
+  },
+  "include": ["src/scripts/**/*.ts", "src/workers/**/*.ts"]
+}

@@ -21,10 +21,11 @@ module.exports = {
     // ---- BACKGROUND WORKER ----
     {
       name: 'partsfinda-worker',
-      script: './scripts/start-worker.mjs',
-      interpreter: 'node',
+       script: 'src/scripts/start-worker.js',
+      instances: 1,
       cwd: '/var/www/partsfinda',
       watch: false,
+      autorestart: true,
       env: {
         NODE_ENV: 'production'
       },
