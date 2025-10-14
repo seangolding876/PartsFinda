@@ -21,13 +21,10 @@ module.exports = {
     // ---- BACKGROUND WORKER ----
     {
       name: 'partsfinda-worker',
-      script: 'ts-node', // or use compiled JS
-      args: 'src/workers/requestProcessor.ts',
+      script: './scripts/start-worker.mjs',
       interpreter: 'node',
-      instances: 1,
       cwd: '/var/www/partsfinda',
       watch: false,
-      autorestart: true,
       env: {
         NODE_ENV: 'production'
       },

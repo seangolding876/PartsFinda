@@ -3,7 +3,10 @@
   "compilerOptions": {
     "noEmit": true,
     "module": "ESNext",
-    "target": "ES2020"
+    "target": "ES2020",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   },
   "include": ["src/scripts/**/*.ts", "src/workers/**/*.ts"]
 }
