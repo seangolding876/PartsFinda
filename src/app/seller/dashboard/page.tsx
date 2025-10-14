@@ -4,56 +4,169 @@ import { useState, useEffect, Suspense } from 'react';
 import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
 import Link from 'next/link';
 
+// Auth utility
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+interface SellerRequest {
+  id: number;
+  queueId: string;
+  partName: string;
+  partNumber?: string;
+  description: string;
+  budget: number;
+  parish: string;
+  condition: string;
+  urgency: string;
+  vehicleYear: number;
+  makeName: string;
+  modelName: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string;
+  dateReceived: string;
+  expiresAt: string;
+  queueStatus: string;
+  scheduledDelivery: string;
+  processedAt?: string;
+  totalQuotes: number;
+  hasQuoted: boolean;
+  quoted: boolean;
+}
+
+interface SellerStats {
+  activeListings: number;
+  pendingQuotes: number;
+  completedOrders: number;
+  monthlyRevenue: number;
+  totalQuotes: number;
+  acceptanceRate: number;
+  avgResponseTime: number;
+}
+
 function SellerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [requests, setRequests] = useState<SellerRequest[]>([]);
+  const [stats, setStats] = useState<SellerStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submittingQuote, setSubmittingQuote] = useState<number | null>(null);
 
-  const stats = [
-    { icon: <Package className="w-6 h-6" />, label: 'Active Listings', value: '45', color: 'text-blue-600', bg: 'bg-blue-100', trend: '+5 this week' },
-    { icon: <MessageCircle className="w-6 h-6" />, label: 'Pending Quotes', value: '12', color: 'text-orange-600', bg: 'bg-orange-100', trend: '3 urgent' },
-    { icon: <CheckCircle className="w-6 h-6" />, label: 'Completed Orders', value: '89', color: 'text-green-600', bg: 'bg-green-100', trend: '+8 this month' },
-    { icon: <DollarSign className="w-6 h-6" />, label: 'Monthly Revenue', value: 'J$125,000', color: 'text-purple-600', bg: 'bg-purple-100', trend: '+15% vs last month' }
-  ];
+  // Fetch data based on active tab
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const authData = getAuthData();
+      
+      if (!authData?.token) {
+        console.error('No authentication token found');
+        setLoading(false);
+        return;
+      }
 
-  const pendingRequests = [
-    {
-      id: 'REQ-001',
-      partName: 'Brake Pads Set',
-      buyer: 'John Doe',
-      vehicle: '2020 Toyota Camry',
-      budget: 'J$5,000 - J$10,000',
-      urgency: 'urgent',
-      dateReceived: '2024-01-16T08:30:00Z',
-      expiresAt: '2024-01-23T08:30:00Z',
-      description: 'Front brake pads for 2020 Toyota Camry. Looking for ceramic pads with good quality.',
-      location: 'Kingston',
-      quotesSubmitted: 0,
-      quoted: false
-    },
-    {
-      id: 'REQ-002',
-      partName: 'Engine Oil Filter',
-      buyer: 'Sarah Wilson',
-      vehicle: '2019 Honda Civic',
-      budget: 'J$2,000 - J$3,000',
-      urgency: 'normal',
-      dateReceived: '2024-01-15T14:20:00Z',
-      expiresAt: '2024-01-22T14:20:00Z',
-      description: 'OEM quality oil filter for Honda Civic 2019.',
-      location: 'St. Andrew',
-      quotesSubmitted: 1,
-      quoted: true
+      try {
+        if (activeTab === 'overview' || activeTab === 'requests') {
+          // Fetch requests
+          const requestsResponse = await fetch(`/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`, {
+            headers: {
+              'Authorization': `Bearer ${authData.token}`
+            }
+          });
+
+          if (requestsResponse.ok) {
+            const requestsResult = await requestsResponse.json();
+            if (requestsResult.success) {
+              setRequests(requestsResult.data);
+            }
+          }
+
+          // Fetch stats for overview
+          if (activeTab === 'overview') {
+            const statsResponse = await fetch('/api/seller/stats', {
+              headers: {
+                'Authorization': `Bearer ${authData.token}`
+              }
+            });
+
+            if (statsResponse.ok) {
+              const statsResult = await statsResponse.json();
+              if (statsResult.success) {
+                setStats(statsResult.data);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [activeTab, filterStatus]);
+
+  const handleSubmitQuote = async (requestId: number) => {
+    const authData = getAuthData();
+    if (!authData?.token) return;
+
+    setSubmittingQuote(requestId);
+
+    try {
+      // Example quote data - in real app, this would come from a form
+      const quoteData = {
+        requestId: requestId,
+        price: 7500, // This should come from user input
+        availability: 'in_stock',
+        deliveryTime: '2-3 business days',
+        notes: 'Brand new OEM part with 1-year warranty',
+        warranty: '1 year',
+        condition: 'new'
+      };
+
+      const response = await fetch('/api/seller/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(quoteData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setRequests(prev => prev.map(req => 
+          req.id === requestId ? { ...req, hasQuoted: true, quoted: true } : req
+        ));
+        alert('Quote submitted successfully!');
+      } else {
+        alert('Failed to submit quote: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      alert('Failed to submit quote. Please try again.');
+    } finally {
+      setSubmittingQuote(null);
     }
-  ];
+  };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'accepted': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'urgent': return 'bg-red-100 text-red-800';
-      case 'normal': return 'bg-yellow-100 text-yellow-800';
+      case 'processed': return 'bg-green-100 text-green-800';
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-orange-100 text-orange-800';
+      case 'low': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -68,6 +181,73 @@ function SellerDashboard() {
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-JM', {
+      style: 'currency',
+      currency: 'JMD'
+    }).format(amount);
+  };
+
+  // Filter requests based on search and filter
+  const filteredRequests = requests.filter(request => {
+    const matchesSearch = request.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.makeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         request.modelName.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = filterStatus === 'all' || 
+                         (filterStatus === 'unquoted' && !request.hasQuoted) ||
+                         (filterStatus === 'quoted' && request.hasQuoted);
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  // Stats for display
+  const displayStats = [
+    { 
+      icon: <Package className="w-6 h-6" />, 
+      label: 'Active Listings', 
+      value: stats?.activeListings.toString() || '0', 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-100', 
+      trend: '+5 this week' 
+    },
+    { 
+      icon: <MessageCircle className="w-6 h-6" />, 
+      label: 'Pending Quotes', 
+      value: stats?.pendingQuotes.toString() || '0', 
+      color: 'text-orange-600', 
+      bg: 'bg-orange-100', 
+      trend: `${filteredRequests.filter(r => !r.hasQuoted).length} urgent` 
+    },
+    { 
+      icon: <CheckCircle className="w-6 h-6" />, 
+      label: 'Completed Orders', 
+      value: stats?.completedOrders.toString() || '0', 
+      color: 'text-green-600', 
+      bg: 'bg-green-100', 
+      trend: '+8 this month' 
+    },
+    { 
+      icon: <DollarSign className="w-6 h-6" />, 
+      label: 'Monthly Revenue', 
+      value: formatCurrency(stats?.monthlyRevenue || 0), 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-100', 
+      trend: '+15% vs last month' 
+    }
+  ];
+
+  if (loading && activeTab === 'overview') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -80,7 +260,7 @@ function SellerDashboard() {
             </div>
             <div className="flex gap-3">
               <Link
-                href="/request-part"
+                href="/seller/add-part"
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" />
@@ -140,41 +320,10 @@ function SellerDashboard() {
                 >
                   <span>Part Requests</span>
                   <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                    {pendingRequests.filter(r => !r.quoted).length}
+                    {requests.filter(r => !r.hasQuoted).length}
                   </span>
                 </button>
-                <button
-                  onClick={() => setActiveTab('quotes')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'quotes' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  My Quotes
-                </button>
-                <button
-                  onClick={() => setActiveTab('inventory')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'inventory' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Inventory
-                </button>
-                <button
-                  onClick={() => setActiveTab('orders')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'orders' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Orders
-                </button>
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'profile' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Profile Settings
-                </button>
+                {/* ... other nav items ... */}
               </nav>
             </div>
           </div>
@@ -185,7 +334,7 @@ function SellerDashboard() {
               <div className="space-y-6">
                 {/* Stats Grid */}
                 <div className="grid md:grid-cols-4 gap-6">
-                  {stats.map((stat, index) => (
+                  {displayStats.map((stat, index) => (
                     <div key={index} className="bg-white rounded-lg shadow-lg p-6">
                       <div className={`${stat.bg} rounded-full w-12 h-12 flex items-center justify-center mb-4`}>
                         <div className={stat.color}>{stat.icon}</div>
@@ -207,10 +356,10 @@ function SellerDashboard() {
                     >
                       <AlertCircle className="w-8 h-8 text-orange-600 mb-3" />
                       <h4 className="font-semibold text-gray-800">Pending Requests</h4>
-                      <p className="text-sm text-gray-600">{pendingRequests.filter(r => !r.quoted).length} requests waiting for quotes</p>
+                      <p className="text-sm text-gray-600">{requests.filter(r => !r.hasQuoted).length} requests waiting for quotes</p>
                     </button>
                     <Link
-                      href="/request-part"
+                      href="/seller/add-part"
                       className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition-colors text-left block"
                     >
                       <Plus className="w-8 h-8 text-green-600 mb-3" />
@@ -230,9 +379,9 @@ function SellerDashboard() {
 
                 {/* Recent Activity */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Activity</h3>
+                  <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Requests</h3>
                   <div className="space-y-4">
-                    {pendingRequests.slice(0, 3).map((request) => (
+                    {requests.slice(0, 3).map((request) => (
                       <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                         <div className="flex items-center gap-4">
                           <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
@@ -240,12 +389,12 @@ function SellerDashboard() {
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-800">{request.partName}</h4>
-                            <p className="text-sm text-gray-600">{request.buyer} • {request.vehicle}</p>
+                            <p className="text-sm text-gray-600">{request.buyerName} • {request.makeName} {request.modelName}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${request.quoted ? getStatusColor('accepted') : getStatusColor('pending')}`}>
-                            {request.quoted ? 'Quoted' : 'New Request'}
+                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${request.hasQuoted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {request.hasQuoted ? 'Quoted' : 'New Request'}
                           </div>
                           <p className="text-sm text-gray-500 mt-1">{timeAgo(request.dateReceived)}</p>
                         </div>
@@ -284,91 +433,107 @@ function SellerDashboard() {
                 </div>
 
                 {/* Requests List */}
-                <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-xl font-bold text-gray-800">{request.partName}</h3>
-                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.urgency)}`}>
-                              {request.urgency}
-                            </div>
-                            {request.quoted && (
-                              <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                                Quoted
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading requests...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredRequests.map((request) => (
+                      <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-xl font-bold text-gray-800">{request.partName}</h3>
+                              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.urgency)}`}>
+                                {request.urgency}
                               </div>
-                            )}
+                              {request.hasQuoted && (
+                                <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                  Quoted
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-gray-600 mb-2">{request.makeName} {request.modelName} {request.vehicleYear} • {request.buyerName}</p>
+                            <p className="text-gray-700 mb-4">{request.description}</p>
                           </div>
-                          <p className="text-gray-600 mb-2">{request.vehicle} • {request.buyer}</p>
-                          <p className="text-gray-700 mb-4">{request.description}</p>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">Request ID: REQ-{request.id}</p>
+                            <p className="text-sm text-gray-500">Received: {timeAgo(request.dateReceived)}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Request ID: {request.id}</p>
-                          <p className="text-sm text-gray-500">Received: {timeAgo(request.dateReceived)}</p>
-                        </div>
-                      </div>
 
-                      <div className="grid md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Budget</p>
-                          <p className="text-green-600 font-bold">{request.budget}</p>
+                        <div className="grid md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Budget</p>
+                            <p className="text-green-600 font-bold">{formatCurrency(request.budget)}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Location</p>
+                            <p className="text-gray-600">{request.parish}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Expires</p>
+                            <p className="text-red-600">{new Date(request.expiresAt).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-700">Quotes</p>
+                            <p className="text-blue-600 font-bold">{request.totalQuotes}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Location</p>
-                          <p className="text-gray-600">{request.location}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Expires</p>
-                          <p className="text-red-600">{new Date(request.expiresAt).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-700">Quotes</p>
-                          <p className="text-blue-600 font-bold">{request.quotesSubmitted}</p>
-                        </div>
-                      </div>
 
-                      <div className="flex gap-3">
-                        {!request.quoted ? (
-                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                            <Send className="w-4 h-4" />
-                            Submit Quote
+                        <div className="flex gap-3">
+                          {!request.hasQuoted ? (
+                            <button 
+                              onClick={() => handleSubmitQuote(request.id)}
+                              disabled={submittingQuote === request.id}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                            >
+                              {submittingQuote === request.id ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-4 h-4" />
+                                  Submit Quote
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                              <Edit className="w-4 h-4" />
+                              Edit Quote
+                            </button>
+                          )}
+                          <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            View Details
                           </button>
-                        ) : (
-                          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                            <Edit className="w-4 h-4" />
-                            Edit Quote
-                          </button>
-                        )}
-                        <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                    
+                    {filteredRequests.length === 0 && (
+                      <div className="text-center py-12 bg-white rounded-lg shadow-lg">
+                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h4 className="text-lg font-semibold text-gray-800 mb-2">No Requests Found</h4>
+                        <p className="text-gray-600">
+                          {searchQuery || filterStatus !== 'all' 
+                            ? 'Try adjusting your search or filter criteria'
+                            : 'No part requests available at the moment'
+                          }
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Other tabs would be similar... */}
-            {activeTab !== 'overview' && activeTab !== 'requests' && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">
-                  {activeTab === 'quotes' && 'My Quotes'}
-                  {activeTab === 'inventory' && 'Inventory Management'}
-                  {activeTab === 'orders' && 'Order Management'}
-                  {activeTab === 'profile' && 'Profile Settings'}
-                </h3>
-                <div className="text-center py-12">
-                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Coming Soon</h4>
-                  <p className="text-gray-600">
-                    This section is under development and will be available soon.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
