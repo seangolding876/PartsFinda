@@ -3,7 +3,12 @@ import { PartRequest, QueueItem, User } from '../../types/database';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 });
+
 
 // Generic query function with proper TypeScript support
 export const query = async <T = any>(text: string, params?: any[]): Promise<{ rows: T[] }> => {
