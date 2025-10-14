@@ -144,7 +144,7 @@ async function getRelevantSellers(partRequestData: PartRequestData) {
        `,
    
     );
-    
+    console.log(`✅ Found ${sellers.rows.length} potential sellers before filtering`);
     return sellers.rows;
   } catch (error) {
     console.error('❌ Error fetching relevant sellers:', error);
