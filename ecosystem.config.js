@@ -21,7 +21,7 @@ module.exports = {
     // ---- BACKGROUND WORKER ----
     {
       name: 'partsfinda-worker',
-       script: 'src/scripts/start-worker.mjs',
+       script: 'src/workers/requestProcessor.ts',
       instances: 1,
       cwd: '/var/www/partsfinda',
       watch: false,
