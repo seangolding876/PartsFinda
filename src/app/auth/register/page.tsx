@@ -141,9 +141,9 @@ export default function RegisterPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
   <h3 className="text-sm font-semibold text-blue-800 mb-2">Buyer Account Info</h3>
   <p className="text-sm text-blue-700">
-    Normal Buyer Accounts are free, but their requests will be sent to suppliers <strong>after 24 hours</strong>.
+        Use any email and password (min 6 characters) to create an account.
     <br />
-    To have your requests sent <strong>immediately</strong>, you need to upgrade to the Pro Package.
+    Create your Buyer Account to send requests and get instant quotes from suppliers—quick, easy, and free!
   </p>
 </div>
 
