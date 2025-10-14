@@ -78,11 +78,11 @@ export async function POST(request: NextRequest) {
       message: 'Free plan activated successfully!'
     });
 
-  } catch (error: any) {
-    console.error('Free plan activation error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to activate free plan' },
-      { status: 500 }
-    );
-  }
+  }  catch (error: any) {
+  console.error('Free plan activation error:', error.message, error.stack);
+  return NextResponse.json(
+    { success: false, error: error.message || 'Failed to activate free plan' },
+    { status: 500 }
+  );
+}
 }
