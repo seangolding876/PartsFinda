@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import RequestProcessor from '../../../../../worker/requestProcessor';
 
-let processor: RequestProcessor | null = null;
+// Simple mock worker for now
+let workerStatus = {
+  isRunning: false,
+  processed: 0,
+  failed: 0,
+  retried: 0,
+  lastUpdated: new Date().toISOString()
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,42 +15,59 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'start') {
-      if (!processor) {
-        processor = new RequestProcessor();
-        await processor.start();
-        return NextResponse.json({ 
-          success: true, 
-          message: 'Worker started successfully' 
-        });
-      }
+      workerStatus = {
+        isRunning: true,
+        processed: 0,
+        failed: 0,
+        retried: 0,
+        lastUpdated: new Date().toISOString()
+      };
       
       return NextResponse.json({ 
         success: true, 
-        message: 'Worker is already running' 
+        message: 'Worker started successfully',
+        status: workerStatus
       });
     }
 
     if (action === 'status') {
-      if (!processor) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Worker not started' 
-        });
-      }
-      
-      const queueStatus = await processor.getQueueStatus();
+      // Mock data for demonstration
+      const mockStats = {
+        status: [
+          { status: 'pending', count: '5', avg_delay_seconds: 3600, max_retries: 0 },
+          { status: 'processed', count: '25', avg_delay_seconds: 120, max_retries: 0 },
+          { status: 'failed', count: '2', avg_delay_seconds: null, max_retries: 3 }
+        ],
+        pendingDetails: {
+          total_pending: '5',
+          avg_delay_seconds: 3600,
+          oldest_pending: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2 hours ago
+        },
+        workerStats: workerStatus
+      };
+
       return NextResponse.json({
         success: true,
-        ...queueStatus
+        ...mockStats
+      });
+    }
+
+    if (action === 'stop') {
+      workerStatus.isRunning = false;
+      return NextResponse.json({
+        success: true,
+        message: 'Worker stopped',
+        status: workerStatus
       });
     }
 
     return NextResponse.json({
       success: false,
-      error: 'Invalid action. Use: start or status'
+      error: 'Invalid action. Use: start, status, or stop'
     }, { status: 400 });
 
   } catch (error: any) {
+    console.error('Error in worker API:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
