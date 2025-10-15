@@ -6,10 +6,7 @@ import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
 
-const [selectedRequest, setSelectedRequest] = useState<SellerRequest | null>(null);
-const [showQuoteModal, setShowQuoteModal] = useState(false);
-const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
-const [showDetailsModal, setShowDetailsModal] = useState(false);
+
 
 // Auth utility
 const getAuthData = () => {
@@ -66,6 +63,10 @@ function SellerDashboard() {
   const [stats, setStats] = useState<SellerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingQuote, setSubmittingQuote] = useState<number | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<SellerRequest | null>(null);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch data based on active tab
   useEffect(() => {
