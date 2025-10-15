@@ -5,6 +5,8 @@ import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, 
 import Link from 'next/link';
 import BuyerProfile from '@/components/buyerprofile';
 import QuotesTab from '@/components/dashboard/QuotesTab';
+import RequestDetailsModal from '@/components/RequestDetailsModal';
+import RequestQuotesModal from '@/components/RequestQuotesModal';
 
 // Auth utility
 const getAuthData = () => {
@@ -15,6 +17,11 @@ const getAuthData = () => {
   } catch (error) {
     return null;
   }
+};
+
+const getAuthToken = () => {
+  const authData = getAuthData();
+  return authData?.token || null;
 };
 
 interface PartRequest {
@@ -34,33 +41,49 @@ interface PartRequest {
   expires_at: string;
 }
 
+interface DashboardStats {
+  active: number;
+  quoted: number;
+  completed: number;
+  moneySaved: number;
+  totalQuotes: number;
+  pendingQuotes: number;
+}
+
 function BuyerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [partRequests, setPartRequests] = useState<PartRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     active: 0,
     quoted: 0,
     completed: 0,
-    moneySaved: 0
+    moneySaved: 0,
+    totalQuotes: 0,
+    pendingQuotes: 0
   });
+  
+  // Modal states
+  const [selectedRequest, setSelectedRequest] = useState<PartRequest | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showQuotesModal, setShowQuotesModal] = useState(false);
 
   // Fetch user's part requests
   const fetchUserRequests = async () => {
     try {
       setLoading(true);
-      const authData = getAuthData();
+      const token = getAuthToken();
       
-      if (!authData?.token) {
+      if (!token) {
         console.error('No authentication token found');
         return;
       }
 
       const response = await fetch('/api/part-requests?action=getUserRequests', {
         headers: {
-          'Authorization': `Bearer ${authData.token}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -72,7 +95,7 @@ function BuyerDashboard() {
       
       if (result.success) {
         setPartRequests(result.data);
-        calculateStats(result.data);
+        await calculateStats(result.data);
       } else {
         console.error('Failed to fetch requests:', result.error);
       }
@@ -83,25 +106,85 @@ function BuyerDashboard() {
     }
   };
 
+  // Fetch quotes statistics
+  const fetchQuotesStats = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return { totalQuotes: 0, pendingQuotes: 0 };
+
+      const response = await fetch('/api/quotes/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          return result.data;
+        }
+      }
+      return { totalQuotes: 0, pendingQuotes: 0 };
+    } catch (error) {
+      console.error('Error fetching quotes stats:', error);
+      return { totalQuotes: 0, pendingQuotes: 0 };
+    }
+  };
+
   // Calculate statistics from real data
-  const calculateStats = (requests: PartRequest[]) => {
+  const calculateStats = async (requests: PartRequest[]) => {
     const active = requests.filter(req => req.status === 'open').length;
+    const completed = requests.filter(req => req.status === 'fulfilled').length;
+    
+    // Calculate quoted requests (requests with quotes)
     const quoted = requests.filter(req => 
       req.status === 'open' && parseInt(req.created_at) > Date.now() - 7 * 24 * 60 * 60 * 1000
     ).length;
-    const completed = requests.filter(req => req.status === 'fulfilled').length;
     
-    // Calculate estimated savings (this would come from actual quote data)
+    // Calculate estimated savings
     const moneySaved = requests
       .filter(req => req.status === 'fulfilled')
-      .reduce((total, req) => total + (req.budget || 0) * 0.2, 0); // 20% savings estimate
+      .reduce((total, req) => total + (req.budget || 0) * 0.2, 0);
+
+    // Fetch real quotes count
+    const quotesStats = await fetchQuotesStats();
 
     setStats({
       active,
       quoted,
       completed,
-      moneySaved
+      moneySaved,
+      totalQuotes: quotesStats.totalQuotes,
+      pendingQuotes: quotesStats.pendingQuotes
     });
+  };
+
+  // Handle repost request
+  const handleRepostRequest = async (requestId: number) => {
+    if (!confirm('Are you sure you want to repost this request?')) return;
+    
+    try {
+      const token = getAuthToken();
+      const response = await fetch('/api/part-requests/repost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ requestId })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert('Request reposted successfully!');
+        fetchUserRequests(); // Refresh the list
+      } else {
+        alert(result.error || 'Failed to repost request');
+      }
+    } catch (error) {
+      console.error('Error reposting request:', error);
+      alert('Failed to repost request');
+    }
   };
 
   useEffect(() => {
@@ -118,8 +201,8 @@ function BuyerDashboard() {
     },
     { 
       icon: <MessageCircle className="w-6 h-6" />, 
-      label: 'Recent Quotes', 
-      value: stats.quoted.toString(), 
+      label: 'Pending Quotes', 
+      value: stats.pendingQuotes.toString(), 
       color: 'text-green-600', 
       bg: 'bg-green-100' 
     },
@@ -173,6 +256,18 @@ function BuyerDashboard() {
     return matchesSearch && matchesFilter;
   });
 
+  // Handle View Details button click
+  const handleViewDetails = (request: PartRequest) => {
+    setSelectedRequest(request);
+    setShowDetailsModal(true);
+  };
+
+  // Handle View Quotes button click
+  const handleViewQuotes = (request: PartRequest) => {
+    setSelectedRequest(request);
+    setShowQuotesModal(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -183,7 +278,9 @@ function BuyerDashboard() {
       </div>
     );
   }
+
   const authData = getAuthData();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -231,19 +328,27 @@ function BuyerDashboard() {
                 </button>
                 <button
                   onClick={() => setActiveTab('requests')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
                     activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
                   }`}
                 >
-                  My Requests ({partRequests.length})
+                  <span>My Requests</span>
+                  <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                    {partRequests.length}
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('quotes')}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
                     activeTab === 'quotes' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
                   }`}
                 >
-                  Quotes Received
+                  <span>Quotes Received</span>
+                  {stats.pendingQuotes > 0 && (
+                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      {stats.pendingQuotes}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab('profile')}
@@ -410,16 +515,25 @@ function BuyerDashboard() {
                         </div>
 
                         <div className="flex gap-3">
-                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewDetails(request)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                          >
                             <Eye className="w-4 h-4" />
                             View Details
                           </button>
-                          <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewQuotes(request)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                          >
                             <MessageCircle className="w-4 h-4" />
                             View Quotes
                           </button>
                           {request.status === 'cancelled' && (
-                            <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
+                            <button 
+                              onClick={() => handleRepostRequest(request.id)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                            >
                               Repost Request
                             </button>
                           )}
@@ -431,32 +545,40 @@ function BuyerDashboard() {
               </div>
             )}
 
-            {/* Other tabs (quotes, profile) remain similar but will be populated with real data */}
-            {/* {activeTab === 'quotes' && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Quotes Received</h3>
-                <p className="text-gray-600">Quotes functionality will be implemented soon.</p>
-              </div>
-            )} */}
-
             {activeTab === 'quotes' && <QuotesTab />}
 
-            {/* {activeTab === 'profile' && (
+            {activeTab === 'profile' && (
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h3>
-                <p className="text-gray-600">Profile settings and preferences will be available here.</p>
+                <BuyerProfile />
               </div>
-            )} */}
-
-            {activeTab === 'profile' && (
-  <div className="bg-white rounded-lg shadow-lg p-6">
-    <h3 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h3>
-    <BuyerProfile />
-  </div>
-)}
+            )}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      {selectedRequest && (
+        <>
+          <RequestDetailsModal
+            isOpen={showDetailsModal}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedRequest(null);
+            }}
+            request={selectedRequest}
+          />
+
+          <RequestQuotesModal
+            isOpen={showQuotesModal}
+            onClose={() => {
+              setShowQuotesModal(false);
+              setSelectedRequest(null);
+            }}
+            request={selectedRequest}
+          />
+        </>
+      )}
     </div>
   );
 }
