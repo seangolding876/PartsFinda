@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
       buyerName: request.buyer_name,
       hasQuoted: false,
       quoted: false,
-      totalQuotes: 0
+      totalQuotes: 0,
+      expiresAt: request.expires_at,
+      processedAt: request.processed_at
     }));
 
     return NextResponse.json({
