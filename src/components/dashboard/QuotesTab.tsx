@@ -33,7 +33,7 @@ export default function QuotesTab() {
 
   const fetchQuotes = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authData');
       const response = await fetch('/api/quotes', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -55,7 +55,7 @@ export default function QuotesTab() {
     if (!confirm('Are you sure you want to accept this quote?')) return;
     
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authData');
       const response = await fetch('/api/quotes/accept', {
         method: 'POST',
         headers: {
