@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User } from 'lucide-react';
 import Link from 'next/link';
 import BuyerProfile from '@/components/buyerprofile';
+import QuotesTab from '@/components/dashboard/QuotesTab';
 
 // Auth utility
 const getAuthData = () => {
@@ -431,12 +432,14 @@ function BuyerDashboard() {
             )}
 
             {/* Other tabs (quotes, profile) remain similar but will be populated with real data */}
-            {activeTab === 'quotes' && (
+            {/* {activeTab === 'quotes' && (
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-6">Quotes Received</h3>
                 <p className="text-gray-600">Quotes functionality will be implemented soon.</p>
               </div>
-            )}
+            )} */}
+
+            {activeTab === 'quotes' && <QuotesTab />}
 
             {/* {activeTab === 'profile' && (
               <div className="bg-white rounded-lg shadow-lg p-6">
