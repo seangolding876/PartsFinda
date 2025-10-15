@@ -19,11 +19,12 @@ interface SellerRequest {
   buyerEmail: string;
   buyerPhone?: string;
   expiresAt: string;
+  createdAt: string;
   processedAt: string;
+  queueStatus: string;
   hasQuoted: boolean;
   totalQuotes: number;
 }
-
 interface QuoteFormData {
   price: number;
   availability: string;

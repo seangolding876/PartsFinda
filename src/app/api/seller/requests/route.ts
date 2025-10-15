@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const userInfo = verifyToken(token);
     const sellerId = parseInt(userInfo.userId, 10);
 
+    // Build the query with proper parameterization
     const requestsResult = await query(
       `SELECT 
         pr.id as request_id,
@@ -25,8 +26,8 @@ export async function GET(request: NextRequest) {
         pr.urgency,
         pr.description,
         pr.vehicle_year,
-        pr.make_name,
-        pr.model_name,
+        mk.name as make_name,
+        md.name as model_name,
         u.name as buyer_name,
         u.email as buyer_email,
         u.phone as buyer_phone,
@@ -44,9 +45,11 @@ export async function GET(request: NextRequest) {
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
+       JOIN makes mk ON pr.make_id = mk.id
+       JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
        WHERE rq.seller_id = $1 AND rq.status = 'processed'
        ORDER BY rq.processed_at DESC`,
-      [sellerId]
+      [sellerId] // Parameterized seller_id
     );
 
     const requests = requestsResult.rows.map(request => ({
