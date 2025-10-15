@@ -22,9 +22,26 @@ interface Quote {
   requested_budget: number;
 }
 
+// Auth utility - same as seller dashboard
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      return parsed.token || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
+};
+
 export default function QuotesTab() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
 
   useEffect(() => {
@@ -33,7 +50,16 @@ export default function QuotesTab() {
 
   const fetchQuotes = async () => {
     try {
-      const token = localStorage.getItem('authData');
+      setError(null);
+      setLoading(true);
+      
+      const token = getAuthToken();
+      if (!token) {
+        setError('Please login again');
+        return;
+      }
+
+      console.log('🔄 Fetching quotes with token...');
       const response = await fetch('/api/quotes', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -41,11 +67,22 @@ export default function QuotesTab() {
       });
       
       const data = await response.json();
-      if (data.success) {
-        setQuotes(data.data);
+      console.log('📨 API Response:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
-    } catch (error) {
-      console.error('Error fetching quotes:', error);
+      
+      if (data.success) {
+        setQuotes(data.data || []);
+        console.log(`✅ Loaded ${data.data?.length || 0} quotes`);
+      } else {
+        throw new Error(data.error || 'Failed to fetch quotes');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching quotes:', error);
+      setError(error.message || 'Failed to load quotes');
+      setQuotes([]);
     } finally {
       setLoading(false);
     }
@@ -55,7 +92,12 @@ export default function QuotesTab() {
     if (!confirm('Are you sure you want to accept this quote?')) return;
     
     try {
-      const token = localStorage.getItem('authData');
+      const token = getAuthToken();
+      if (!token) {
+        alert('Please login again');
+        return;
+      }
+
       const response = await fetch('/api/quotes/accept', {
         method: 'POST',
         headers: {
@@ -69,27 +111,60 @@ export default function QuotesTab() {
       if (data.success) {
         alert('Quote accepted successfully!');
         fetchQuotes(); // Refresh quotes
+      } else {
+        alert(data.error || 'Failed to accept quote');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting quote:', error);
+      alert('Failed to accept quote. Please try again.');
     }
   };
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="animate-pulse">Loading quotes...</div>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3">Loading quotes...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center py-8">
+          <div className="text-red-600 mb-4">Error: {error}</div>
+          <button
+            onClick={fetchQuotes}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-6">Quotes Received</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-gray-800">Quotes Received</h3>
+        <button
+          onClick={fetchQuotes}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+        >
+          Refresh
+        </button>
+      </div>
       
       {quotes.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500">No quotes received yet.</p>
+          <p className="text-sm text-gray-400 mt-2">
+            Quotes from sellers will appear here when they respond to your part requests.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -140,9 +215,14 @@ export default function QuotesTab() {
                   </button>
                   <button
                     onClick={() => handleAcceptQuote(quote.id)}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                    disabled={quote.status === 'accepted'}
+                    className={`px-4 py-2 rounded text-sm ${
+                      quote.status === 'accepted' 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
                   >
-                    Accept Quote
+                    {quote.status === 'accepted' ? 'Accepted' : 'Accept Quote'}
                   </button>
                 </div>
               </div>
@@ -152,6 +232,7 @@ export default function QuotesTab() {
                 <span className={`px-2 py-1 rounded ${
                   quote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                   quote.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                  quote.status === 'rejected' ? 'bg-red-100 text-red-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
                   {quote.status}
@@ -240,9 +321,14 @@ export default function QuotesTab() {
                       handleAcceptQuote(selectedQuote.id);
                       setSelectedQuote(null);
                     }}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    disabled={selectedQuote.status === 'accepted'}
+                    className={`px-4 py-2 rounded ${
+                      selectedQuote.status === 'accepted' 
+                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
                   >
-                    Accept Quote
+                    {selectedQuote.status === 'accepted' ? 'Already Accepted' : 'Accept Quote'}
                   </button>
                 </div>
               </div>
