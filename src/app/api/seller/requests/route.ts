@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         rq.id as queue_id,
         rq.processed_at,
         rq.status as queue_status,
-        rq.scheduled_delivery,
+        rq.scheduled_delivery_time,
         EXISTS(
           SELECT 1 FROM request_quotes rq2 
           WHERE rq2.request_id = pr.id AND rq2.seller_id = $1
