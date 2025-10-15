@@ -32,12 +32,14 @@ export async function GET(request: NextRequest) {
         pr.budget,
         pr.parish,
         pr.urgency,
-        u.name as buyer_name
+        u.name as buyer_name,
+        pr.expires_at,
+		    rq.processed_at
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
-       WHERE rq.seller_id = $1 AND rq.status = 'processed'
-       LIMIT 10`,
+       WHERE rq.seller_id = $1 AND rq.status = 'processed' 
+       ORDER BY request_id desc `,
       [sellerId]
     );
 

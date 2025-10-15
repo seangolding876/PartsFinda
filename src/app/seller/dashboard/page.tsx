@@ -460,7 +460,7 @@ function SellerDashboard() {
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-gray-500">Request ID: REQ-{request.id}</p>
-                            <p className="text-sm text-gray-500">Received: {timeAgo(request.dateReceived)}</p>
+                            <p className="text-sm text-gray-500">Received: {timeAgo(request.processedAt)}</p>
                           </div>
                         </div>
 
