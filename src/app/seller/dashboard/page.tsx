@@ -396,7 +396,7 @@ function SellerDashboard() {
                           <div className={`px-3 py-1 rounded-full text-sm font-semibold ${request.hasQuoted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                             {request.hasQuoted ? 'Quoted' : 'New Request'}
                           </div>
-                          <p className="text-sm text-gray-500 mt-1">{timeAgo(request.dateReceived)}</p>
+                          <p className="text-sm text-gray-500 mt-1">{timeAgo(request.processedAt)}</p>
                         </div>
                       </div>
                     ))}
