@@ -4,7 +4,6 @@ import { verifyToken } from '@/lib/jwt';
 
 export const dynamic = 'force-dynamic';
 
-// GET - Fetch all requests
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -16,13 +15,22 @@ export async function GET(request: NextRequest) {
     const userInfo = verifyToken(token);
     const sellerId = parseInt(userInfo.userId, 10);
 
-    // Build the query with proper parameterization
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+
+    let statusCondition = "rq.status = 'processed'";
+    if (status === 'pending') {
+      statusCondition = "rq.status = 'pending'";
+    }
+
     const requestsResult = await query(
       `SELECT 
         pr.id as request_id,
         pr.part_name,
+        pr.part_number,
         pr.budget,
         pr.parish,
+        pr.condition as part_condition,
         pr.urgency,
         pr.description,
         pr.vehicle_year,
@@ -32,9 +40,11 @@ export async function GET(request: NextRequest) {
         u.email as buyer_email,
         u.phone as buyer_phone,
         pr.expires_at,
-        pr.created_at,
+        pr.created_at as date_received,
+        rq.id as queue_id,
         rq.processed_at,
         rq.status as queue_status,
+        rq.scheduled_delivery,
         EXISTS(
           SELECT 1 FROM request_quotes rq2 
           WHERE rq2.request_id = pr.id AND rq2.seller_id = $1
@@ -47,16 +57,26 @@ export async function GET(request: NextRequest) {
        JOIN users u ON pr.user_id = u.id
        JOIN makes mk ON pr.make_id = mk.id
        JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
-       WHERE rq.seller_id = $1 AND rq.status = 'processed'
-       ORDER BY rq.processed_at DESC`,
-      [sellerId] // Parameterized seller_id
+       WHERE rq.seller_id = $1 AND ${statusCondition}
+       ORDER BY 
+         CASE pr.urgency 
+           WHEN 'high' THEN 1
+           WHEN 'medium' THEN 2
+           WHEN 'low' THEN 3
+           ELSE 4
+         END,
+         rq.processed_at DESC`,
+      [sellerId]
     );
 
     const requests = requestsResult.rows.map(request => ({
       id: request.request_id,
+      queueId: request.queue_id,
       partName: request.part_name,
-      budget: request.budget,
+      partNumber: request.part_number,
+      budget: parseFloat(request.budget),
       parish: request.parish,
+      condition: request.part_condition,
       urgency: request.urgency,
       description: request.description,
       vehicleYear: request.vehicle_year,
@@ -65,12 +85,14 @@ export async function GET(request: NextRequest) {
       buyerName: request.buyer_name,
       buyerEmail: request.buyer_email,
       buyerPhone: request.buyer_phone,
+      dateReceived: request.date_received,
       expiresAt: request.expires_at,
-      createdAt: request.created_at,
-      processedAt: request.processed_at,
       queueStatus: request.queue_status,
+      scheduledDelivery: request.scheduled_delivery,
+      processedAt: request.processed_at,
       hasQuoted: request.has_quoted,
-      totalQuotes: request.total_quotes
+      quoted: request.has_quoted, // duplicate for compatibility
+      totalQuotes: parseInt(request.total_quotes)
     }));
 
     return NextResponse.json({

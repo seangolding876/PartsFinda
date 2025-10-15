@@ -24,21 +24,20 @@ export async function POST(request: NextRequest) {
       deliveryTime, 
       notes, 
       warranty, 
-      condition,
-      partCondition
+      condition 
     } = body;
 
-    // Validation
-    if (!requestId || !price || !availability || !deliveryTime) {
+    // Validate required fields
+    if (!requestId || !price) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Missing required fields: requestId, price, availability, deliveryTime' 
+        error: 'Request ID and price are required' 
       }, { status: 400 });
     }
 
-    // Check if already quoted
+    // Check if seller already quoted this request
     const existingQuote = await query(
-      `SELECT id FROM request_quotes WHERE request_id = $1 AND seller_id = $2`,
+      'SELECT id FROM request_quotes WHERE request_id = $1 AND seller_id = $2',
       [requestId, sellerId]
     );
 
@@ -49,21 +48,29 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Insert new quote
-    const quoteResult = await query(
+    // Insert the quote
+    const result = await query(
       `INSERT INTO request_quotes 
-        (request_id, seller_id, price, availability, delivery_time, notes, warranty, condition, part_condition, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'submitted') 
-       RETURNING id, created_at`,
-      [requestId, sellerId, price, availability, deliveryTime, notes, warranty, condition, partCondition]
+       (request_id, seller_id, price, availability, delivery_time, notes, warranty, condition, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+       RETURNING id`,
+      [
+        requestId, 
+        sellerId, 
+        price, 
+        availability, 
+        deliveryTime, 
+        notes, 
+        warranty, 
+        condition
+      ]
     );
 
     return NextResponse.json({
       success: true,
-      message: 'Quote submitted successfully',
-      data: { 
-        quoteId: quoteResult.rows[0].id,
-        createdAt: quoteResult.rows[0].created_at
+      data: {
+        quoteId: result.rows[0].id,
+        message: 'Quote submitted successfully'
       }
     });
 
