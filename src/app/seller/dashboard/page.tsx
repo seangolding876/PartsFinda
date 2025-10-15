@@ -1,8 +1,38 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
+import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send, X, FileText, Phone, Mail, Car, CalendarDays, Shield, Package2 } from 'lucide-react';
 import Link from 'next/link';
+
+// Types
+interface SellerRequest {
+  id: number;
+  partName: string;
+  budget: number;
+  parish: string;
+  urgency: string;
+  description: string;
+  vehicleYear: number;
+  makeName: string;
+  modelName: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string;
+  expiresAt: string;
+  processedAt: string;
+  hasQuoted: boolean;
+  totalQuotes: number;
+}
+
+interface QuoteFormData {
+  price: number;
+  availability: string;
+  deliveryTime: string;
+  notes: string;
+  warranty: string;
+  condition: string;
+  partCondition: string;
+}
 
 // Auth utility
 const getAuthData = () => {
@@ -15,40 +45,362 @@ const getAuthData = () => {
   }
 };
 
-interface SellerRequest {
-  id: number;
-  queueId: string;
-  partName: string;
-  partNumber?: string;
-  description: string;
-  budget: number;
-  parish: string;
-  condition: string;
-  urgency: string;
-  vehicleYear: number;
-  makeName: string;
-  modelName: string;
-  buyerName: string;
-  buyerEmail: string;
-  buyerPhone?: string;
-  dateReceived: string;
-  expiresAt: string;
-  queueStatus: string;
-  scheduledDelivery: string;
-  processedAt?: string;
-  totalQuotes: number;
-  hasQuoted: boolean;
-  quoted: boolean;
+// View Details Modal Component
+function ViewDetailsModal({ request, isOpen, onClose }: { 
+  request: SellerRequest | null; 
+  isOpen: boolean; 
+  onClose: () => void; 
+}) {
+  if (!isOpen || !request) return null;
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-JM', {
+      style: 'currency',
+      currency: 'JMD'
+    }).format(amount);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">{request.partName}</h2>
+            <p className="text-gray-600">{request.makeName} {request.modelName} {request.vehicleYear}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Request Details */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Request Details
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Part Name</p>
+                <p className="text-gray-800">{request.partName}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Vehicle</p>
+                <p className="text-gray-800">{request.makeName} {request.modelName} {request.vehicleYear}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Description</p>
+                <p className="text-gray-800">{request.description || 'No description provided'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Budget</p>
+                <p className="text-green-600 font-semibold">{formatCurrency(request.budget)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Location</p>
+                <p className="text-gray-800 flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {request.parish}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Urgency</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  request.urgency === 'high' ? 'bg-red-100 text-red-800' :
+                  request.urgency === 'medium' ? 'bg-orange-100 text-orange-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {request.urgency}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Expires</p>
+                <p className="text-gray-800 flex items-center gap-1">
+                  <CalendarDays className="w-4 h-4" />
+                  {new Date(request.expiresAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Quotes</p>
+                <p className="text-blue-600 font-semibold">{request.totalQuotes}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Buyer Information */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Buyer Information
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Name</p>
+                <p className="text-gray-800">{request.buyerName}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Email</p>
+                <p className="text-gray-800 flex items-center gap-1">
+                  <Mail className="w-4 h-4" />
+                  {request.buyerEmail}
+                </p>
+              </div>
+              {request.buyerPhone && (
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Phone</p>
+                  <p className="text-gray-800 flex items-center gap-1">
+                    <Phone className="w-4 h-4" />
+                    {request.buyerPhone}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Quote Status
+            </h3>
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${
+              request.hasQuoted 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {request.hasQuoted ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="font-semibold">Quote Submitted</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4" />
+                  <span className="font-semibold">Pending Quote</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-6 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
+          {!request.hasQuoted && (
+            <Link
+              href={`/seller/quote/${request.id}`}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+            >
+              Submit Quote
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-interface SellerStats {
-  activeListings: number;
-  pendingQuotes: number;
-  completedOrders: number;
-  monthlyRevenue: number;
-  totalQuotes: number;
-  acceptanceRate: number;
-  avgResponseTime: number;
+// Submit Quote Modal Component
+function SubmitQuoteModal({ request, isOpen, onClose, onSubmit }: {
+  request: SellerRequest | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (quoteData: QuoteFormData) => Promise<void>;
+}) {
+  const [formData, setFormData] = useState<QuoteFormData>({
+    price: 0,
+    availability: 'in_stock',
+    deliveryTime: '',
+    notes: '',
+    warranty: '30 days',
+    condition: 'excellent',
+    partCondition: 'new'
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen || !request) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+      onClose();
+      setFormData({
+        price: 0,
+        availability: 'in_stock',
+        deliveryTime: '',
+        notes: '',
+        warranty: '30 days',
+        condition: 'excellent',
+        partCondition: 'new'
+      });
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Submit Quote</h2>
+            <p className="text-gray-600 text-sm">{request.partName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Your Price (JMD)
+            </label>
+            <input
+              type="number"
+              required
+              value={formData.price}
+              onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your price"
+            />
+            <p className="text-xs text-gray-500 mt-1">Buyer's budget: {new Intl.NumberFormat('en-JM', { style: 'currency', currency: 'JMD' }).format(request.budget)}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Availability
+            </label>
+            <select
+              required
+              value={formData.availability}
+              onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="in_stock">In Stock</option>
+              <option value="available_soon">Available Soon</option>
+              <option value="need_to_order">Need to Order</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Delivery Time
+            </label>
+            <select
+              required
+              value={formData.deliveryTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, deliveryTime: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select delivery time</option>
+              <option value="same_day">Same Day</option>
+              <option value="1-2 days">1-2 Business Days</option>
+              <option value="3-5 days">3-5 Business Days</option>
+              <option value="1 week">1 Week</option>
+              <option value="2 weeks">2 Weeks</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Part Condition
+            </label>
+            <select
+              required
+              value={formData.partCondition}
+              onChange={(e) => setFormData(prev => ({ ...prev, partCondition: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="new">New</option>
+              <option value="used_excellent">Used - Excellent</option>
+              <option value="used_good">Used - Good</option>
+              <option value="used_fair">Used - Fair</option>
+              <option value="refurbished">Refurbished</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Warranty
+            </label>
+            <select
+              value={formData.warranty}
+              onChange={(e) => setFormData(prev => ({ ...prev, warranty: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="no_warranty">No Warranty</option>
+              <option value="30 days">30 Days</option>
+              <option value="3 months">3 Months</option>
+              <option value="6 months">6 Months</option>
+              <option value="1 year">1 Year</option>
+              <option value="2 years">2 Years</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Additional Notes
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Any additional information about the part..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Quote
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function SellerDashboard() {
@@ -56,13 +408,16 @@ function SellerDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [requests, setRequests] = useState<SellerRequest[]>([]);
-  const [stats, setStats] = useState<SellerStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [submittingQuote, setSubmittingQuote] = useState<number | null>(null);
+  
+  // Modal states
+  const [selectedRequest, setSelectedRequest] = useState<SellerRequest | null>(null);
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [submitQuoteOpen, setSubmitQuoteOpen] = useState(false);
 
-  // Fetch data based on active tab
+  // Fetch requests
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchRequests = async () => {
       setLoading(true);
       const authData = getAuthData();
       
@@ -73,72 +428,55 @@ function SellerDashboard() {
       }
 
       try {
-        if (activeTab === 'overview' || activeTab === 'requests') {
-          // Fetch requests
-          const requestsResponse = await fetch(`/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`, {
-            headers: {
-              'Authorization': `Bearer ${authData.token}`
-            }
-          });
-
-          if (requestsResponse.ok) {
-            const requestsResult = await requestsResponse.json();
-            if (requestsResult.success) {
-              setRequests(requestsResult.data);
-            }
+        const response = await fetch('/api/seller/requests', {
+          headers: {
+            'Authorization': `Bearer ${authData.token}`
           }
+        });
 
-          // Fetch stats for overview
-          if (activeTab === 'overview') {
-            const statsResponse = await fetch('/api/seller/stats', {
-              headers: {
-                'Authorization': `Bearer ${authData.token}`
-              }
-            });
-
-            if (statsResponse.ok) {
-              const statsResult = await statsResponse.json();
-              if (statsResult.success) {
-                setStats(statsResult.data);
-              }
-            }
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setRequests(result.data);
           }
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching requests:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [activeTab, filterStatus]);
+    fetchRequests();
+  }, [activeTab]);
 
-  const handleSubmitQuote = async (requestId: number) => {
+  // Handle view details
+  const handleViewDetails = (request: SellerRequest) => {
+    setSelectedRequest(request);
+    setViewDetailsOpen(true);
+  };
+
+  // Handle submit quote
+  const handleSubmitQuote = async (quoteData: QuoteFormData) => {
+    if (!selectedRequest) return;
+
     const authData = getAuthData();
-    if (!authData?.token) return;
-
-    setSubmittingQuote(requestId);
+    if (!authData?.token) {
+      alert('Authentication required');
+      return;
+    }
 
     try {
-      // Example quote data - in real app, this would come from a form
-      const quoteData = {
-        requestId: requestId,
-        price: 7500, // This should come from user input
-        availability: 'in_stock',
-        deliveryTime: '2-3 business days',
-        notes: 'Brand new OEM part with 1-year warranty',
-        warranty: '1 year',
-        condition: 'new'
-      };
-
       const response = await fetch('/api/seller/quotes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
-        body: JSON.stringify(quoteData)
+        body: JSON.stringify({
+          requestId: selectedRequest.id,
+          ...quoteData
+        })
       });
 
       const result = await response.json();
@@ -146,7 +484,7 @@ function SellerDashboard() {
       if (result.success) {
         // Update local state
         setRequests(prev => prev.map(req => 
-          req.id === requestId ? { ...req, hasQuoted: true, quoted: true } : req
+          req.id === selectedRequest.id ? { ...req, hasQuoted: true } : req
         ));
         alert('Quote submitted successfully!');
       } else {
@@ -155,15 +493,17 @@ function SellerDashboard() {
     } catch (error) {
       console.error('Error submitting quote:', error);
       alert('Failed to submit quote. Please try again.');
-    } finally {
-      setSubmittingQuote(null);
     }
+  };
+
+  // Open submit quote modal
+  const handleOpenSubmitQuote = (request: SellerRequest) => {
+    setSelectedRequest(request);
+    setSubmitQuoteOpen(true);
   };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processed': return 'bg-green-100 text-green-800';
       case 'high': return 'bg-red-100 text-red-800';
       case 'medium': return 'bg-orange-100 text-orange-800';
       case 'low': return 'bg-blue-100 text-blue-800';
@@ -188,7 +528,7 @@ function SellerDashboard() {
     }).format(amount);
   };
 
-  // Filter requests based on search and filter
+  // Filter requests
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          request.makeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -200,53 +540,6 @@ function SellerDashboard() {
     
     return matchesSearch && matchesFilter;
   });
-
-  // Stats for display
-  const displayStats = [
-    { 
-      icon: <Package className="w-6 h-6" />, 
-      label: 'Active Listings', 
-      value: stats?.activeListings.toString() || '0', 
-      color: 'text-blue-600', 
-      bg: 'bg-blue-100', 
-      trend: '+5 this week' 
-    },
-    { 
-      icon: <MessageCircle className="w-6 h-6" />, 
-      label: 'Pending Quotes', 
-      value: stats?.pendingQuotes.toString() || '0', 
-      color: 'text-orange-600', 
-      bg: 'bg-orange-100', 
-      trend: `${filteredRequests.filter(r => !r.hasQuoted).length} urgent` 
-    },
-    { 
-      icon: <CheckCircle className="w-6 h-6" />, 
-      label: 'Completed Orders', 
-      value: stats?.completedOrders.toString() || '0', 
-      color: 'text-green-600', 
-      bg: 'bg-green-100', 
-      trend: '+8 this month' 
-    },
-    { 
-      icon: <DollarSign className="w-6 h-6" />, 
-      label: 'Monthly Revenue', 
-      value: formatCurrency(stats?.monthlyRevenue || 0), 
-      color: 'text-purple-600', 
-      bg: 'bg-purple-100', 
-      trend: '+15% vs last month' 
-    }
-  ];
-
-  if (loading && activeTab === 'overview') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -282,27 +575,6 @@ function SellerDashboard() {
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-                  <User className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">Kingston Auto Parts</h3>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm text-gray-600">4.8 (127 reviews)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800 text-sm font-semibold">
-                  <CheckCircle className="w-4 h-4" />
-                  Premium Member
-                </div>
-                <p className="text-green-700 text-xs mt-1">Your plan expires in 23 days</p>
-              </div>
-
               <nav className="space-y-2">
                 <button
                   onClick={() => setActiveTab('overview')}
@@ -323,88 +595,12 @@ function SellerDashboard() {
                     {requests.filter(r => !r.hasQuoted).length}
                   </span>
                 </button>
-                {/* ... other nav items ... */}
               </nav>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Stats Grid */}
-                <div className="grid md:grid-cols-4 gap-6">
-                  {displayStats.map((stat, index) => (
-                    <div key={index} className="bg-white rounded-lg shadow-lg p-6">
-                      <div className={`${stat.bg} rounded-full w-12 h-12 flex items-center justify-center mb-4`}>
-                        <div className={stat.color}>{stat.icon}</div>
-                      </div>
-                      <div className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</div>
-                      <div className="text-sm text-gray-600 mb-2">{stat.label}</div>
-                      <div className="text-xs text-green-600 font-medium">{stat.trend}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <button
-                      onClick={() => setActiveTab('requests')}
-                      className="bg-orange-50 border border-orange-200 p-4 rounded-lg hover:bg-orange-100 transition-colors text-left"
-                    >
-                      <AlertCircle className="w-8 h-8 text-orange-600 mb-3" />
-                      <h4 className="font-semibold text-gray-800">Pending Requests</h4>
-                      <p className="text-sm text-gray-600">{requests.filter(r => !r.hasQuoted).length} requests waiting for quotes</p>
-                    </button>
-                    <Link
-                      href="/seller/add-part"
-                      className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition-colors text-left block"
-                    >
-                      <Plus className="w-8 h-8 text-green-600 mb-3" />
-                      <h4 className="font-semibold text-gray-800">Add New Part</h4>
-                      <p className="text-sm text-gray-600">Expand your inventory</p>
-                    </Link>
-                    <Link
-                      href="/seller/subscription"
-                      className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition-colors text-left block"
-                    >
-                      <TrendingUp className="w-8 h-8 text-blue-600 mb-3" />
-                      <h4 className="font-semibold text-gray-800">Upgrade Plan</h4>
-                      <p className="text-sm text-gray-600">Get more features</p>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">Recent Requests</h3>
-                  <div className="space-y-4">
-                    {requests.slice(0, 3).map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
-                            <MessageCircle className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-800">{request.partName}</h4>
-                            <p className="text-sm text-gray-600">{request.buyerName} • {request.makeName} {request.modelName}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${request.hasQuoted ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            {request.hasQuoted ? 'Quoted' : 'New Request'}
-                          </div>
-                          <p className="text-sm text-gray-500 mt-1">{timeAgo(request.processedAt)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'requests' && (
               <div className="space-y-6">
                 {/* Search and Filter */}
@@ -455,7 +651,9 @@ function SellerDashboard() {
                                 </div>
                               )}
                             </div>
-                            <p className="text-gray-600 mb-2">{request.makeName} {request.modelName} {request.vehicleYear} • {request.buyerName}</p>
+                            <p className="text-gray-600 mb-2">
+                              {request.makeName} {request.modelName} {request.vehicleYear} • {request.buyerName}
+                            </p>
                             <p className="text-gray-700 mb-4">{request.description}</p>
                           </div>
                           <div className="text-right">
@@ -486,21 +684,11 @@ function SellerDashboard() {
                         <div className="flex gap-3">
                           {!request.hasQuoted ? (
                             <button 
-                              onClick={() => handleSubmitQuote(request.id)}
-                              disabled={submittingQuote === request.id}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                              onClick={() => handleOpenSubmitQuote(request)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                             >
-                              {submittingQuote === request.id ? (
-                                <>
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                  Submitting...
-                                </>
-                              ) : (
-                                <>
-                                  <Send className="w-4 h-4" />
-                                  Submit Quote
-                                </>
-                              )}
+                              <Send className="w-4 h-4" />
+                              Submit Quote
                             </button>
                           ) : (
                             <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
@@ -508,7 +696,10 @@ function SellerDashboard() {
                               Edit Quote
                             </button>
                           )}
-                          <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewDetails(request)}
+                            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                          >
                             <Eye className="w-4 h-4" />
                             View Details
                           </button>
@@ -532,11 +723,23 @@ function SellerDashboard() {
                 )}
               </div>
             )}
-
-            {/* Other tabs would be similar... */}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <ViewDetailsModal
+        request={selectedRequest}
+        isOpen={viewDetailsOpen}
+        onClose={() => setViewDetailsOpen(false)}
+      />
+
+      <SubmitQuoteModal
+        request={selectedRequest}
+        isOpen={submitQuoteOpen}
+        onClose={() => setSubmitQuoteOpen(false)}
+        onSubmit={handleSubmitQuote}
+      />
     </div>
   );
 }
