@@ -4,23 +4,12 @@ import { useState, useEffect, Suspense } from 'react';
 import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
+import QuoteModal from '@/components/QuoteModal';
 
 const [selectedRequest, setSelectedRequest] = useState<SellerRequest | null>(null);
 const [showQuoteModal, setShowQuoteModal] = useState(false);
 const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
 const [showDetailsModal, setShowDetailsModal] = useState(false);
-
-<RequestDetailsModal
-  isOpen={showDetailsModal}
-  onClose={() => {
-    setShowDetailsModal(false);
-    setSelectedRequestForDetails(null);
-  }}
-  request={selectedRequestForDetails}
-/>
-
-
-
 
 // Auth utility
 const getAuthData = () => {
@@ -559,9 +548,30 @@ const openQuoteModal = (request: SellerRequest) => {
           </div>
         </div>
       </div>
+        {/* MODEL POPUP */}
+      <QuoteModal
+        isOpen={showQuoteModal}
+        onClose={() => {
+          setShowQuoteModal(false);
+          setSelectedRequest(null);
+        }}
+        onSubmit={handleSubmitQuote}
+        request={selectedRequest}
+        loading={submittingQuote === selectedRequest?.id}
+      />
+
+      <RequestDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedRequestForDetails(null);
+        }}
+        request={selectedRequestForDetails}
+      />
     </div>
   );
 }
+
 
 export default function SellerDashboardPage() {
   return (
@@ -575,5 +585,9 @@ export default function SellerDashboardPage() {
     }>
       <SellerDashboard />
     </Suspense>
+
+    
   );
+
+
 }
