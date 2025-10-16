@@ -1,8 +1,8 @@
-// app/messages/page.tsx - FIXED VERSION
+// app/messages/page.tsx - COMPLETELY FIXED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, MapPin } from 'lucide-react';
+import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 
 export const dynamic = 'force-dynamic';
@@ -49,9 +49,10 @@ interface Message {
   sender: 'buyer' | 'seller';
   timestamp: string;
   status: string;
-  image?: string;
-  caption?: string;
 }
+
+// Message tracking to prevent duplicates
+const messageTracker = new Set();
 
 export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -65,6 +66,12 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected } = useSocket();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const conversationRef = useRef(selectedConversation);
+
+  // Keep ref updated
+  useEffect(() => {
+    conversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   // Fetch conversations
   const fetchConversations = async () => {
@@ -104,6 +111,10 @@ export default function MessagesPage() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
+          // Clear tracker for this conversation
+          messageTracker.clear();
+          result.data.forEach((msg: Message) => messageTracker.add(msg.id));
+          
           setMessages(result.data);
         }
       }
@@ -112,26 +123,34 @@ export default function MessagesPage() {
     }
   };
 
-  // Send message - IMPROVED VERSION
+  // ✅ IMPROVED Send Message Function
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
     try {
       setSending(true);
       
-      // ✅ Optimistic update FIRST
+      // ✅ Create unique temporary ID
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // ✅ Optimistic update
       const tempMessage: Message = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         text: newMessage.trim(),
-        sender: 'buyer', // Assuming current user is buyer
+        sender: 'buyer',
         timestamp: new Date().toISOString(),
         status: 'sending'
       };
       
-      setMessages(prev => [...prev, tempMessage]);
+      setMessages(prev => {
+        const newMessages = [...prev, tempMessage];
+        messageTracker.add(tempId);
+        return newMessages;
+      });
+      
       setNewMessage('');
 
-      // Update conversation list
+      // ✅ Update conversation list optimistically
       setConversations(prev => 
         prev.map(conv => 
           conv.id === selectedConversation.id 
@@ -141,7 +160,8 @@ export default function MessagesPage() {
                   text: newMessage.trim(),
                   timestamp: new Date().toISOString(),
                   sender: 'buyer'
-                }
+                },
+                unreadCount: 0
               }
             : conv
         )
@@ -161,20 +181,12 @@ export default function MessagesPage() {
           receiverId: selectedConversation.participant.id
         });
 
-        // Update status when server confirms
-        setTimeout(() => {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === tempMessage.id 
-                ? { ...msg, status: 'sent' }
-                : msg
-            )
-          );
-        }, 1000);
+        // Server se confirmation aane par temporary message ko replace karenge
+        // Yeh 'new_message' event mein handle hoga
 
       } else {
         // ✅ Fallback to API
-        console.log('📤 Socket not available, using API fallback');
+        console.log('📤 Using API fallback');
         const token = getAuthToken();
         const response = await fetch(`/api/messages/${selectedConversation.id}`, {
           method: 'POST',
@@ -188,14 +200,14 @@ export default function MessagesPage() {
         });
 
         if (response.ok) {
-          // Refresh messages to get actual ID from server
+          // Refresh messages from server
           await fetchMessages(selectedConversation.id);
           await fetchConversations();
         } else {
           // Mark as failed
           setMessages(prev => 
             prev.map(msg => 
-              msg.id === tempMessage.id 
+              msg.id === tempId 
                 ? { ...msg, status: 'failed' }
                 : msg
             )
@@ -204,7 +216,6 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('❌ Error sending message:', error);
-      // Mark as failed
       setMessages(prev => 
         prev.map(msg => 
           msg.id.startsWith('temp-') 
@@ -217,7 +228,102 @@ export default function MessagesPage() {
     }
   };
 
-  // Typing handlers - IMPROVED
+  // ✅ IMPROVED Socket Event Handlers
+  useEffect(() => {
+    if (!socket) return;
+
+    console.log('🎯 Setting up global socket listeners');
+
+    // Global new message handler
+    const handleNewMessage = (messageData: Message) => {
+      console.log('📨 Received new message:', messageData);
+      
+      // ✅ Duplicate check
+      if (messageTracker.has(messageData.id)) {
+        console.log('🔄 Skipping duplicate message:', messageData.id);
+        return;
+      }
+
+      messageTracker.add(messageData.id);
+
+      const currentConversation = conversationRef.current;
+      
+      // ✅ Agar yeh message current conversation ka hai
+      if (currentConversation && 
+          messageData.sender !== 'buyer' && // Self messages already handled optimistically
+          currentConversation.participant.id !== socket.id) {
+        
+        setMessages(prev => {
+          // ✅ Temporary messages ko replace karo
+          const filteredMessages = prev.filter(msg => !msg.id.startsWith('temp-'));
+          return [...filteredMessages, messageData];
+        });
+
+        // ✅ Conversation list update
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.id === currentConversation.id 
+              ? {
+                  ...conv,
+                  lastMessage: {
+                    text: messageData.text,
+                    timestamp: messageData.timestamp,
+                    sender: messageData.sender
+                  }
+                }
+              : conv
+          )
+        );
+      }
+    };
+
+    // Conversation update handler
+    const handleConversationUpdate = (updateData: any) => {
+      console.log('🔄 Conversation updated:', updateData);
+      // Sirf conversations refresh karo, messages nahi
+      fetchConversations();
+    };
+
+    // Typing handler
+    const handleUserTyping = (data: any) => {
+      const currentConversation = conversationRef.current;
+      if (currentConversation && data.userId === currentConversation.participant.id) {
+        if (data.typing) {
+          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
+        } else {
+          setTypingUsers(prev => prev.filter(id => id !== data.userId));
+        }
+      }
+    };
+
+    // Register events
+    socket.on('new_message', handleNewMessage);
+    socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('user_typing', handleUserTyping);
+
+    // Cleanup
+    return () => {
+      console.log('🧹 Cleaning up global socket listeners');
+      socket.off('new_message', handleNewMessage);
+      socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('user_typing', handleUserTyping);
+    };
+  }, [socket]);
+
+  // ✅ Conversation-specific socket setup
+  useEffect(() => {
+    if (!socket || !selectedConversation) return;
+
+    console.log('🎯 Joining conversation:', selectedConversation.id);
+    socket.emit('join_conversation', selectedConversation.id);
+
+    return () => {
+      console.log('🎯 Leaving conversation:', selectedConversation.id);
+      socket.emit('leave_conversation', selectedConversation.id);
+    };
+  }, [socket, selectedConversation]);
+
+  // Typing handlers
   const handleTypingStart = useCallback(() => {
     if (socket && selectedConversation) {
       socket.emit('typing_start', { conversationId: selectedConversation.id });
@@ -261,6 +367,7 @@ export default function MessagesPage() {
   // When conversation is selected
   useEffect(() => {
     if (selectedConversation) {
+      console.log('🔄 Loading messages for conversation:', selectedConversation.id);
       fetchMessages(selectedConversation.id);
     }
   }, [selectedConversation]);
@@ -269,75 +376,6 @@ export default function MessagesPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // ✅ SOCKET EVENT HANDLERS - IMPROVED
-  useEffect(() => {
-    if (!socket || !selectedConversation) return;
-
-    console.log('🎯 Setting up socket listeners for conversation:', selectedConversation.id);
-
-    // Join conversation room
-    socket.emit('join_conversation', selectedConversation.id);
-
-    // Listen for new messages
-    const handleNewMessage = (messageData: Message) => {
-      console.log('📨 Received new message:', messageData);
-      if (messageData && selectedConversation) {
-        setMessages(prev => {
-          // Avoid duplicates
-          if (prev.some(msg => msg.id === messageData.id)) return prev;
-          return [...prev, messageData];
-        });
-        
-        // Update conversation list
-        fetchConversations();
-      }
-    };
-
-    // Listen for conversation updates
-    const handleConversationUpdate = (updateData: any) => {
-      console.log('🔄 Conversation updated:', updateData);
-      if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
-        fetchMessages(selectedConversation.id);
-        fetchConversations();
-      }
-    };
-
-    // Listen for typing indicators
-    const handleUserTyping = (data: any) => {
-      if (data.userId === selectedConversation.participant.id) {
-        if (data.typing) {
-          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
-        } else {
-          setTypingUsers(prev => prev.filter(id => id !== data.userId));
-        }
-      }
-    };
-
-    // Listen for errors
-    const handleMessageError = (errorData: any) => {
-      console.error('💥 Message error:', errorData);
-    };
-
-    // Register event listeners
-    socket.on('new_message', handleNewMessage);
-    socket.on('conversation_updated', handleConversationUpdate);
-    socket.on('user_typing', handleUserTyping);
-    socket.on('message_error', handleMessageError);
-
-    // Cleanup
-    return () => {
-      console.log('🧹 Cleaning up socket listeners');
-      socket.off('new_message', handleNewMessage);
-      socket.off('conversation_updated', handleConversationUpdate);
-      socket.off('user_typing', handleUserTyping);
-      socket.off('message_error', handleMessageError);
-      
-      if (selectedConversation) {
-        socket.emit('leave_conversation', selectedConversation.id);
-      }
-    };
-  }, [socket, selectedConversation]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -352,17 +390,17 @@ export default function MessagesPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'sending':
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-3 h-3 text-gray-400" />;
       case 'sent':
-        return <Check className="w-4 h-4 text-gray-400" />;
+        return <Check className="w-3 h-3 text-gray-400" />;
       case 'delivered':
-        return <CheckCheck className="w-4 h-4 text-gray-400" />;
+        return <CheckCheck className="w-3 h-3 text-gray-400" />;
       case 'read':
-        return <CheckCheck className="w-4 h-4 text-blue-500" />;
+        return <CheckCheck className="w-3 h-3 text-blue-500" />;
       case 'failed':
-        return <Clock className="w-4 h-4 text-red-500" />;
+        return <Clock className="w-3 h-3 text-red-500" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-3 h-3 text-gray-400" />;
     }
   };
 
@@ -375,10 +413,11 @@ export default function MessagesPage() {
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">{selectedConversation?.participant.name} is typing...</p>
+        <p className="text-xs text-gray-500 mt-1">Typing...</p>
       </div>
     </div>
   );
+
 
   if (loading) {
     return (
