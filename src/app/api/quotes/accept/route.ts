@@ -1,3 +1,4 @@
+// app/api/quotes/accept/route.ts (updated)
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -21,14 +22,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transaction start karenge
+    // Transaction start
     await query('BEGIN');
 
     // 1. Verify that quote exists and belongs to buyer's request
     const quoteCheck = await query(
-      `SELECT rq.*, pr.user_id as buyer_id 
+      `SELECT rq.*, pr.user_id as buyer_id, pr.part_name, 
+              u.name as buyer_name, rq.seller_id, s.name as seller_name,
+              s.email as seller_email, m.name as make_name, md.name as model_name,
+              pr.vehicle_year
        FROM request_quotes rq
        INNER JOIN part_requests pr ON rq.request_id = pr.id
+       INNER JOIN users u ON pr.user_id = u.id
+       INNER JOIN users s ON rq.seller_id = s.id
+       LEFT JOIN makes m ON pr.make_id = m.id
+       LEFT JOIN models md ON pr.model_id = md.id
        WHERE rq.id = $1 AND pr.user_id = $2`,
       [quoteId, userInfo.userId]
     );
@@ -61,33 +69,41 @@ export async function POST(request: NextRequest) {
       ['rejected', quote.request_id, quoteId]
     );
 
-      // After accepting quote, create notifications
-    await query(
-      `INSERT INTO notifications (user_id, type, title, message, related_entity_type, related_entity_id) 
-       VALUES ($1, 'quote_accepted', 'Quote Accepted', 'Your quote has been accepted by the buyer', 'quote', $2)`,
-      [quote.seller_id, quoteId]
-    );
-
-    // Send email notification
-    await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'quote_accepted',
-        userId: quote.seller_id,
-        data: {
-          partName: quote.part_name,
-          price: quote.price,
-          buyerName: userInfo.name
-        }
-      })
-    });
-
     await query('COMMIT');
+
+    console.log('✅ Quote accepted successfully:', quoteId);
+
+    // 5. Send email notification to seller
+    try {
+      const emailResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'quote_accepted',
+          userId: quote.seller_id,
+          data: {
+            partName: quote.part_name,
+            price: quote.price,
+            buyerName: quote.buyer_name,
+            vehicle: `${quote.make_name} ${quote.model_name} (${quote.vehicle_year})`,
+            requestId: quote.request_id
+          }
+        })
+      });
+
+      const emailResult = await emailResponse.json();
+      console.log('📧 Quote acceptance email sent:', emailResult);
+    } catch (emailError) {
+      console.error('❌ Failed to send email notification:', emailError);
+      // Don't fail the whole request if email fails
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Quote accepted successfully'
+      message: 'Quote accepted successfully',
+      sellerId: quote.seller_id
     });
 
   } catch (error: any) {
