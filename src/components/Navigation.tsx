@@ -14,6 +14,7 @@ import {
   Bell,
   BarChart3,
   ClipboardList,
+  ChevronDown,
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { Dialog } from '@headlessui/react';
@@ -21,6 +22,7 @@ import { Dialog } from '@headlessui/react';
 export default function Navigation() {
   const { user, logout, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -61,6 +63,7 @@ export default function Navigation() {
 
           {user && (
             <>
+              {/* Common for all users */}
               <Link
                 href="/messages"
                 className="hover:text-blue-600 flex items-center gap-1 transition-colors"
@@ -69,12 +72,14 @@ export default function Navigation() {
                 Messages
               </Link>
 
+              {/* Buyer */}
               {user.role === 'buyer' && (
                 <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
                   My Requests
                 </Link>
               )}
 
+              {/* Seller */}
               {user.role === 'seller' && (
                 <>
                   <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
@@ -90,47 +95,57 @@ export default function Navigation() {
                 </>
               )}
 
+              {/* Admin Dropdown */}
               {user.role === 'admin' && (
-                <>
-                  <Link
-                    href="/admin/dashboard"
-                    className="hover:text-blue-600 flex items-center gap-1 transition-colors"
+                <div className="relative">
+                  <button
+                    onClick={() => setAdminOpen(!adminOpen)}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors font-medium"
                   >
                     <Users className="w-4 h-4" />
                     Admin
-                  </Link>
-                  <Link
-                    href="/admin/cars"
-                    className="hover:text-blue-600 flex items-center gap-1 transition-colors"
-                  >
-                    <Car className="w-4 h-4" />
-                    Manage Cars
-                  </Link>
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        adminOpen ? 'rotate-180' : 'rotate-0'
+                      }`}
+                    />
+                  </button>
 
-                  
-                {/* 🧭 Admin Context Menu (Dummy Links) */}
-                {user.role === 'admin' && (
-                  <div className="mt-4 border-t pt-3 space-y-2">
-                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Admin Panel</h3>
-                    <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <BarChart3 className="w-4 h-4" /> Dashboard
-                    </Link>
-                    <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Car className="w-4 h-4" /> Manage Cars
-                    </Link>
-                    <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Users className="w-4 h-4" /> Manage Users
-                    </Link>
-                    <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <ClipboardList className="w-4 h-4" /> Reports
-                    </Link>
-                    <Link href="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Settings className="w-4 h-4" /> Settings
-                    </Link>
-                  </div>
-                )}
-
-                </>
+                  {adminOpen && (
+                    <div className="absolute left-0 mt-2 w-52 bg-white border shadow-lg rounded-lg py-2 animate-fadeIn z-50">
+                      <Link
+                        href="/admin/dashboard"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <BarChart3 className="w-4 h-4" /> Dashboard
+                      </Link>
+                      <Link
+                        href="/admin/cars"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Car className="w-4 h-4" /> Manage Cars
+                      </Link>
+                      <Link
+                        href="/admin/users"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Users className="w-4 h-4" /> Manage Users
+                      </Link>
+                      <Link
+                        href="/admin/reports"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <ClipboardList className="w-4 h-4" /> Reports
+                      </Link>
+                      <Link
+                        href="/admin/settings"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Settings className="w-4 h-4" /> Settings
+                      </Link>
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -142,7 +157,7 @@ export default function Navigation() {
             <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
           ) : user ? (
             <div className="flex items-center gap-4">
-              {/* 🔔 Notification & Messages */}
+              {/* Notifications + Messages */}
               <div className="flex items-center gap-4">
                 <NotificationBell />
                 <Link
@@ -208,7 +223,11 @@ export default function Navigation() {
       </div>
 
       {/* 📱 Mobile Drawer Menu */}
-      <Dialog open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} className="relative z-50">
+      <Dialog
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        className="relative z-50"
+      >
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
         <Dialog.Panel className="fixed inset-y-0 left-0 w-80 bg-white p-6 overflow-y-auto shadow-xl">
           <div className="flex justify-between items-center mb-6">
@@ -269,6 +288,45 @@ export default function Navigation() {
                   </>
                 )}
 
+                {/* 🧭 Admin Context Dropdown */}
+                {user.role === 'admin' && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setAdminOpen(!adminOpen)}
+                      className="w-full flex justify-between items-center text-left font-medium hover:text-blue-600"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Admin Panel
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${
+                          adminOpen ? 'rotate-180' : 'rotate-0'
+                        }`}
+                      />
+                    </button>
+
+                    {adminOpen && (
+                      <div className="mt-2 ml-4 border-l pl-3 space-y-2 animate-slideDown">
+                        <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <BarChart3 className="w-4 h-4" /> Dashboard
+                        </Link>
+                        <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Car className="w-4 h-4" /> Manage Cars
+                        </Link>
+                        <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Users className="w-4 h-4" /> Manage Users
+                        </Link>
+                        <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <ClipboardList className="w-4 h-4" /> Reports
+                        </Link>
+                        <Link href="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Settings className="w-4 h-4" /> Settings
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* User Info */}
                 <div className="mt-6 text-sm text-gray-600">
                   <div>Welcome, <span className="font-semibold">{user.name}</span></div>
@@ -304,3 +362,5 @@ export default function Navigation() {
     </nav>
   );
 }
+
+/* ✅ Extra Animations */
