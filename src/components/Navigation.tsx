@@ -313,8 +313,8 @@ export default function Navigation() {
                         <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
                           <Car className="w-4 h-4" /> Manage Cars
                         </Link>
-                        <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                          <Users className="w-4 h-4" /> Manage Users
+                        <Link href="/admin/queue" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Users className="w-4 h-4" /> Queue Monitoring
                         </Link>
                         <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
                           <ClipboardList className="w-4 h-4" /> Reports

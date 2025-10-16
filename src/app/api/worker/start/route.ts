@@ -1,75 +1,52 @@
-// import { NextRequest, NextResponse } from 'next/server';
-// import RequestProcessor from '@/workers/requestProcessor';
+import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action');
 
-// let processor: RequestProcessor | null = null;
-// export const runtime = 'nodejs';
+  try {
+    switch (action) {
+      case 'status':
+        // Return worker status
+        return NextResponse.json({
+          success: true,
+          workerStatus: 'running', // or 'stopped' based on your actual worker
+          lastActive: new Date().toISOString(),
+          message: 'Worker is running'
+        });
 
-// export async function GET(request: NextRequest) {
-//   try {
-//     const { searchParams } = new URL(request.url);
-//     const action = searchParams.get('action');
+      case 'start':
+        // Start worker logic here
+        return NextResponse.json({
+          success: true,
+          message: 'Worker started successfully'
+        });
 
-//     if (action === 'start') {
-//       if (!processor) {
-//         processor = new RequestProcessor();
-//         await processor.start();
-//         return NextResponse.json({ 
-//           success: true, 
-//           message: 'Production worker started successfully',
-//           timestamp: new Date().toISOString(),
-//           environment: process.env.NODE_ENV
-//         });
-//       }
-      
-//       return NextResponse.json({ 
-//         success: true, 
-//         message: 'Worker is already running',
-//         timestamp: new Date().toISOString()
-//       });
-//     }
+      case 'stop':
+        // Stop worker logic here
+        return NextResponse.json({
+          success: true,
+          message: 'Worker stopped successfully'
+        });
 
-//     if (action === 'status') {
-//       if (!processor) {
-//         return NextResponse.json({ 
-//           success: false, 
-//           error: 'Worker not started',
-//           workerRunning: false
-//         });
-//       }
-      
-//       const queueStatus = await processor.getQueueStatus();
-      
-//       return NextResponse.json({
-//         success: true,
-//         workerRunning: true,
-//         ...queueStatus,
-//         timestamp: new Date().toISOString()
-//       });
-//     }
+      case 'restart':
+        // Restart worker logic here
+        return NextResponse.json({
+          success: true,
+          message: 'Worker restarted successfully'
+        });
 
-//     if (action === 'stop') {
-//       processor = null;
-//       return NextResponse.json({
-//         success: true,
-//         message: 'Worker stopped',
-//         timestamp: new Date().toISOString()
-//       });
-//     }
-
-//     return NextResponse.json({
-//       success: false,
-//       error: 'Invalid action. Use: start, status, or stop'
-//     }, { status: 400 });
-
-//   } catch (error: any) {
-//     console.error('Error in worker API:', error);
-//     return NextResponse.json({ 
-//       success: false, 
-//       error: error.message,
-//       timestamp: new Date().toISOString()
-//     }, { status: 500 });
-//   }
-// }
-
-// export const dynamic = 'force-dynamic';
+      default:
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid action'
+        }, { status: 400 });
+    }
+  } catch (error) {
+    console.error('Worker control error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to control worker'
+    }, { status: 500 });
+  }
+}

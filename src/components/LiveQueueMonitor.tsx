@@ -1,0 +1,317 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface QueueStats {
+  total: {
+    requests: number;
+    completed: number;
+    failed: number;
+    processing: number;
+    pending: number;
+  };
+  today: {
+    processed: number;
+    completed: number;
+    failed: number;
+  };
+  pending_requests: any[];
+  success_rate: string;
+}
+
+interface WorkerStatus {
+  status: string;
+  name: string;
+  uptime: number;
+  memory: number;
+  cpu: number;
+  restarts: number;
+  pid: number;
+}
+
+export default function LiveQueueMonitor() {
+  const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      // Fetch queue stats
+      const [statsResponse, workerResponse] = await Promise.all([
+        fetch('/api/queue/stats'),
+        fetch('/api/worker/status')
+      ]);
+
+      const statsData = await statsResponse.json();
+      const workerData = await workerResponse.json();
+
+      if (statsData.success) {
+        setQueueStats(statsData.data);
+      }
+
+      if (workerData.success && workerData.worker) {
+        setWorkerStatus(workerData.worker);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const controlWorker = async (action: string) => {
+    try {
+      const response = await fetch('/api/worker/control', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Worker ${action}ed successfully`);
+        // Refresh data
+        setTimeout(fetchData, 2000);
+      } else {
+        alert(`Failed to ${action} worker: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Worker control error:', error);
+      alert(`Error: ${error}`);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    if (autoRefresh) {
+      const interval = setInterval(fetchData, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefresh]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading live queue data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Live Queue Monitor</h1>
+            <p className="text-gray-600">Real-time PartsFinda Worker Monitoring</p>
+          </div>
+          <div className="text-right">
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`px-4 py-2 rounded ${
+                autoRefresh ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-700'
+              }`}
+            >
+              Auto Refresh: {autoRefresh ? 'ON' : 'OFF'}
+            </button>
+          </div>
+        </div>
+
+        {/* Worker Status Card */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Worker Status</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => controlWorker('start')}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Start Worker
+              </button>
+              <button
+                onClick={() => controlWorker('stop')}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              >
+                Stop Worker
+              </button>
+              <button
+                onClick={() => controlWorker('restart')}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Restart Worker
+              </button>
+            </div>
+          </div>
+
+          {workerStatus ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className={`text-lg font-bold ${
+                  workerStatus.status === 'online' ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {workerStatus.status.toUpperCase()}
+                </div>
+                <div className="text-sm text-gray-600">Status</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">{workerStatus.pid}</div>
+                <div className="text-sm text-gray-600">PID</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">{Math.round(workerStatus.uptime / 1000 / 60)}m</div>
+                <div className="text-sm text-gray-600">Uptime</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">{workerStatus.restarts}</div>
+                <div className="text-sm text-gray-600">Restarts</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-red-600">Worker not running</p>
+              <button
+                onClick={() => controlWorker('start')}
+                className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Start Worker Now
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Requests */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2 text-blue-600">Total Requests</h3>
+            <div className="text-3xl font-bold">{queueStats?.total.requests || 0}</div>
+            <div className="text-sm text-gray-600 mt-2">
+              <div>Completed: <span className="text-green-600">{queueStats?.total.completed || 0}</span></div>
+              <div>Failed: <span className="text-red-600">{queueStats?.total.failed || 0}</span></div>
+            </div>
+          </div>
+
+          {/* Pending Queue */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2 text-orange-600">Pending Queue</h3>
+            <div className="text-3xl font-bold">{queueStats?.total.pending || 0}</div>
+            <div className="text-sm text-gray-600 mt-2">
+              Success Rate: <span className="font-semibold">{queueStats?.success_rate || '0%'}</span>
+            </div>
+          </div>
+
+          {/* Today's Activity */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2 text-green-600">Today's Activity</h3>
+            <div className="text-3xl font-bold">{queueStats?.today.processed || 0}</div>
+            <div className="text-sm text-gray-600 mt-2">
+              <div>Completed: <span className="text-green-600">{queueStats?.today.completed || 0}</span></div>
+              <div>Failed: <span className="text-red-600">{queueStats?.today.failed || 0}</span></div>
+            </div>
+          </div>
+
+          {/* Currently Processing */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-2 text-purple-600">In Progress</h3>
+            <div className="text-3xl font-bold">{queueStats?.total.processing || 0}</div>
+            <div className="text-sm text-gray-600 mt-2">
+              Worker: <span className={
+                workerStatus?.status === 'online' ? 'text-green-600' : 'text-red-600'
+              }>
+                {workerStatus?.status || 'stopped'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Requests Table */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="px-6 py-4 border-b">
+            <h2 className="text-xl font-semibold">Pending Requests ({queueStats?.pending_requests.length || 0})</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Request ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Seller</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Budget</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {queueStats?.pending_requests.map((request) => (
+                  <tr key={request.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">#{request.id}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{request.part_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{request.buyer_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {request.seller_name}
+                      <br />
+                      <span className="text-xs text-gray-500">{request.membership_plan}</span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">₹{request.budget}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        request.priority === 'high' 
+                          ? 'bg-red-100 text-red-800'
+                          : request.priority === 'medium'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {request.priority}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(!queueStats?.pending_requests || queueStats.pending_requests.length === 0) && (
+              <div className="text-center py-8 text-gray-500">
+                No pending requests in queue
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+          <div className="flex flex-wrap gap-4">
+            <button 
+              onClick={() => window.open('http://localhost:9615', '_blank')}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Open PM2 Monitor
+            </button>
+            <button 
+              onClick={() => controlWorker('restart')}
+              className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
+            >
+              Force Restart Worker
+            </button>
+            <button 
+              onClick={fetchData}
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
