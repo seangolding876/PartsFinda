@@ -4,6 +4,9 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // Koi check nahi - direct allow
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
   return NextResponse.next();
 }
 
