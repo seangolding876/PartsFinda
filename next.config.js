@@ -5,7 +5,6 @@ const nextConfig = {
 
   experimental: {
     serverComponentsExternalPackages: ['nodemailer', 'pg'],
-    isrFlushToDisk: false,
   },
 
   images: {
@@ -42,7 +41,6 @@ const nextConfig = {
 
   // ✅ IMPORTANT: Disable static generation for dynamic APIs
   output: 'standalone',
-  distDir: '.next',
 
   // Disable x-powered-by header for security
   poweredByHeader: false,
@@ -63,4 +61,7 @@ const nextConfig = {
   }
 }
 
-module.exports = nextConfig
+module.exports = {
+  output: 'export',
+  exclude: ['/api/*'], // ignore all API routes
+};
