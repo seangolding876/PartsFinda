@@ -1,19 +1,11 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import { initSocketServer } from '@/lib/socket-server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export default function SocketHandler(req: NextApiRequest, res: NextApiResponse) {
-  // Initialize socket server if not already initialized
-  if (!(res.socket as any).server.io) {
-    console.log('🔄 Initializing Socket.IO server in API route...');
-    
-    const httpServer = (res.socket as any).server;
-    initSocketServer(httpServer);
-    
-    (res.socket as any).server.io = true;
-    console.log('✅ Socket.IO server initialized via API route');
-  } else {
-    console.log('✅ Socket.IO server already initialized');
-  }
-  
-  res.end();
+// Yeh route sirf socket server status batayega
+export async function GET(request: NextRequest) {
+  return NextResponse.json({ 
+    message: 'Socket.IO server is ready',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV
+  });
 }

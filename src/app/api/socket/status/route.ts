@@ -3,8 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   return NextResponse.json({ 
     status: 'ok',
-    message: 'API is working',
-    timestamp: new Date().toISOString(),
-    socketServer: 'Not initialized - need custom server'
+    message: 'Socket server is running',
+    timestamp: new Date().toISOString()
   });
 }

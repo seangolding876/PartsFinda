@@ -481,20 +481,18 @@ const sendMessage = async () => {
                 </div>
               </div>
 
-<div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
   <span className={`w-2 h-2 rounded-full ${
     selectedConversation.participant.online ? 'bg-green-500' : 'bg-gray-400'
   }`}></span>
   {selectedConversation.participant.online ? 'Online' : 'Offline'}
-  
-  {/* ✅ Updated Socket connection status */}
+  {/* ✅ Socket connection status */}
   <span className={`w-2 h-2 rounded-full ${
     isConnected ? 'bg-green-500' : 'bg-red-500'
   }`}></span>
-  <span className="text-xs">
-    {isConnected ? 'Socket: Connected' : 'Socket: Disconnected'}
-  </span>
+  <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
 </div>
+
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-lg">
                   <Phone className="w-5 h-5 text-gray-600" />
