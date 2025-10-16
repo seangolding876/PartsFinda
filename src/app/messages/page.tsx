@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, Image, FileText, Star, MapPin, MessageCircle } from 'lucide-react';
-
+import { useSocket } from '@/hooks/useSocket';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 // Auth utility
@@ -60,6 +60,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
+    const { socket, isConnected } = useSocket();
 
   // Fetch conversations
   const fetchConversations = async () => {
@@ -109,13 +110,51 @@ export default function MessagesPage() {
   };
 
   // Send message
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sending) return;
+// Send message - REAL-TIME VERSION
+const sendMessage = async () => {
+  if (!newMessage.trim() || !selectedConversation || sending) return;
 
-    try {
-      setSending(true);
-      const token = getAuthToken();
+  try {
+    setSending(true);
+    
+    // ✅ Socket se message bhejein (real-time)
+    if (socket && isConnected) {
+      socket.emit('send_message', {
+        conversationId: selectedConversation.id,
+        messageText: newMessage.trim(),
+        receiverId: selectedConversation.participant.id // Ensure this field exists
+      });
       
+      // Optimistically add message to UI
+      const tempMessage: Message = {
+        id: Date.now().toString(), // Temporary ID
+        text: newMessage.trim(),
+        sender: 'buyer',
+        timestamp: new Date().toISOString(),
+        status: 'sent'
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+      
+      // Also update last message in conversations
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === selectedConversation.id 
+            ? {
+                ...conv,
+                lastMessage: {
+                  text: newMessage.trim(),
+                  timestamp: new Date().toISOString(),
+                  sender: 'buyer'
+                }
+              }
+            : conv
+        )
+      );
+    } else {
+      // Fallback to API call if socket not available
+      const token = getAuthToken();
       const response = await fetch(`/api/messages/${selectedConversation.id}`, {
         method: 'POST',
         headers: {
@@ -128,22 +167,17 @@ export default function MessagesPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setNewMessage('');
-          // Refresh messages
-          await fetchMessages(selectedConversation.id);
-          // Refresh conversations to update last message
-          await fetchConversations();
-        }
+        setNewMessage('');
+        await fetchMessages(selectedConversation.id);
+        await fetchConversations();
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setSending(false);
     }
-  };
-
+  } catch (error) {
+    console.error('Error sending message:', error);
+  } finally {
+    setSending(false);
+  }
+};
   // Initial load
   useEffect(() => {
     fetchConversations();
@@ -172,6 +206,43 @@ export default function MessagesPage() {
     conv.participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.relatedRequest.partName.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  useEffect(() => {
+  if (!socket || !selectedConversation) return;
+
+  // Join conversation room
+  socket.emit('join_conversation', selectedConversation.id);
+
+  // Listen for new messages
+  socket.on('new_message', (messageData: Message) => {
+    if (messageData && selectedConversation) {
+      setMessages(prev => [...prev, messageData]);
+      // Mark as read if it's our message
+      if (messageData.sender !== 'buyer') {
+        // You can add mark as read logic here
+      }
+    }
+  });
+
+  // Listen for conversation updates
+  socket.on('conversation_updated', (updateData) => {
+    if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
+      // Refresh messages
+      fetchMessages(selectedConversation.id);
+      // Refresh conversations list
+      fetchConversations();
+    }
+  });
+
+  // Cleanup on unmount or conversation change
+  return () => {
+    socket.off('new_message');
+    socket.off('conversation_updated');
+    if (selectedConversation) {
+      socket.emit('leave_conversation', selectedConversation.id);
+    }
+  };
+}, [socket, selectedConversation]);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -352,6 +423,18 @@ export default function MessagesPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+  <span className={`w-2 h-2 rounded-full ${
+    selectedConversation.participant.online ? 'bg-green-500' : 'bg-gray-400'
+  }`}></span>
+  {selectedConversation.participant.online ? 'Online' : 'Offline'}
+  {/* ✅ Socket connection status */}
+  <span className={`w-2 h-2 rounded-full ${
+    isConnected ? 'bg-green-500' : 'bg-red-500'
+  }`}></span>
+  <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+</div>
 
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-lg">
