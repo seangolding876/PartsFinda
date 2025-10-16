@@ -18,22 +18,21 @@ export const useSocket = () => {
 
     console.log('🔄 Starting socket connection...');
 
-    // ✅ Now using same domain without port (via Nginx proxy)
-    const socketUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://partsfinda.com'  // No port needed - Nginx will proxy to 3001
-      : 'http://localhost:3001';   // Local development still uses port
+    const socketUrl = 'https://partsfinda.com';
 
     const socketInstance = io(socketUrl, {
-      path: '/socket.io/', // ✅ Important: This matches Nginx location
+      path: '/socket.io/',
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket', 'polling'], // Websocket first
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      timeout: 30000, // Increase timeout
+      forceNew: true
     });
 
     socketInstance.on('connect', () => {
-      console.log('✅ CONNECTED to Socket Server via Nginx!');
+      console.log('✅ CONNECTED to Socket Server!');
       setIsConnected(true);
       setSocket(socketInstance);
     });
@@ -45,6 +44,7 @@ export const useSocket = () => {
 
     socketInstance.on('connect_error', (error) => {
       console.error('🔴 Connection error:', error.message);
+      console.error('Error details:', error);
       setIsConnected(false);
     });
 
