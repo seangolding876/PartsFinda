@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { conversationId: string } }

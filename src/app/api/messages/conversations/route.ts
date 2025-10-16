@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // app/api/messages/conversations/route.ts - POST method add karen
 export async function POST(request: NextRequest) {
   try {

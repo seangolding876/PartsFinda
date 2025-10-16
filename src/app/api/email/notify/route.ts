@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const { type, userId, data } = await request.json();

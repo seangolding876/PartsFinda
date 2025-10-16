@@ -4,6 +4,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, Image, FileText, Star, MapPin, MessageCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 // Auth utility
 const getAuthToken = () => {
   if (typeof window === 'undefined') return null;

@@ -18,10 +18,18 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('authData') ? JSON.parse(localStorage.getItem('authData')!).token : null;
+      const token = localStorage.getItem('authData') ? 
+        JSON.parse(localStorage.getItem('authData')!).token : null;
+      
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/notifications', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -37,11 +45,14 @@ export default function NotificationBell() {
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
+    
     // Real-time polling every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
@@ -49,7 +60,9 @@ export default function NotificationBell() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const token = localStorage.getItem('authData') ? JSON.parse(localStorage.getItem('authData')!).token : null;
+      const token = localStorage.getItem('authData') ? 
+        JSON.parse(localStorage.getItem('authData')!).token : null;
+      
       await fetch('/api/notifications/read', {
         method: 'POST',
         headers: {
@@ -80,6 +93,16 @@ export default function NotificationBell() {
         return <Bell className="w-4 h-4 text-gray-600" />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="relative">
+        <button className="relative p-2 text-gray-600">
+          <Bell className="w-6 h-6" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">

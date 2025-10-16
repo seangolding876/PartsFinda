@@ -39,8 +39,14 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // ✅ IMPORTANT: Disable static generation for dynamic APIs
+  // ✅ IMPORTANT: Force dynamic rendering for all pages
   output: 'standalone',
+  
+  // ✅ ADD THIS: Disable static optimization for specific pages
+  // Yeh batayega ke kon si pages dynamic hain
+  async rewrites() {
+    return [];
+  },
 
   // Disable x-powered-by header for security
   poweredByHeader: false,
@@ -58,6 +64,23 @@ const nextConfig = {
         ]
       }
     ]
+  },
+  
+  // ✅ ADD THIS: Explicitly disable static generation for API routes
+  async exportPathMap(defaultPathMap, { dev, dir, outDir, distDir, buildId }) {
+    if (dev) {
+      return defaultPathMap;
+    }
+    
+    // Remove API routes from static generation
+    const filteredPaths = Object.keys(defaultPathMap).reduce((acc, path) => {
+      if (!path.startsWith('/api/')) {
+        acc[path] = defaultPathMap[path];
+      }
+      return acc;
+    }, {});
+    
+    return filteredPaths;
   }
 }
 

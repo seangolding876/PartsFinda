@@ -9,6 +9,9 @@ import RequestDetailsModal from '@/components/RequestDetailsModal';
 import RequestQuotesModal from '@/components/RequestQuotesModal';
 import EnhancedRequestQuotesModal from '@/components/EnhancedRequestQuotesModal';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Auth utility
 const getAuthData = () => {
   if (typeof window === 'undefined') return null;
