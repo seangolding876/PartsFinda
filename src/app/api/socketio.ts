@@ -1,6 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { initSocketServer } from '@/lib/socket-server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function SocketHandler(req: NextApiRequest, res: NextApiResponse) {
   // Initialize socket server if not already initialized
   if (!(res.socket as any).server.io) {

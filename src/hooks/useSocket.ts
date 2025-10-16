@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
