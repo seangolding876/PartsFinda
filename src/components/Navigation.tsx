@@ -106,6 +106,30 @@ export default function Navigation() {
                     <Car className="w-4 h-4" />
                     Manage Cars
                   </Link>
+
+                  
+                {/* 🧭 Admin Context Menu (Dummy Links) */}
+                {user.role === 'admin' && (
+                  <div className="mt-4 border-t pt-3 space-y-2">
+                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Admin Panel</h3>
+                    <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                      <BarChart3 className="w-4 h-4" /> Dashboard
+                    </Link>
+                    <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                      <Car className="w-4 h-4" /> Manage Cars
+                    </Link>
+                    <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                      <Users className="w-4 h-4" /> Manage Users
+                    </Link>
+                    <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                      <ClipboardList className="w-4 h-4" /> Reports
+                    </Link>
+                    <Link href="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                      <Settings className="w-4 h-4" /> Settings
+                    </Link>
+                  </div>
+                )}
+
                 </>
               )}
             </>
@@ -243,28 +267,6 @@ export default function Navigation() {
                       Upgrade to Pro
                     </button>
                   </>
-                )}
-
-                {/* 🧭 Admin Context Menu (Dummy Links) */}
-                {user.role === 'admin' && (
-                  <div className="mt-4 border-t pt-3 space-y-2">
-                    <h3 className="text-gray-600 text-sm font-semibold uppercase">Admin Panel</h3>
-                    <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <BarChart3 className="w-4 h-4" /> Dashboard
-                    </Link>
-                    <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Car className="w-4 h-4" /> Manage Cars
-                    </Link>
-                    <Link href="/admin/users" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Users className="w-4 h-4" /> Manage Users
-                    </Link>
-                    <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <ClipboardList className="w-4 h-4" /> Reports
-                    </Link>
-                    <Link href="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
-                      <Settings className="w-4 h-4" /> Settings
-                    </Link>
-                  </div>
                 )}
 
                 {/* User Info */}
