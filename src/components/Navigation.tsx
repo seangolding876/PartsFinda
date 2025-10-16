@@ -126,10 +126,10 @@ export default function Navigation() {
                         <Car className="w-4 h-4" /> Manage Cars
                       </Link>
                       <Link
-                        href="/admin/users"
+                        href="/queue-monitor"
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
                       >
-                        <Users className="w-4 h-4" /> Manage Users
+                        <Users className="w-4 h-4" /> Queue Monitoring
                       </Link>
                       <Link
                         href="/admin/reports"
@@ -313,7 +313,7 @@ export default function Navigation() {
                         <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
                           <Car className="w-4 h-4" /> Manage Cars
                         </Link>
-                        <Link href="/admin/queue" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                        <Link href="/queue-monitor" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
                           <Users className="w-4 h-4" /> Queue Monitoring
                         </Link>
                         <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
