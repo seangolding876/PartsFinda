@@ -61,6 +61,28 @@ export async function POST(request: NextRequest) {
       ['rejected', quote.request_id, quoteId]
     );
 
+      // After accepting quote, create notifications
+    await query(
+      `INSERT INTO notifications (user_id, type, title, message, related_entity_type, related_entity_id) 
+       VALUES ($1, 'quote_accepted', 'Quote Accepted', 'Your quote has been accepted by the buyer', 'quote', $2)`,
+      [quote.seller_id, quoteId]
+    );
+
+    // Send email notification
+    await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'quote_accepted',
+        userId: quote.seller_id,
+        data: {
+          partName: quote.part_name,
+          price: quote.price,
+          buyerName: userInfo.name
+        }
+      })
+    });
+
     await query('COMMIT');
 
     return NextResponse.json({
