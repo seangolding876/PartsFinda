@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
         END as participant_business_name,
         
         CASE 
-          WHEN c.buyer_id = $1 THEN 1
-          ELSE 1
+          WHEN c.buyer_id = $1 THEN 'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA='
+          ELSE 'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg?semt=ais_hybrid&w=740&q=80'
         END as participant_avatar,
         
         CASE 

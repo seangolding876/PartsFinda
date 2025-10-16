@@ -40,7 +40,7 @@ export async function GET(
       `SELECT 
         m.*,
         u.name as sender_name,
-        1 as sender_avatar
+        'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg?semt=ais_hybrid&w=740&q=80' as sender_avatar
        FROM messages m
        INNER JOIN users u ON m.sender_id = u.id
        WHERE m.conversation_id = $1
