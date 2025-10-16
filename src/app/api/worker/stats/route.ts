@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const pendingStatsQuery = `
       SELECT 
         COUNT(*) as total_pending,
-        COUNT(CASE WHEN rq.priority = 'high' THEN 1 END) as high_priority,
+        COUNT(CASE WHEN rq.urgency = 'high' THEN 1 END) as high_urgency,
         COUNT(CASE WHEN s.membership_plan = 'premium' THEN 1 END) as premium_sellers,
         AVG(pr.budget) as avg_budget
       FROM request_queue rq
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN rq.status = 'completed' THEN 1 ELSE 0 END) as success_today,
         SUM(CASE WHEN rq.status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue rq
-      WHERE DATE(rq.processed_at) = CURDATE()
+      WHERE DATE(rq.processed_at) = NOW()::date
     `;
 
     // Get queue details for monitoring
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         rq.id, 
         rq.part_request_id,
         rq.status,
-        rq.priority,
+        pr.urgency,
         rq.created_at as queued_at,
         rq.processed_at,
         pr.part_name, 
@@ -61,11 +61,11 @@ export async function GET(request: NextRequest) {
       WHERE rq.processed_at IS NULL OR rq.status = 'processing'
       ORDER BY 
         CASE 
-          WHEN rq.priority = 'high' THEN 1
-          WHEN rq.priority = 'medium' THEN 2
+          WHEN pr.urgency = 'high' THEN 1
+          WHEN pr.urgency = 'medium' THEN 2
           ELSE 3
         END,
-        rq.created_at
+        rq.created_at DESC
       LIMIT 50
     `;
 
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       },
       pending: {
         total_pending: pendingStats[0]?.total_pending || 0,
-        high_priority: pendingStats[0]?.high_priority || 0,
+        high_urgency: pendingStats[0]?.high_urgency || 0,
         premium_sellers: pendingStats[0]?.premium_sellers || 0,
         avg_budget: pendingStats[0]?.avg_budget || 0
       },
