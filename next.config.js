@@ -39,9 +39,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // ✅ IMPORTANT: Disable static generation entirely
+  // ✅ IMPORTANT: Disable static generation for dynamic APIs
   output: 'standalone',
-  
+
   // Disable x-powered-by header for security
   poweredByHeader: false,
 
