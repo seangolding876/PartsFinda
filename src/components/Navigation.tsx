@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { MessageSquare, Settings, Users, Car, Crown } from 'lucide-react';
+import { MessageSquare, Settings, Users, Car, Crown, Bell } from 'lucide-react';
 
 export default function Navigation() {
   const { user, logout, isLoading } = useAuth();
@@ -12,7 +12,6 @@ export default function Navigation() {
   };
 
   const handleUpgradeToPro = () => {
-    // Subscription page ko open karega
     window.open('/seller/subscription', '_blank');
   };
 
@@ -43,7 +42,7 @@ export default function Navigation() {
                 {/* Messages - Available to all authenticated users */}
                 <Link 
                   href="/messages" 
-                  className="hover:text-blue-600 flex items-center gap-1 transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" />
                   Messages
@@ -54,17 +53,15 @@ export default function Navigation() {
                     <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
                       My Requests
                     </Link>
-                    
-                  
                   </>
                 )}
 
                 {user.role === 'seller' && (
                   <> 
-                       <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
-                    Dashboard
-                  </Link>
-                    {/* Upgrade to Pro Button - Only for buyer */}
+                    <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
+                      Dashboard
+                    </Link>
+                    {/* Upgrade to Pro Button - Only for seller */}
                     <button
                       onClick={handleUpgradeToPro}
                       className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 py-1 rounded-full text-sm font-medium"
@@ -73,7 +70,6 @@ export default function Navigation() {
                       Upgrade to Pro
                     </button>
                   </>
-             
                 )}
 
                 {/* Admin Dashboard - Only for admin users */}
@@ -107,6 +103,14 @@ export default function Navigation() {
               </div>
             ) : user ? (
               <div className="flex items-center gap-3">
+                {/* Messages Button - Right side mein bhi */}
+                <Link 
+                  href="/messages" 
+                  className="md:hidden bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-1"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                </Link>
+
                 <div className="hidden sm:block text-right">
                   <span className="text-sm text-gray-600">
                     Welcome, <span className="font-semibold">{user.name}</span>
@@ -118,7 +122,12 @@ export default function Navigation() {
 
                 {/* Role-based primary action button */}
                 {user.role === 'buyer' ? (
-                  <></>
+                  <Link
+                    href="/request-part"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                  >
+                    Request Part
+                  </Link>
                 ) : user.role === 'seller' ? (
                   <Link
                     href="/seller/dashboard"
@@ -180,11 +189,12 @@ export default function Navigation() {
 
             {user && (
               <>
+                {/* Mobile Messages Button */}
                 <Link 
                   href="/messages" 
-                  className="hover:text-blue-600 flex items-center gap-1 transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 >
-                  <MessageSquare className="w-3 h-3" />
+                  <MessageSquare className="w-4 h-4" />
                   Messages
                 </Link>
 
@@ -193,16 +203,21 @@ export default function Navigation() {
                     <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
                       My Requests
                     </Link>
-                    
-            
+                    <Link
+                      href="/request-part"
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                    >
+                      Request Part
+                    </Link>
                   </>
                 )}
+
                 {user.role === 'seller' && (
                   <>
-                  <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
-                    Dashboard
-                  </Link>
-                          {/* Mobile Upgrade to Pro Button */}
+                    <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
+                      Dashboard
+                    </Link>
+                    {/* Mobile Upgrade to Pro Button */}
                     <button
                       onClick={handleUpgradeToPro}
                       className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-2 py-1 rounded-full text-xs font-medium"
@@ -212,6 +227,7 @@ export default function Navigation() {
                     </button>
                   </>
                 )}
+
                 {user.role === 'admin' && (
                   <>
                     <Link 
@@ -228,6 +244,13 @@ export default function Navigation() {
                       <Car className="w-3 h-3" />
                       Cars
                     </Link>
+                    <Link
+                      href="/admin/dashboard"
+                      className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium flex items-center gap-1 transition-colors"
+                    >
+                      <Settings className="w-3 h-3" />
+                      Admin Panel
+                    </Link>
                   </>
                 )}
 
@@ -240,7 +263,7 @@ export default function Navigation() {
                 {/* Mobile logout */}
                 <button
                   onClick={handleLogout}
-                  className="text-red-600 hover:text-red-700 transition-colors"
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 >
                   Logout
                 </button>

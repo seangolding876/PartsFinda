@@ -360,23 +360,7 @@ function RequestPartForm() {
 
     
     <div className="min-h-screen bg-gray-50 py-8">
-<div className="flex items-center gap-4">
-  <NotificationBell />
-  <Link
-    href="/messages"
-    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
-  >
-    <MessageCircle className="w-5 h-5" />
-    Messages
-  </Link>
-  <Link
-    href="/request-part"
-    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
-  >
-    <Plus className="w-5 h-5" />
-    New Request
-  </Link>
-</div>
+
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="mb-6">
