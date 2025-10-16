@@ -55,7 +55,7 @@ export async function GET(
     );
 
     const formattedMessages = messages.rows.map(msg => ({
-      id: msg.id,
+      id: msg.id.toString(),
       text: msg.message_text,
       sender: msg.sender_id === userInfo.userId ? 'buyer' : 'seller',
       timestamp: msg.created_at,

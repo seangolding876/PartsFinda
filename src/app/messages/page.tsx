@@ -44,7 +44,7 @@ interface Conversation {
 }
 
 interface Message {
-  id: string;
+  id: string; // ✅ Ensure this is always string
   text: string;
   sender: 'buyer' | 'seller';
   timestamp: string;
@@ -53,6 +53,12 @@ interface Message {
 
 // Message tracking to prevent duplicates
 const messageTracker = new Set();
+
+// ✅ FIXED: Safe ID check function
+const isTemporaryMessage = (id: string | number): boolean => {
+  const idStr = String(id);
+  return idStr.startsWith('temp-');
+};
 
 export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -96,12 +102,15 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Fetch messages for a conversation
+  // ✅ FIXED: Fetch messages with proper ID handling
   const fetchMessages = async (conversationId: string) => {
     try {
       console.log('🔄 Fetching messages for conversation:', conversationId);
       const token = getAuthToken();
-      if (!token) return;
+      if (!token) {
+        console.log('❌ No token found');
+        return;
+      }
 
       const response = await fetch(`/api/messages/${conversationId}`, {
         headers: {
@@ -109,23 +118,33 @@ export default function MessagesPage() {
         }
       });
 
+      console.log('📨 API Response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
         console.log('📨 Messages API response:', result);
         
         if (result.success && result.data) {
+          // ✅ Ensure all IDs are strings
+          const formattedMessages: Message[] = result.data.map((msg: any) => ({
+            ...msg,
+            id: String(msg.id) // ✅ Convert ID to string
+          }));
+
           // Clear tracker for this conversation
           messageTracker.clear();
-          result.data.forEach((msg: Message) => messageTracker.add(msg.id));
+          formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
           
-          setMessages(result.data);
-          console.log('✅ Messages loaded:', result.data.length);
+          setMessages(formattedMessages);
+          console.log('✅ Messages loaded:', formattedMessages.length, formattedMessages);
         } else {
-          console.log('❌ No messages found');
+          console.log('❌ No messages in response:', result);
           setMessages([]);
         }
       } else {
-        console.error('❌ Failed to fetch messages');
+        console.error('❌ Failed to fetch messages, status:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
         setMessages([]);
       }
     } catch (error) {
@@ -134,7 +153,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ IMPROVED Send Message Function
+  // ✅ FIXED: Send Message Function with proper ID handling
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -215,7 +234,7 @@ export default function MessagesPage() {
           // Mark as failed
           setMessages(prev => 
             prev.map(msg => 
-              msg.id === tempId 
+              isTemporaryMessage(msg.id) 
                 ? { ...msg, status: 'failed' }
                 : msg
             )
@@ -226,7 +245,7 @@ export default function MessagesPage() {
       console.error('❌ Error sending message:', error);
       setMessages(prev => 
         prev.map(msg => 
-          msg.id.startsWith('temp-') 
+          isTemporaryMessage(msg.id) 
             ? { ...msg, status: 'failed' }
             : msg
         )
@@ -236,23 +255,26 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED Socket Event Handlers
+  // ✅ FIXED Socket Event Handlers with proper ID handling
   useEffect(() => {
     if (!socket) return;
 
     console.log('🎯 Setting up global socket listeners');
 
     // Global new message handler
-    const handleNewMessage = (messageData: Message) => {
+    const handleNewMessage = (messageData: any) => {
       console.log('📨 Received new message:', messageData);
       
+      // ✅ Ensure ID is string
+      const messageId = String(messageData.id);
+      
       // ✅ Duplicate check
-      if (messageTracker.has(messageData.id)) {
-        console.log('🔄 Skipping duplicate message:', messageData.id);
+      if (messageTracker.has(messageId)) {
+        console.log('🔄 Skipping duplicate message:', messageId);
         return;
       }
 
-      messageTracker.add(messageData.id);
+      messageTracker.add(messageId);
 
       const currentConversation = conversationRef.current;
       
@@ -262,14 +284,23 @@ export default function MessagesPage() {
         
         setMessages(prev => {
           // ✅ Temporary messages ko replace karo with actual message
-          const filteredMessages = prev.filter(msg => !msg.id.startsWith('temp-'));
+          const filteredMessages = prev.filter(msg => !isTemporaryMessage(msg.id));
           
           // ✅ Check if message already exists
-          if (filteredMessages.some(msg => msg.id === messageData.id)) {
+          if (filteredMessages.some(msg => String(msg.id) === messageId)) {
             return filteredMessages;
           }
           
-          return [...filteredMessages, messageData];
+          // ✅ Ensure message data has proper types
+          const formattedMessage: Message = {
+            id: messageId,
+            text: messageData.text,
+            sender: messageData.sender,
+            timestamp: messageData.timestamp,
+            status: messageData.status || 'delivered'
+          };
+          
+          return [...filteredMessages, formattedMessage];
         });
 
         // ✅ Conversation list update
@@ -439,7 +470,7 @@ export default function MessagesPage() {
       </div>
     </div>
   );
-
+  
   if (loading) {
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center">
