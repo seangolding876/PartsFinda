@@ -1,4 +1,4 @@
-// app/messages/page.tsx - COMPLETELY FIXED VERSION
+// app/messages/page.tsx - FIXED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -96,9 +96,10 @@ export default function MessagesPage() {
     }
   };
 
-  // Fetch messages for a conversation
+  // ✅ FIXED: Fetch messages for a conversation
   const fetchMessages = async (conversationId: string) => {
     try {
+      console.log('🔄 Fetching messages for conversation:', conversationId);
       const token = getAuthToken();
       if (!token) return;
 
@@ -110,16 +111,26 @@ export default function MessagesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        if (result.success) {
+        console.log('📨 Messages API response:', result);
+        
+        if (result.success && result.data) {
           // Clear tracker for this conversation
           messageTracker.clear();
           result.data.forEach((msg: Message) => messageTracker.add(msg.id));
           
           setMessages(result.data);
+          console.log('✅ Messages loaded:', result.data.length);
+        } else {
+          console.log('❌ No messages found');
+          setMessages([]);
         }
+      } else {
+        console.error('❌ Failed to fetch messages');
+        setMessages([]);
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('❌ Error fetching messages:', error);
+      setMessages([]);
     }
   };
 
@@ -181,9 +192,6 @@ export default function MessagesPage() {
           receiverId: selectedConversation.participant.id
         });
 
-        // Server se confirmation aane par temporary message ko replace karenge
-        // Yeh 'new_message' event mein handle hoga
-
       } else {
         // ✅ Fallback to API
         console.log('📤 Using API fallback');
@@ -228,7 +236,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ IMPROVED Socket Event Handlers
+  // ✅ FIXED Socket Event Handlers
   useEffect(() => {
     if (!socket) return;
 
@@ -248,14 +256,19 @@ export default function MessagesPage() {
 
       const currentConversation = conversationRef.current;
       
-      // ✅ Agar yeh message current conversation ka hai
-      if (currentConversation && 
-          messageData.sender !== 'buyer' && // Self messages already handled optimistically
-          currentConversation.participant.id !== socket.id) {
+      // ✅ Agar yeh message current conversation ka hai to add karo
+      if (currentConversation) {
+        console.log('💬 Adding message to current conversation');
         
         setMessages(prev => {
-          // ✅ Temporary messages ko replace karo
+          // ✅ Temporary messages ko replace karo with actual message
           const filteredMessages = prev.filter(msg => !msg.id.startsWith('temp-'));
+          
+          // ✅ Check if message already exists
+          if (filteredMessages.some(msg => msg.id === messageData.id)) {
+            return filteredMessages;
+          }
+          
           return [...filteredMessages, messageData];
         });
 
@@ -280,7 +293,7 @@ export default function MessagesPage() {
     // Conversation update handler
     const handleConversationUpdate = (updateData: any) => {
       console.log('🔄 Conversation updated:', updateData);
-      // Sirf conversations refresh karo, messages nahi
+      // Refresh conversations list
       fetchConversations();
     };
 
@@ -364,17 +377,22 @@ export default function MessagesPage() {
     fetchConversations().finally(() => setLoading(false));
   }, []);
 
-  // When conversation is selected
+  // ✅ FIXED: When conversation is selected
   useEffect(() => {
     if (selectedConversation) {
       console.log('🔄 Loading messages for conversation:', selectedConversation.id);
+      setMessages([]); // Clear previous messages first
       fetchMessages(selectedConversation.id);
+    } else {
+      setMessages([]); // Clear messages when no conversation selected
     }
   }, [selectedConversation]);
 
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const filteredConversations = conversations.filter(conv =>
@@ -383,8 +401,12 @@ export default function MessagesPage() {
   );
 
   const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      return 'Just now';
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -418,7 +440,6 @@ export default function MessagesPage() {
     </div>
   );
 
-
   if (loading) {
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center">
@@ -434,7 +455,6 @@ export default function MessagesPage() {
     <div className="h-screen bg-gray-50 flex">
       {/* Conversations Sidebar */}
       <div className={`w-full md:w-1/3 bg-white border-r ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-        {/* Header with connection status */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold text-gray-800">Messages</h1>
@@ -444,7 +464,6 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -457,7 +476,6 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* Conversations List */}
         <div className="overflow-y-auto h-full">
           {filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
