@@ -92,8 +92,8 @@ export async function GET(request: NextRequest) {
         END as participant_business_name,
         
         CASE 
-          WHEN c.buyer_id = $1 THEN u_seller.avatar_url
-          ELSE u_buyer.avatar_url
+          WHEN c.buyer_id = $1 THEN 1
+          ELSE 1
         END as participant_avatar,
         
         CASE 
