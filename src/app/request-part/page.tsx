@@ -2,9 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import NotificationBell from '@/components/NotificationBell';
-import Link from 'next/link';
-import { MessageCircle, Plus } from 'lucide-react';
 
 // Auth utility functions
 const getAuthData = () => {
