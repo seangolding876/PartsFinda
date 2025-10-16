@@ -18,17 +18,19 @@ export const useSocket = () => {
 
     console.log('🔄 Starting socket connection...');
 
-    const socketUrl = 'https://partsfinda.com';
+    // ✅ Use HTTP for development, Nginx proxy for production
+    const socketUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://partsfinda.com'  // Nginx proxy (SSL)
+      : 'http://localhost:3001';   // Direct HTTP
 
     const socketInstance = io(socketUrl, {
       path: '/socket.io/',
       auth: { token },
-      transports: ['websocket', 'polling'], // Websocket first
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      timeout: 30000, // Increase timeout
-      forceNew: true
+      timeout: 30000,
     });
 
     socketInstance.on('connect', () => {
@@ -44,7 +46,6 @@ export const useSocket = () => {
 
     socketInstance.on('connect_error', (error) => {
       console.error('🔴 Connection error:', error.message);
-      console.error('Error details:', error);
       setIsConnected(false);
     });
 
