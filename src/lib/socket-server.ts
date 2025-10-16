@@ -12,7 +12,7 @@ export const initSocketServer = (server: NetServer) => {
   console.log('🔄 Initializing Socket.IO server...');
   
   io = new SocketServer(server, {
-    path: '/api/socketio/', // Important: Ye path use karen
+    path: '/api/socket/', // Important: Ye path use karen
     cors: {
       origin: [
         "https://partsfinda.com",
