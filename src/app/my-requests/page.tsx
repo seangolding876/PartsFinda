@@ -7,6 +7,7 @@ import BuyerProfile from '@/components/buyerprofile';
 import QuotesTab from '@/components/dashboard/QuotesTab';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import RequestQuotesModal from '@/components/RequestQuotesModal';
+import EnhancedRequestQuotesModal from '@/components/EnhancedRequestQuotesModal';
 
 // Auth utility
 const getAuthData = () => {
@@ -69,6 +70,7 @@ function BuyerDashboard() {
   const [selectedRequest, setSelectedRequest] = useState<PartRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showQuotesModal, setShowQuotesModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch user's part requests
   const fetchUserRequests = async () => {
@@ -569,14 +571,16 @@ function BuyerDashboard() {
             request={selectedRequest}
           />
 
-          <RequestQuotesModal
-            isOpen={showQuotesModal}
-            onClose={() => {
-              setShowQuotesModal(false);
-              setSelectedRequest(null);
-            }}
-            request={selectedRequest}
-          />
+          <EnhancedRequestQuotesModal
+  isOpen={showQuotesModal}
+  onClose={() => {
+    setShowQuotesModal(false);
+    setSelectedRequest(null);
+    setRefreshKey(prev => prev + 1); // Refresh parent
+  }}
+  request={selectedRequest}
+  onQuoteUpdate={() => setRefreshKey(prev => prev + 1)}
+/>
         </>
       )}
     </div>

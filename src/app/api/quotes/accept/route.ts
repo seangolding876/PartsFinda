@@ -1,4 +1,4 @@
-// app/api/quotes/accept/route.ts (updated)
+// app/api/quotes/accept/route.ts - UPDATED
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       `SELECT rq.*, pr.user_id as buyer_id, pr.part_name, 
               u.name as buyer_name, rq.seller_id, s.name as seller_name,
               s.email as seller_email, m.name as make_name, md.name as model_name,
-              pr.vehicle_year
+              pr.vehicle_year, pr.id as request_id
        FROM request_quotes rq
        INNER JOIN part_requests pr ON rq.request_id = pr.id
        INNER JOIN users u ON pr.user_id = u.id
@@ -69,13 +69,45 @@ export async function POST(request: NextRequest) {
       ['rejected', quote.request_id, quoteId]
     );
 
+    // 5. Create conversation automatically
+    const existingConv = await query(
+      'SELECT id FROM conversations WHERE part_request_id = $1 AND buyer_id = $2 AND seller_id = $3',
+      [quote.request_id, userInfo.userId, quote.seller_id]
+    );
+
+    let conversationId;
+    if (existingConv.rows.length === 0) {
+      const newConv = await query(
+        `INSERT INTO conversations (part_request_id, buyer_id, seller_id) 
+         VALUES ($1, $2, $3) RETURNING id`,
+        [quote.request_id, userInfo.userId, quote.seller_id]
+      );
+      conversationId = newConv.rows[0].id;
+    } else {
+      conversationId = existingConv.rows[0].id;
+    }
+
+    // 6. Send automatic acceptance message
+    await query(
+      `INSERT INTO messages (conversation_id, sender_id, receiver_id, message_text) 
+       VALUES ($1, $2, $3, $4)`,
+      [conversationId, userInfo.userId, quote.seller_id, 
+       `Hello! I have accepted your quote for ${quote.part_name} at J$${quote.price}. Please let me know the next steps for pickup/delivery.`]
+    );
+
+    // 7. Update conversation last message time
+    await query(
+      'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
+      [conversationId]
+    );
+
     await query('COMMIT');
 
-    console.log('✅ Quote accepted successfully:', quoteId);
+    console.log('✅ Quote accepted and conversation created:', quoteId);
 
-    // 5. Send email notification to seller
+    // 8. Send email notification to seller
     try {
-      const emailResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
+      await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,18 +124,15 @@ export async function POST(request: NextRequest) {
           }
         })
       });
-
-      const emailResult = await emailResponse.json();
-      console.log('📧 Quote acceptance email sent:', emailResult);
     } catch (emailError) {
       console.error('❌ Failed to send email notification:', emailError);
-      // Don't fail the whole request if email fails
     }
 
     return NextResponse.json({
       success: true,
       message: 'Quote accepted successfully',
-      sellerId: quote.seller_id
+      sellerId: quote.seller_id,
+      conversationId: conversationId
     });
 
   } catch (error: any) {

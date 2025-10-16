@@ -23,13 +23,30 @@ interface EnhancedRequestQuotesModalProps {
   isOpen: boolean;
   onClose: () => void;
   request: any;
+  onQuoteUpdate?: () => void; // Refresh parent component
 }
 
-export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }: EnhancedRequestQuotesModalProps) {
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData).token : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export default function EnhancedRequestQuotesModal({ 
+  isOpen, 
+  onClose, 
+  request,
+  onQuoteUpdate 
+}: EnhancedRequestQuotesModalProps) {
   const [quotes, setQuotes] = useState<EnhancedQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
+  const [processing, setProcessing] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && request) {
@@ -65,6 +82,7 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
     if (!confirm('Are you sure you want to accept this quote? All other quotes will be automatically rejected.')) return;
     
     try {
+      setProcessing(quoteId);
       const token = getAuthToken();
       const response = await fetch('/api/quotes/accept', {
         method: 'POST',
@@ -77,32 +95,25 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
 
       const result = await response.json();
       if (result.success) {
-        alert('Quote accepted successfully!');
+        // Create conversation automatically
+        await createConversation(result.sellerId);
         
-        // Send notification to seller
-        await fetch('/api/notifications/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId: result.sellerId,
-            type: 'quote_accepted',
-            title: 'Quote Accepted!',
-            message: `Your quote for ${request.part_name} has been accepted by the buyer.`,
-            related_entity_type: 'quote',
-            related_entity_id: quoteId
-          })
-        });
-
-        fetchQuotes(); // Refresh quotes
+        // Send automatic acceptance message
+        await sendAcceptanceMessage(result.sellerId);
+        
+        alert('Quote accepted successfully! Conversation started with seller.');
+        
+        // Refresh quotes and parent component
+        fetchQuotes();
+        if (onQuoteUpdate) onQuoteUpdate();
       } else {
         alert(result.error || 'Failed to accept quote');
       }
     } catch (error) {
       console.error('Error accepting quote:', error);
       alert('Failed to accept quote');
+    } finally {
+      setProcessing(null);
     }
   };
 
@@ -110,6 +121,7 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
     if (!confirm('Are you sure you want to reject this quote?')) return;
     
     try {
+      setProcessing(quoteId);
       const token = getAuthToken();
       const response = await fetch('/api/quotes/reject', {
         method: 'POST',
@@ -124,12 +136,72 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
       if (result.success) {
         alert('Quote rejected successfully!');
         fetchQuotes();
+        if (onQuoteUpdate) onQuoteUpdate();
       } else {
         alert(result.error || 'Failed to reject quote');
       }
     } catch (error) {
       console.error('Error rejecting quote:', error);
       alert('Failed to reject quote');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const createConversation = async (sellerId: string) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch('/api/messages/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          partRequestId: request.id,
+          sellerId: sellerId
+        })
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+    }
+  };
+
+  const sendAcceptanceMessage = async (sellerId: string) => {
+    try {
+      const token = getAuthToken();
+      
+      // First get conversation
+      const convResponse = await fetch('/api/messages/conversations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const convResult = await convResponse.json();
+      if (convResult.success) {
+        const conversation = convResult.data.find((conv: any) => 
+          conv.participant.id === sellerId && conv.relatedRequest.id === request.id
+        );
+
+        if (conversation) {
+          // Send automatic message
+          await fetch(`/api/messages/${conversation.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              messageText: `Hello! I have accepted your quote for ${request.part_name}. Please let me know the next steps for pickup/delivery.`
+            })
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error sending acceptance message:', error);
     }
   };
 
@@ -138,49 +210,57 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
 
     try {
       const token = getAuthToken();
-      const response = await fetch('/api/messages/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          receiverId: sellerId,
-          partRequestId: request.id,
-          messageText: messageText.trim()
-        })
-      });
+      
+      // First create conversation if not exists
+      const convResult = await createConversation(sellerId);
+      let conversationId = convResult.data?.id;
 
-      const result = await response.json();
-      if (result.success) {
-        setMessageText('');
-        setSelectedSeller(null);
-        alert('Message sent successfully!');
+      if (!conversationId) {
+        // If conversation already exists, find it
+        const convResponse = await fetch('/api/messages/conversations', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        // Create notification for seller
-        await fetch('/api/notifications/create', {
+        const conversations = await convResponse.json();
+        if (conversations.success) {
+          const existingConv = conversations.data.find((conv: any) => 
+            conv.participant.id === sellerId && conv.relatedRequest.id === request.id
+          );
+          conversationId = existingConv?.id;
+        }
+      }
+
+      if (conversationId) {
+        const response = await fetch(`/api/messages/${conversationId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            userId: sellerId,
-            type: 'message',
-            title: 'New Message',
-            message: `You have a new message regarding your quote for ${request.part_name}`,
-            related_entity_type: 'message',
-            related_entity_id: result.messageId
+            messageText: messageText.trim()
           })
         });
-      } else {
-        alert(result.error || 'Failed to send message');
+
+        const result = await response.json();
+        if (result.success) {
+          setMessageText('');
+          setSelectedSeller(null);
+          alert('Message sent successfully!');
+        } else {
+          alert(result.error || 'Failed to send message');
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message');
     }
   };
+
+  // Check if any quote is accepted
+  const hasAcceptedQuote = quotes.some(quote => quote.status === 'accepted');
 
   if (!isOpen) return null;
 
@@ -250,7 +330,11 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
           ) : (
             <div className="space-y-4">
               {quotes.map((quote) => (
-                <div key={quote.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={quote.id} className={`border rounded-lg p-4 ${
+                  quote.status === 'accepted' ? 'border-green-500 bg-green-50' :
+                  quote.status === 'rejected' ? 'border-red-500 bg-red-50' :
+                  'border-gray-200'
+                }`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg text-gray-800">
@@ -291,7 +375,7 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
 
                   {quote.notes && (
                     <div className="mb-4">
-                      <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{quote.notes}</p>
+                      <p className="text-sm text-gray-700 bg-white bg-opacity-50 p-3 rounded">{quote.notes}</p>
                     </div>
                   )}
 
@@ -304,23 +388,34 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
                         <>
                           <button
                             onClick={() => setSelectedSeller(quote.seller_id)}
-                            className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-1"
+                            disabled={processing !== null}
+                            className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-1 disabled:opacity-50"
                           >
                             <MessageCircle className="w-4 h-4" />
                             Message
                           </button>
                           <button
                             onClick={() => handleAcceptQuote(quote.id)}
-                            className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1"
+                            disabled={processing !== null || hasAcceptedQuote}
+                            className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <CheckCircle className="w-4 h-4" />
-                            Accept
+                            {processing === quote.id ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            {hasAcceptedQuote ? 'Already Accepted' : 'Accept'}
                           </button>
                           <button
                             onClick={() => handleRejectQuote(quote.id)}
-                            className="px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1"
+                            disabled={processing !== null || hasAcceptedQuote}
+                            className="px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <XCircle className="w-4 h-4" />
+                            {processing === quote.id ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
+                            )}
                             Reject
                           </button>
                         </>
@@ -348,14 +443,3 @@ export default function EnhancedRequestQuotesModal({ isOpen, onClose, request }:
     </div>
   );
 }
-
-// Utility function
-const getAuthToken = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const authData = localStorage.getItem('authData');
-    return authData ? JSON.parse(authData).token : null;
-  } catch (error) {
-    return null;
-  }
-};
