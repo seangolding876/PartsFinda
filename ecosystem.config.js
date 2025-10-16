@@ -24,7 +24,7 @@ module.exports = {
     {
       name: 'partsfinda-socket',
       script: 'index.js', 
-      cwd: '/opt/socket-server',
+      cwd: '/var/www/partsfinda/opt/socket-server',
       instances: 1,
       env: {
         NODE_ENV: 'production',
