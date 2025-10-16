@@ -1,22 +1,37 @@
-// app/messages/page.tsx - FIXED VERSION
+// app/messages/page.tsx - UPDATED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle } from 'lucide-react';
+import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, User } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Auth utility
-const getAuthToken = () => {
+// Auth utility - IMPROVED
+const getAuthData = () => {
   if (typeof window === 'undefined') return null;
   try {
     const authData = localStorage.getItem('authData');
-    return authData ? JSON.parse(authData).token : null;
+    return authData ? JSON.parse(authData) : null;
   } catch (error) {
     return null;
   }
+};
+
+const getAuthToken = () => {
+  const authData = getAuthData();
+  return authData?.token || null;
+};
+
+const getCurrentUserId = () => {
+  const authData = getAuthData();
+  return authData?.userId || null;
+};
+
+const getCurrentUserName = () => {
+  const authData = getAuthData();
+  return authData?.name || 'You';
 };
 
 interface Conversation {
@@ -44,11 +59,12 @@ interface Conversation {
 }
 
 interface Message {
-  id: string; // ✅ Ensure this is always string
+  id: string;
   text: string;
   sender: 'buyer' | 'seller';
   timestamp: string;
   status: string;
+  senderName?: string; // ✅ Added sender name
 }
 
 // Message tracking to prevent duplicates
@@ -73,6 +89,10 @@ export default function MessagesPage() {
   const { socket, isConnected } = useSocket();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const conversationRef = useRef(selectedConversation);
+
+  // ✅ Get current user info
+  const currentUserId = getCurrentUserId();
+  const currentUserName = getCurrentUserName();
 
   // Keep ref updated
   useEffect(() => {
@@ -102,7 +122,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Fetch messages with proper ID handling
+  // ✅ IMPROVED: Fetch messages with sender information
   const fetchMessages = async (conversationId: string) => {
     try {
       console.log('🔄 Fetching messages for conversation:', conversationId);
@@ -125,26 +145,28 @@ export default function MessagesPage() {
         console.log('📨 Messages API response:', result);
         
         if (result.success && result.data) {
-          // ✅ Ensure all IDs are strings
-          const formattedMessages: Message[] = result.data.map((msg: any) => ({
-            ...msg,
-            id: String(msg.id) // ✅ Convert ID to string
-          }));
+          // ✅ Ensure all IDs are strings and add sender names
+          const formattedMessages: Message[] = result.data.map((msg: any) => {
+            const isCurrentUser = msg.sender === 'buyer'; // Assuming current user is always buyer
+            return {
+              ...msg,
+              id: String(msg.id), // ✅ Convert ID to string
+              senderName: isCurrentUser ? currentUserName : selectedConversation?.participant.name || 'Seller'
+            };
+          });
 
           // Clear tracker for this conversation
           messageTracker.clear();
           formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
           
           setMessages(formattedMessages);
-          console.log('✅ Messages loaded:', formattedMessages.length, formattedMessages);
+          console.log('✅ Messages loaded with sender names:', formattedMessages);
         } else {
           console.log('❌ No messages in response:', result);
           setMessages([]);
         }
       } else {
         console.error('❌ Failed to fetch messages, status:', response.status);
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
         setMessages([]);
       }
     } catch (error) {
@@ -153,7 +175,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Send Message Function with proper ID handling
+  // ✅ IMPROVED: Send Message Function with sender info
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -163,11 +185,12 @@ export default function MessagesPage() {
       // ✅ Create unique temporary ID
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      // ✅ Optimistic update
+      // ✅ Optimistic update with sender name
       const tempMessage: Message = {
         id: tempId,
         text: newMessage.trim(),
         sender: 'buyer',
+        senderName: currentUserName, // ✅ Add sender name
         timestamp: new Date().toISOString(),
         status: 'sending'
       };
@@ -227,11 +250,9 @@ export default function MessagesPage() {
         });
 
         if (response.ok) {
-          // Refresh messages from server
           await fetchMessages(selectedConversation.id);
           await fetchConversations();
         } else {
-          // Mark as failed
           setMessages(prev => 
             prev.map(msg => 
               isTemporaryMessage(msg.id) 
@@ -255,7 +276,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED Socket Event Handlers with proper ID handling
+  // ✅ IMPROVED Socket Event Handlers with sender info
   useEffect(() => {
     if (!socket) return;
 
@@ -278,7 +299,6 @@ export default function MessagesPage() {
 
       const currentConversation = conversationRef.current;
       
-      // ✅ Agar yeh message current conversation ka hai to add karo
       if (currentConversation) {
         console.log('💬 Adding message to current conversation');
         
@@ -291,11 +311,12 @@ export default function MessagesPage() {
             return filteredMessages;
           }
           
-          // ✅ Ensure message data has proper types
+          // ✅ Ensure message data has proper types with sender name
           const formattedMessage: Message = {
             id: messageId,
             text: messageData.text,
             sender: messageData.sender,
+            senderName: messageData.sender === 'buyer' ? currentUserName : currentConversation.participant.name,
             timestamp: messageData.timestamp,
             status: messageData.status || 'delivered'
           };
@@ -324,7 +345,6 @@ export default function MessagesPage() {
     // Conversation update handler
     const handleConversationUpdate = (updateData: any) => {
       console.log('🔄 Conversation updated:', updateData);
-      // Refresh conversations list
       fetchConversations();
     };
 
@@ -352,7 +372,7 @@ export default function MessagesPage() {
       socket.off('conversation_updated', handleConversationUpdate);
       socket.off('user_typing', handleUserTyping);
     };
-  }, [socket]);
+  }, [socket, currentUserName]);
 
   // ✅ Conversation-specific socket setup
   useEffect(() => {
@@ -412,10 +432,10 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedConversation) {
       console.log('🔄 Loading messages for conversation:', selectedConversation.id);
-      setMessages([]); // Clear previous messages first
+      setMessages([]);
       fetchMessages(selectedConversation.id);
     } else {
-      setMessages([]); // Clear messages when no conversation selected
+      setMessages([]);
     }
   }, [selectedConversation]);
 
@@ -466,11 +486,11 @@ export default function MessagesPage() {
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Typing...</p>
+        <p className="text-xs text-gray-500 mt-1">{selectedConversation?.participant.name} is typing...</p>
       </div>
     </div>
   );
-  
+
   if (loading) {
     return (
       <div className="h-screen bg-gray-50 flex items-center justify-center">
@@ -591,6 +611,8 @@ export default function MessagesPage() {
                     {selectedConversation.participant.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <User className="w-4 h-4" />
+                    <span>Seller</span>
                     <span className={`w-2 h-2 rounded-full ${
                       selectedConversation.participant.online ? 'bg-green-500' : 'bg-gray-400'
                     }`}></span>
@@ -599,17 +621,19 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <Phone className="w-5 h-5 text-gray-600" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <Video className="w-5 h-5 text-gray-600" />
-                </button>
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  <span>You: {currentUserName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+                </div>
               </div>
             </div>
 
-            {/* Messages Area */}
+            {/* Messages Area - IMPROVED WITH SENDER NAMES */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -628,13 +652,24 @@ export default function MessagesPage() {
                           ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg'
                           : 'bg-white border rounded-r-lg rounded-tl-lg'
                       } p-3 shadow-sm`}>
+                        {/* ✅ Sender Name Display */}
+                        <div className={`flex items-center gap-2 mb-1 ${
+                          message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-600'
+                        }`}>
+                          <User className="w-3 h-3" />
+                          <span className="text-xs font-medium">
+                            {message.senderName || (message.sender === 'buyer' ? currentUserName : selectedConversation.participant.name)}
+                          </span>
+                        </div>
+                        
                         <p className="text-sm">{message.text}</p>
+                        
                         <div className={`flex items-center justify-between mt-2 ${
                           message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-500'
                         }`}>
                           <span className="text-xs">{formatTime(message.timestamp)}</span>
                           {message.sender === 'buyer' && (
-                            <div className="ml-2">
+                            <div className="ml-2 flex items-center gap-1">
                               {getStatusIcon(message.status)}
                             </div>
                           )}
