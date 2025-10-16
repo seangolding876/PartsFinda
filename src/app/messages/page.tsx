@@ -1,7 +1,7 @@
 // app/messages/page.tsx - UPDATED VERSION
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, Image, FileText, Star, MapPin, MessageCircle } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 export const dynamic = 'force-dynamic';
@@ -59,6 +59,8 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+   const [typing, setTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const messagesEndRef = useRef(null);
     const { socket, isConnected } = useSocket();
 
@@ -112,72 +114,70 @@ export default function MessagesPage() {
   // Send message
 // Send message - REAL-TIME VERSION
 const sendMessage = async () => {
-  if (!newMessage.trim() || !selectedConversation || sending) return;
+    if (!newMessage.trim() || !selectedConversation || sending) return;
 
-  try {
-    setSending(true);
-    
-    // ✅ Socket se message bhejein (real-time)
-    if (socket && isConnected) {
-      socket.emit('send_message', {
-        conversationId: selectedConversation.id,
-        messageText: newMessage.trim(),
-        receiverId: selectedConversation.participant.id // Ensure this field exists
-      });
+    try {
+      setSending(true);
       
-      // Optimistically add message to UI
-      const tempMessage: Message = {
-        id: Date.now().toString(), // Temporary ID
-        text: newMessage.trim(),
-        sender: 'buyer',
-        timestamp: new Date().toISOString(),
-        status: 'sent'
-      };
-      
-      setMessages(prev => [...prev, tempMessage]);
-      setNewMessage('');
-      
-      // Also update last message in conversations
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === selectedConversation.id 
-            ? {
-                ...conv,
-                lastMessage: {
-                  text: newMessage.trim(),
-                  timestamp: new Date().toISOString(),
-                  sender: 'buyer'
-                }
-              }
-            : conv
-        )
-      );
-    } else {
-      // Fallback to API call if socket not available
-      const token = getAuthToken();
-      const response = await fetch(`/api/messages/${selectedConversation.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messageText: newMessage.trim()
-        })
-      });
-
-      if (response.ok) {
+      if (socket && isConnected) {
+        socket.emit('send_message', {
+          conversationId: selectedConversation.id,
+          messageText: newMessage.trim(),
+          receiverId: selectedConversation.participant.id // ✅ Yeh important hai
+        });
+        
+        // Optimistic update...
+        const tempMessage: Message = {
+          id: Date.now().toString(),
+          text: newMessage.trim(),
+          sender: 'buyer',
+          timestamp: new Date().toISOString(),
+          status: 'sent'
+        };
+        
+        setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
-        await fetchMessages(selectedConversation.id);
-        await fetchConversations();
+        
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.id === selectedConversation.id 
+              ? {
+                  ...conv,
+                  lastMessage: {
+                    text: newMessage.trim(),
+                    timestamp: new Date().toISOString(),
+                    sender: 'buyer'
+                  }
+                }
+              : conv
+          )
+        );
+      } else {
+        // Fallback to API...
+        const token = getAuthToken();
+        const response = await fetch(`/api/messages/${selectedConversation.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            messageText: newMessage.trim()
+          })
+        });
+
+        if (response.ok) {
+          setNewMessage('');
+          await fetchMessages(selectedConversation.id);
+          await fetchConversations();
+        }
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
     }
-  } catch (error) {
-    console.error('Error sending message:', error);
-  } finally {
-    setSending(false);
-  }
-};
+  };
   // Initial load
   useEffect(() => {
     fetchConversations();
@@ -207,42 +207,77 @@ const sendMessage = async () => {
     conv.relatedRequest.partName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Socket effects
   useEffect(() => {
-  if (!socket || !selectedConversation) return;
+    if (!socket || !selectedConversation) return;
 
-  // Join conversation room
-  socket.emit('join_conversation', selectedConversation.id);
+    // Join conversation room
+    socket.emit('join_conversation', selectedConversation.id);
 
-  // Listen for new messages
-  socket.on('new_message', (messageData: Message) => {
-    if (messageData && selectedConversation) {
-      setMessages(prev => [...prev, messageData]);
-      // Mark as read if it's our message
-      if (messageData.sender !== 'buyer') {
-        // You can add mark as read logic here
+    // Listen for new messages
+    socket.on('new_message', (messageData: Message) => {
+      if (messageData && selectedConversation) {
+        setMessages(prev => [...prev, messageData]);
       }
-    }
-  });
+    });
 
-  // Listen for conversation updates
-  socket.on('conversation_updated', (updateData) => {
-    if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
-      // Refresh messages
-      fetchMessages(selectedConversation.id);
-      // Refresh conversations list
-      fetchConversations();
-    }
-  });
+    // Listen for conversation updates
+    socket.on('conversation_updated', (updateData) => {
+      if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
+        fetchMessages(selectedConversation.id);
+        fetchConversations();
+      }
+    });
 
-  // Cleanup on unmount or conversation change
-  return () => {
-    socket.off('new_message');
-    socket.off('conversation_updated');
-    if (selectedConversation) {
-      socket.emit('leave_conversation', selectedConversation.id);
+    // Listen for typing indicators
+    socket.on('user_typing', (data) => {
+      if (data.userId !== selectedConversation.participant.id) return;
+      
+      if (data.typing) {
+        setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
+      } else {
+        setTypingUsers(prev => prev.filter(id => id !== data.userId));
+      }
+    });
+
+    // Listen for errors
+    socket.on('message_error', (errorData) => {
+      console.error('Message error:', errorData);
+      // Show error to user
+    });
+
+    // Cleanup
+    return () => {
+      socket.off('new_message');
+      socket.off('conversation_updated');
+      socket.off('user_typing');
+      socket.off('message_error');
+      if (selectedConversation) {
+        socket.emit('leave_conversation', selectedConversation.id);
+      }
+    };
+  }, [socket, selectedConversation]);
+  
+  const handleTypingStop = useCallback(() => {
+    if (socket && selectedConversation && typing) {
+      setTyping(false);
+      socket.emit('typing_stop', { conversationId: selectedConversation.id });
+    }
+  }, [socket, selectedConversation, typing]);
+
+    // Typing handlers
+  const handleTypingStart = () => {
+    if (socket && selectedConversation && !typing) {
+      setTyping(true);
+      socket.emit('typing_start', { conversationId: selectedConversation.id });
     }
   };
-}, [socket, selectedConversation]);
+
+  // Debounced typing stop
+  useEffect(() => {
+    const timer = setTimeout(handleTypingStop, 1000);
+    return () => clearTimeout(timer);
+  }, [newMessage, handleTypingStop]);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -257,6 +292,28 @@ const sendMessage = async () => {
       return date.toLocaleDateString();
     }
   };
+
+    const messageInput = (
+    <input
+      type="text"
+      value={newMessage}
+      onChange={(e) => {
+        setNewMessage(e.target.value);
+        handleTypingStart();
+      }}
+      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+      placeholder="Type a message..."
+      disabled={sending}
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+    />
+  );
+
+  // Typing indicator display
+  const typingIndicator = typingUsers.length > 0 && (
+    <div className="text-xs text-gray-500 italic">
+      {selectedConversation.participant.name} is typing...
+    </div>
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -523,6 +580,7 @@ const sendMessage = async () => {
                   </div>
                 ))
               )}
+                    {typingIndicator}
               <div ref={messagesEndRef} />
             </div>
 

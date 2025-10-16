@@ -1,20 +1,31 @@
-// lib/socket-server.ts
 import { Server as NetServer } from 'http';
+import { NextApiRequest } from 'next';
 import { Server as SocketServer } from 'socket.io';
 import { verifyToken } from './jwt';
 
 let io: SocketServer | null = null;
 
 export const initSocketServer = (server: NetServer) => {
+  if (io) {
+    return io;
+  }
+
   io = new SocketServer(server, {
+    path: '/api/socketio', // Important: Specific path for Next.js
     cors: {
-      origin: process.env.NEXTAUTH_URL || "http://localhost:3000",
-      methods: ["GET", "POST"]
-    }
+      origin: [
+        "https://partsfinda.com",
+        "http://localhost:3000",
+        "https://www.partsfinda.com"
+      ],
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    transports: ['websocket', 'polling']
   });
 
+  // Rest of your socket server code remains same as before...
   io.use((socket, next) => {
-    // Authentication middleware
     const token = socket.handshake.auth.token;
     if (!token) {
       return next(new Error('Authentication error'));
@@ -31,35 +42,33 @@ export const initSocketServer = (server: NetServer) => {
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.data.userId);
-
-    // Join user to their personal room
     socket.join(`user_${socket.data.userId}`);
 
-    // Join conversation rooms
     socket.on('join_conversation', (conversationId) => {
       socket.join(`conversation_${conversationId}`);
       console.log(`User ${socket.data.userId} joined conversation ${conversationId}`);
     });
 
-    // Leave conversation
     socket.on('leave_conversation', (conversationId) => {
       socket.leave(`conversation_${conversationId}`);
     });
 
-    // Handle new message
     socket.on('send_message', async (data) => {
       try {
-        const { conversationId, messageText } = data;
+        const { conversationId, messageText, receiverId } = data;
         
-        // Save to database
+        if (!conversationId || !messageText || !receiverId) {
+          socket.emit('message_error', { error: 'Missing required fields' });
+          return;
+        }
+
         const { query } = await import('./db');
         const messageResult = await query(
           `INSERT INTO messages (conversation_id, sender_id, receiver_id, message_text) 
            VALUES ($1, $2, $3, $4) RETURNING *`,
-          [conversationId, socket.data.userId, data.receiverId, messageText]
+          [conversationId, socket.data.userId, receiverId, messageText]
         );
 
-        // Update conversation last message time
         await query(
           'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
           [conversationId]
@@ -67,7 +76,6 @@ export const initSocketServer = (server: NetServer) => {
 
         const newMessage = messageResult.rows[0];
 
-        // Broadcast to conversation room
         io?.to(`conversation_${conversationId}`).emit('new_message', {
           id: newMessage.id,
           text: newMessage.message_text,
@@ -76,8 +84,7 @@ export const initSocketServer = (server: NetServer) => {
           status: 'delivered'
         });
 
-        // Notify receiver
-        io?.to(`user_${data.receiverId}`).emit('conversation_updated', {
+        io?.to(`user_${receiverId}`).emit('conversation_updated', {
           conversationId,
           lastMessage: newMessage.message_text,
           timestamp: newMessage.created_at
