@@ -28,7 +28,7 @@ module.exports = {
     },
     
     // Socket Server
-     // ✅ Socket Server - FIXED
+   // ✅ Socket Server - FIXED
     {
       name: 'partsfinda-socket',
       script: 'index.js',
@@ -40,5 +40,6 @@ module.exports = {
         SOCKET_PORT: 3001,
         JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE'
       }
+    }
   ]
 };
