@@ -14,18 +14,6 @@ module.exports = {
       }
     },
 
-    {
-      name: 'partsfinda-socket',
-      script: 'index.js', 
-      cwd: '/var/www/partsfinda/opt/socket-server',
-      instances: 1,
-      env: {
-        NODE_ENV: 'production',
-        SOCKET_PORT: 3001,
-        JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE'
-  }
-},
-
     // Simple Worker
     {
       name: 'partsfinda-worker',
