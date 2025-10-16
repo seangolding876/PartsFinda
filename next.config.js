@@ -61,7 +61,4 @@ const nextConfig = {
   }
 }
 
-module.exports = {
-  output: 'export',
-  exclude: ['/api/*'], // ignore all API routes
-};
+module.exports = nextConfig
