@@ -40,7 +40,7 @@ export async function GET(
       `SELECT 
         m.*,
         u.name as sender_name,
-        u.avatar_url as sender_avatar
+        1 as sender_avatar
        FROM messages m
        INNER JOIN users u ON m.sender_id = u.id
        WHERE m.conversation_id = $1
