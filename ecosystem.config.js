@@ -38,7 +38,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         SOCKET_PORT: 3001,
-        JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE'
+        JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE',
+        DATABASE_URL: 'postgresql://postgres:C5%2Ay%24gRPGFiNuVveagleEye7%24@97.74.85.166:5432/myprojectdb'
       }
     }
   ]
