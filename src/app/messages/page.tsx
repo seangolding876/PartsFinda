@@ -1,11 +1,13 @@
-// app/messages/page.tsx - UPDATED VERSION
+// app/messages/page.tsx - FIXED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, Image, FileText, Star, MapPin, MessageCircle } from 'lucide-react';
+import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, MapPin } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
 // Auth utility
 const getAuthToken = () => {
   if (typeof window === 'undefined') return null;
@@ -59,17 +61,17 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-   const [typing, setTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const messagesEndRef = useRef(null);
-    const { socket, isConnected } = useSocket();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { socket, isConnected } = useSocket();
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Fetch conversations
   const fetchConversations = async () => {
     try {
-      setLoading(true);
       const token = getAuthToken();
-      
+      if (!token) return;
+
       const response = await fetch('/api/messages/conversations', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -84,8 +86,6 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -93,7 +93,8 @@ export default function MessagesPage() {
   const fetchMessages = async (conversationId: string) => {
     try {
       const token = getAuthToken();
-      
+      if (!token) return;
+
       const response = await fetch(`/api/messages/${conversationId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -111,49 +112,69 @@ export default function MessagesPage() {
     }
   };
 
-  // Send message
-// Send message - REAL-TIME VERSION
-const sendMessage = async () => {
+  // Send message - IMPROVED VERSION
+  const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
     try {
       setSending(true);
       
+      // ✅ Optimistic update FIRST
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`,
+        text: newMessage.trim(),
+        sender: 'buyer', // Assuming current user is buyer
+        timestamp: new Date().toISOString(),
+        status: 'sending'
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+
+      // Update conversation list
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === selectedConversation.id 
+            ? {
+                ...conv,
+                lastMessage: {
+                  text: newMessage.trim(),
+                  timestamp: new Date().toISOString(),
+                  sender: 'buyer'
+                }
+              }
+            : conv
+        )
+      );
+
+      // ✅ Try socket first
       if (socket && isConnected) {
+        console.log('📤 Sending via socket:', {
+          conversationId: selectedConversation.id,
+          messageText: newMessage.trim(),
+          receiverId: selectedConversation.participant.id
+        });
+
         socket.emit('send_message', {
           conversationId: selectedConversation.id,
           messageText: newMessage.trim(),
-          receiverId: selectedConversation.participant.id // ✅ Yeh important hai
+          receiverId: selectedConversation.participant.id
         });
-        
-        // Optimistic update...
-        const tempMessage: Message = {
-          id: Date.now().toString(),
-          text: newMessage.trim(),
-          sender: 'buyer',
-          timestamp: new Date().toISOString(),
-          status: 'sent'
-        };
-        
-        setMessages(prev => [...prev, tempMessage]);
-        setNewMessage('');
-        
-        setConversations(prev => 
-          prev.map(conv => 
-            conv.id === selectedConversation.id 
-              ? {
-                  ...conv,
-                  lastMessage: {
-                    text: newMessage.trim(),
-                    timestamp: new Date().toISOString(),
-                    sender: 'buyer'
-                  }
-                }
-              : conv
-          )
-        );
+
+        // Update status when server confirms
+        setTimeout(() => {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === tempMessage.id 
+                ? { ...msg, status: 'sent' }
+                : msg
+            )
+          );
+        }, 1000);
+
       } else {
-        // Fallback to API...
+        // ✅ Fallback to API
+        console.log('📤 Socket not available, using API fallback');
         const token = getAuthToken();
         const response = await fetch(`/api/messages/${selectedConversation.id}`, {
           method: 'POST',
@@ -167,166 +188,197 @@ const sendMessage = async () => {
         });
 
         if (response.ok) {
-          setNewMessage('');
+          // Refresh messages to get actual ID from server
           await fetchMessages(selectedConversation.id);
           await fetchConversations();
+        } else {
+          // Mark as failed
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === tempMessage.id 
+                ? { ...msg, status: 'failed' }
+                : msg
+            )
+          );
         }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
+      // Mark as failed
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id.startsWith('temp-') 
+            ? { ...msg, status: 'failed' }
+            : msg
+        )
+      );
     } finally {
       setSending(false);
     }
   };
+
+  // Typing handlers - IMPROVED
+  const handleTypingStart = useCallback(() => {
+    if (socket && selectedConversation) {
+      socket.emit('typing_start', { conversationId: selectedConversation.id });
+    }
+  }, [socket, selectedConversation]);
+
+  const handleTypingStop = useCallback(() => {
+    if (socket && selectedConversation) {
+      socket.emit('typing_stop', { conversationId: selectedConversation.id });
+    }
+  }, [socket, selectedConversation]);
+
+  // Debounced typing stop
+  useEffect(() => {
+    if (newMessage.trim()) {
+      handleTypingStart();
+      
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        handleTypingStop();
+      }, 1000);
+    } else {
+      handleTypingStop();
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [newMessage, handleTypingStart, handleTypingStop]);
+
   // Initial load
   useEffect(() => {
-    fetchConversations();
+    fetchConversations().finally(() => setLoading(false));
   }, []);
 
   // When conversation is selected
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      
-      // Poll for new messages every 5 seconds
-      const interval = setInterval(() => {
-        fetchMessages(selectedConversation.id);
-        fetchConversations(); // Update conversation list too
-      }, 5000);
-
-      return () => clearInterval(interval);
     }
   }, [selectedConversation]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // ✅ SOCKET EVENT HANDLERS - IMPROVED
+  useEffect(() => {
+    if (!socket || !selectedConversation) return;
+
+    console.log('🎯 Setting up socket listeners for conversation:', selectedConversation.id);
+
+    // Join conversation room
+    socket.emit('join_conversation', selectedConversation.id);
+
+    // Listen for new messages
+    const handleNewMessage = (messageData: Message) => {
+      console.log('📨 Received new message:', messageData);
+      if (messageData && selectedConversation) {
+        setMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(msg => msg.id === messageData.id)) return prev;
+          return [...prev, messageData];
+        });
+        
+        // Update conversation list
+        fetchConversations();
+      }
+    };
+
+    // Listen for conversation updates
+    const handleConversationUpdate = (updateData: any) => {
+      console.log('🔄 Conversation updated:', updateData);
+      if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
+        fetchMessages(selectedConversation.id);
+        fetchConversations();
+      }
+    };
+
+    // Listen for typing indicators
+    const handleUserTyping = (data: any) => {
+      if (data.userId === selectedConversation.participant.id) {
+        if (data.typing) {
+          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
+        } else {
+          setTypingUsers(prev => prev.filter(id => id !== data.userId));
+        }
+      }
+    };
+
+    // Listen for errors
+    const handleMessageError = (errorData: any) => {
+      console.error('💥 Message error:', errorData);
+    };
+
+    // Register event listeners
+    socket.on('new_message', handleNewMessage);
+    socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('message_error', handleMessageError);
+
+    // Cleanup
+    return () => {
+      console.log('🧹 Cleaning up socket listeners');
+      socket.off('new_message', handleNewMessage);
+      socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('message_error', handleMessageError);
+      
+      if (selectedConversation) {
+        socket.emit('leave_conversation', selectedConversation.id);
+      }
+    };
+  }, [socket, selectedConversation]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.relatedRequest.partName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Socket effects
-  useEffect(() => {
-    if (!socket || !selectedConversation) return;
-
-    // Join conversation room
-    socket.emit('join_conversation', selectedConversation.id);
-
-    // Listen for new messages
-    socket.on('new_message', (messageData: Message) => {
-      if (messageData && selectedConversation) {
-        setMessages(prev => [...prev, messageData]);
-      }
-    });
-
-    // Listen for conversation updates
-    socket.on('conversation_updated', (updateData) => {
-      if (updateData && selectedConversation && updateData.conversationId === selectedConversation.id) {
-        fetchMessages(selectedConversation.id);
-        fetchConversations();
-      }
-    });
-
-    // Listen for typing indicators
-    socket.on('user_typing', (data) => {
-      if (data.userId !== selectedConversation.participant.id) return;
-      
-      if (data.typing) {
-        setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
-      } else {
-        setTypingUsers(prev => prev.filter(id => id !== data.userId));
-      }
-    });
-
-    // Listen for errors
-    socket.on('message_error', (errorData) => {
-      console.error('Message error:', errorData);
-      // Show error to user
-    });
-
-    // Cleanup
-    return () => {
-      socket.off('new_message');
-      socket.off('conversation_updated');
-      socket.off('user_typing');
-      socket.off('message_error');
-      if (selectedConversation) {
-        socket.emit('leave_conversation', selectedConversation.id);
-      }
-    };
-  }, [socket, selectedConversation]);
-  
-  const handleTypingStop = useCallback(() => {
-    if (socket && selectedConversation && typing) {
-      setTyping(false);
-      socket.emit('typing_stop', { conversationId: selectedConversation.id });
-    }
-  }, [socket, selectedConversation, typing]);
-
-    // Typing handlers
-  const handleTypingStart = () => {
-    if (socket && selectedConversation && !typing) {
-      setTyping(true);
-      socket.emit('typing_start', { conversationId: selectedConversation.id });
-    }
-  };
-
-  // Debounced typing stop
-  useEffect(() => {
-    const timer = setTimeout(handleTypingStop, 1000);
-    return () => clearTimeout(timer);
-  }, [newMessage, handleTypingStop]);
-
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString();
-    }
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-    const messageInput = (
-    <input
-      type="text"
-      value={newMessage}
-      onChange={(e) => {
-        setNewMessage(e.target.value);
-        handleTypingStart();
-      }}
-      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-      placeholder="Type a message..."
-      disabled={sending}
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-    />
-  );
-
-  // Typing indicator display
-  const typingIndicator = typingUsers.length > 0 && (
-    <div className="text-xs text-gray-500 italic">
-      {selectedConversation.participant.name} is typing...
-    </div>
-  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'sending':
+        return <Clock className="w-4 h-4 text-gray-400" />;
       case 'sent':
         return <Check className="w-4 h-4 text-gray-400" />;
       case 'delivered':
         return <CheckCheck className="w-4 h-4 text-gray-400" />;
       case 'read':
         return <CheckCheck className="w-4 h-4 text-blue-500" />;
+      case 'failed':
+        return <Clock className="w-4 h-4 text-red-500" />;
       default:
         return <Clock className="w-4 h-4 text-gray-400" />;
     }
   };
+
+  // Typing indicator
+  const typingIndicator = typingUsers.length > 0 && (
+    <div className="flex justify-start">
+      <div className="bg-gray-100 rounded-lg p-3 max-w-xs">
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">{selectedConversation?.participant.name} is typing...</p>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -343,9 +395,15 @@ const sendMessage = async () => {
     <div className="h-screen bg-gray-50 flex">
       {/* Conversations Sidebar */}
       <div className={`w-full md:w-1/3 bg-white border-r ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-        {/* Header */}
+        {/* Header with connection status */}
         <div className="p-4 border-b">
-          <h1 className="text-xl font-bold text-gray-800 mb-4">Messages</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-xl font-bold text-gray-800">Messages</h1>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-xs text-gray-500">{isConnected ? 'Connected' : 'Disconnected'}</span>
+            </div>
+          </div>
 
           {/* Search */}
           <div className="relative">
@@ -366,7 +424,6 @@ const sendMessage = async () => {
             <div className="p-8 text-center text-gray-500">
               <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p>No conversations yet</p>
-              <p className="text-sm mt-2">Start a conversation by accepting a quote or contacting a seller</p>
             </div>
           ) : (
             filteredConversations.map((conversation) => (
@@ -394,30 +451,9 @@ const sendMessage = async () => {
                       <h3 className="font-semibold text-gray-800 truncate">
                         {conversation.participant.name}
                       </h3>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">
-                          {formatTime(conversation.lastMessage.timestamp)}
-                        </span>
-                        {conversation.unreadCount > 0 && (
-                          <div className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {conversation.unreadCount}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        conversation.participant.role === 'seller'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {conversation.participant.role}
+                      <span className="text-xs text-gray-500">
+                        {formatTime(conversation.lastMessage.timestamp)}
                       </span>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <MapPin className="w-3 h-3" />
-                        {conversation.participant.location}
-                      </div>
                     </div>
 
                     <p className="text-sm text-gray-600 truncate mb-1">
@@ -426,19 +462,13 @@ const sendMessage = async () => {
 
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">
-                        Re: {conversation.relatedRequest.partName}
+                        {conversation.relatedRequest.partName}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        conversation.relatedRequest.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : conversation.relatedRequest.status === 'fulfilled'
-                          ? 'bg-green-100 text-green-800'
-                          : conversation.relatedRequest.status === 'quoted'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {conversation.relatedRequest.status}
-                      </span>
+                      {conversation.unreadCount > 0 && (
+                        <div className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {conversation.unreadCount}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -481,18 +511,6 @@ const sendMessage = async () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-  <span className={`w-2 h-2 rounded-full ${
-    selectedConversation.participant.online ? 'bg-green-500' : 'bg-gray-400'
-  }`}></span>
-  {selectedConversation.participant.online ? 'Online' : 'Offline'}
-  {/* ✅ Socket connection status */}
-  <span className={`w-2 h-2 rounded-full ${
-    isConnected ? 'bg-green-500' : 'bg-red-500'
-  }`}></span>
-  <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
-</div>
-
               <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-lg">
                   <Phone className="w-5 h-5 text-gray-600" />
@@ -500,87 +518,45 @@ const sendMessage = async () => {
                 <button className="p-2 hover:bg-gray-100 rounded-lg">
                   <Video className="w-5 h-5 text-gray-600" />
                 </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg">
-                  <MoreVertical className="w-5 h-5 text-gray-600" />
-                </button>
               </div>
             </div>
 
-            {/* Related Request Info */}
-            <div className="bg-blue-50 border-b p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-800">
-                    Request: {selectedConversation.relatedRequest.partName}
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    {selectedConversation.relatedRequest.vehicle} • {selectedConversation.relatedRequest.id}
-                  </p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  selectedConversation.relatedRequest.status === 'completed'
-                    ? 'bg-green-100 text-green-800'
-                    : selectedConversation.relatedRequest.status === 'fulfilled'
-                    ? 'bg-green-100 text-green-800'
-                    : selectedConversation.relatedRequest.status === 'quoted'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {selectedConversation.relatedRequest.status}
-                </span>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <p>No messages yet</p>
                   <p className="text-sm mt-2">Start the conversation by sending a message</p>
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender === 'buyer' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-xs lg:max-w-md ${
-                      message.sender === 'buyer'
-                        ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg'
-                        : 'bg-white border rounded-r-lg rounded-tl-lg'
-                    } p-3 shadow-sm`}>
-                      {message.image && (
-                        <div className="mb-2">
-                          <img
-                            src={message.image}
-                            alt="Shared image"
-                            className="w-full h-48 object-cover rounded-lg"
-                          />
-                          {message.caption && (
-                            <p className="text-sm mt-2 opacity-90">{message.caption}</p>
+                <>
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.sender === 'buyer' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-xs lg:max-w-md ${
+                        message.sender === 'buyer'
+                          ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg'
+                          : 'bg-white border rounded-r-lg rounded-tl-lg'
+                      } p-3 shadow-sm`}>
+                        <p className="text-sm">{message.text}</p>
+                        <div className={`flex items-center justify-between mt-2 ${
+                          message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-500'
+                        }`}>
+                          <span className="text-xs">{formatTime(message.timestamp)}</span>
+                          {message.sender === 'buyer' && (
+                            <div className="ml-2">
+                              {getStatusIcon(message.status)}
+                            </div>
                           )}
                         </div>
-                      )}
-
-                      {message.text && (
-                        <p className="text-sm">{message.text}</p>
-                      )}
-
-                      <div className={`flex items-center justify-between mt-2 ${
-                        message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        <span className="text-xs">{formatTime(message.timestamp)}</span>
-                        {message.sender === 'buyer' && (
-                          <div className="ml-2">
-                            {getStatusIcon(message.status)}
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                  {typingIndicator}
+                </>
               )}
-                    {typingIndicator}
               <div ref={messagesEndRef} />
             </div>
 
@@ -591,7 +567,7 @@ const sendMessage = async () => {
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
 
-                <div className="flex-1 relative">
+                <div className="flex-1">
                   <input
                     type="text"
                     value={newMessage}
@@ -606,7 +582,7 @@ const sendMessage = async () => {
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || sending}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {sending ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -620,11 +596,9 @@ const sendMessage = async () => {
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-100">
             <div className="text-center">
-              <div className="bg-gray-200 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Send className="w-8 h-8 text-gray-400" />
-              </div>
+              <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a conversation</h3>
-              <p className="text-gray-600">Choose a conversation from the sidebar to start messaging</p>
+              <p className="text-gray-600">Choose a conversation to start messaging</p>
             </div>
           </div>
         )}
