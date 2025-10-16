@@ -21,6 +21,21 @@ module.exports = {
       cwd: '/var/www/partsfinda', 
       instances: 1,
       exec_mode: 'fork'
+    },
+    
+     {
+      name: 'partsfinda-socket',
+      script: 'index.js',
+      cwd: '/opt/socket-server',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        SOCKET_PORT: 3001,
+        JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE'
+      }
     }
   ]
 };
