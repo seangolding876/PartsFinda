@@ -1,23 +1,14 @@
-// app/messages/page.tsx - COMPLETE FIXED VERSION
+// app/messages/page.tsx - UPDATED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Search, 
-  Send, 
-  Paperclip, 
-  ArrowLeft, 
-  Check, 
-  CheckCheck, 
-  Clock, 
-  MessageCircle, 
-  User,
-  Star,
-  MapPin
-} from 'lucide-react';
+import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, User } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 
-// Auth utility
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Auth utility - IMPROVED
 const getAuthData = () => {
   if (typeof window === 'undefined') return null;
   try {
@@ -38,48 +29,51 @@ const getCurrentUserId = () => {
   return authData?.userId || null;
 };
 
-const getCurrentUserRole = () => {
+const getCurrentUserName = () => {
   const authData = getAuthData();
-  return authData?.role || null;
+  return authData?.name || 'You';
 };
 
 interface Conversation {
   id: string;
-  part_request_id: string;
-  part_name: string;
-  make_name: string;
-  model_name: string;
-  vehicle_year: string;
-  participant_id: string;
-  participant_name: string;
-  participant_business_name: string;
-  participant_role: 'buyer' | 'seller';
-  participant_location: string;
-  last_message: string;
-  last_message_time: string;
-  last_message_sender_id: string;
-  unread_count: number;
-  request_status: string;
+  participant: {
+    id: string;
+    name: string;
+    role: string;
+    avatar: string;
+    location: string;
+    online: boolean;
+  };
+  lastMessage: {
+    text: string;
+    timestamp: string;
+    sender: string;
+  };
+  relatedRequest: {
+    id: string;
+    partName: string;
+    vehicle: string;
+    status: string;
+  };
+  unreadCount: number;
 }
 
 interface Message {
   id: string;
-  conversation_id: string;
-  sender_id: string;
-  receiver_id: string;
-  message_text: string;
-  is_read: boolean;
-  created_at: string;
-  sender_name: string;
-  sender_business_name: string;
-  sender_role: 'buyer' | 'seller';
+  text: string;
+  sender: 'buyer' | 'seller';
+  timestamp: string;
+  status: string;
+  senderName?: string; // ✅ Added sender name
 }
 
 // Message tracking to prevent duplicates
 const messageTracker = new Set();
 
-const isTemporaryMessage = (id: string): boolean => {
-  return id.startsWith('temp-');
+// ✅ FIXED: Safe ID check function
+const isTemporaryMessage = (id: string | number): boolean => {
+  const idStr = String(id);
+  return idStr.startsWith('temp-');
 };
 
 export default function MessagesPage() {
@@ -96,8 +90,9 @@ export default function MessagesPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const conversationRef = useRef(selectedConversation);
 
+  // ✅ Get current user info
   const currentUserId = getCurrentUserId();
-  const currentUserRole = getCurrentUserRole();
+  const currentUserName = getCurrentUserName();
 
   // Keep ref updated
   useEffect(() => {
@@ -108,12 +103,9 @@ export default function MessagesPage() {
   const fetchConversations = async () => {
     try {
       const token = getAuthToken();
-      if (!token) {
-        console.log('❌ No token found for conversations');
-        return;
-      }
+      if (!token) return;
 
-      const response = await fetch('/api/messages', {
+      const response = await fetch('/api/messages/conversations', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -121,28 +113,22 @@ export default function MessagesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('📋 Conversations API response:', result);
-        
         if (result.success) {
           setConversations(result.data);
-        } else {
-          console.error('❌ Failed to fetch conversations:', result.error);
         }
-      } else {
-        console.error('❌ HTTP error fetching conversations:', response.status);
       }
     } catch (error) {
-      console.error('❌ Error fetching conversations:', error);
+      console.error('Error fetching conversations:', error);
     }
   };
 
-  // Fetch messages for a conversation
+  // ✅ IMPROVED: Fetch messages with sender information
   const fetchMessages = async (conversationId: string) => {
     try {
       console.log('🔄 Fetching messages for conversation:', conversationId);
       const token = getAuthToken();
       if (!token) {
-        console.log('❌ No token found for messages');
+        console.log('❌ No token found');
         return;
       }
 
@@ -152,19 +138,29 @@ export default function MessagesPage() {
         }
       });
 
-      console.log('📨 Messages API Response status:', response.status);
+      console.log('📨 API Response status:', response.status);
       
       if (response.ok) {
         const result = await response.json();
         console.log('📨 Messages API response:', result);
         
         if (result.success && result.data) {
+          // ✅ Ensure all IDs are strings and add sender names
+          const formattedMessages: Message[] = result.data.map((msg: any) => {
+            const isCurrentUser = msg.sender === 'buyer'; // Assuming current user is always buyer
+            return {
+              ...msg,
+              id: String(msg.id), // ✅ Convert ID to string
+              senderName: isCurrentUser ? currentUserName : selectedConversation?.participant.name || 'Seller'
+            };
+          });
+
           // Clear tracker for this conversation
           messageTracker.clear();
-          result.data.forEach((msg: Message) => messageTracker.add(msg.id.toString()));
+          formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
           
-          setMessages(result.data);
-          console.log('✅ Messages loaded:', result.data.length);
+          setMessages(formattedMessages);
+          console.log('✅ Messages loaded with sender names:', formattedMessages);
         } else {
           console.log('❌ No messages in response:', result);
           setMessages([]);
@@ -179,29 +175,26 @@ export default function MessagesPage() {
     }
   };
 
-  // Send message function
+  // ✅ IMPROVED: Send Message Function with sender info
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
     try {
       setSending(true);
       
-      // Create temporary message for optimistic update
+      // ✅ Create unique temporary ID
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // ✅ Optimistic update with sender name
       const tempMessage: Message = {
         id: tempId,
-        conversation_id: selectedConversation.id,
-        sender_id: currentUserId!,
-        receiver_id: selectedConversation.participant_id,
-        message_text: newMessage.trim(),
-        is_read: false,
-        created_at: new Date().toISOString(),
-        sender_name: 'You',
-        sender_business_name: '',
-        sender_role: currentUserRole as 'buyer' | 'seller'
+        text: newMessage.trim(),
+        sender: 'buyer',
+        senderName: currentUserName, // ✅ Add sender name
+        timestamp: new Date().toISOString(),
+        status: 'sending'
       };
       
-      // Optimistic update
       setMessages(prev => {
         const newMessages = [...prev, tempMessage];
         messageTracker.add(tempId);
@@ -210,48 +203,60 @@ export default function MessagesPage() {
       
       setNewMessage('');
 
-      // Try socket first
+      // ✅ Update conversation list optimistically
+      setConversations(prev => 
+        prev.map(conv => 
+          conv.id === selectedConversation.id 
+            ? {
+                ...conv,
+                lastMessage: {
+                  text: newMessage.trim(),
+                  timestamp: new Date().toISOString(),
+                  sender: 'buyer'
+                },
+                unreadCount: 0
+              }
+            : conv
+        )
+      );
+
+      // ✅ Try socket first
       if (socket && isConnected) {
         console.log('📤 Sending via socket:', {
           conversationId: selectedConversation.id,
-          messageText: newMessage.trim()
+          messageText: newMessage.trim(),
+          receiverId: selectedConversation.participant.id
         });
 
         socket.emit('send_message', {
           conversationId: selectedConversation.id,
-          messageText: newMessage.trim()
+          messageText: newMessage.trim(),
+          receiverId: selectedConversation.participant.id
         });
 
       } else {
-        // Fallback to API
+        // ✅ Fallback to API
         console.log('📤 Using API fallback');
         const token = getAuthToken();
-        const response = await fetch('/api/messages', {
+        const response = await fetch(`/api/messages/${selectedConversation.id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            partRequestId: selectedConversation.part_request_id,
-            sellerId: selectedConversation.participant_id,
             messageText: newMessage.trim()
           })
         });
 
         if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            // Refresh messages to get the actual message from database
-            await fetchMessages(selectedConversation.id);
-            await fetchConversations();
-          }
+          await fetchMessages(selectedConversation.id);
+          await fetchConversations();
         } else {
-          // Mark as failed
           setMessages(prev => 
             prev.map(msg => 
-              msg.id === tempId 
-                ? { ...msg, message_text: `${msg.message_text} (Failed)` }
+              isTemporaryMessage(msg.id) 
+                ? { ...msg, status: 'failed' }
                 : msg
             )
           );
@@ -261,8 +266,8 @@ export default function MessagesPage() {
       console.error('❌ Error sending message:', error);
       setMessages(prev => 
         prev.map(msg => 
-          msg.id.startsWith('temp-') 
-            ? { ...msg, message_text: `${msg.message_text} (Failed)` }
+          isTemporaryMessage(msg.id) 
+            ? { ...msg, status: 'failed' }
             : msg
         )
       );
@@ -271,19 +276,20 @@ export default function MessagesPage() {
     }
   };
 
-  // Socket Event Handlers
+  // ✅ IMPROVED Socket Event Handlers with sender info
   useEffect(() => {
     if (!socket) return;
 
-    console.log('🎯 Setting up socket listeners');
+    console.log('🎯 Setting up global socket listeners');
 
-    // Handle new incoming messages
+    // Global new message handler
     const handleNewMessage = (messageData: any) => {
-      console.log('📨 Received new message via socket:', messageData);
+      console.log('📨 Received new message:', messageData);
       
-      const messageId = messageData.id.toString();
+      // ✅ Ensure ID is string
+      const messageId = String(messageData.id);
       
-      // Duplicate check
+      // ✅ Duplicate check
       if (messageTracker.has(messageId)) {
         console.log('🔄 Skipping duplicate message:', messageId);
         return;
@@ -293,50 +299,59 @@ export default function MessagesPage() {
 
       const currentConversation = conversationRef.current;
       
-      if (currentConversation && messageData.conversation_id === currentConversation.id) {
+      if (currentConversation) {
         console.log('💬 Adding message to current conversation');
         
         setMessages(prev => {
-          // Filter out temporary messages
+          // ✅ Temporary messages ko replace karo with actual message
           const filteredMessages = prev.filter(msg => !isTemporaryMessage(msg.id));
           
-          // Check if message already exists
-          if (filteredMessages.some(msg => msg.id.toString() === messageId)) {
+          // ✅ Check if message already exists
+          if (filteredMessages.some(msg => String(msg.id) === messageId)) {
             return filteredMessages;
           }
           
-          // Add the new message
-          const newMessage: Message = {
+          // ✅ Ensure message data has proper types with sender name
+          const formattedMessage: Message = {
             id: messageId,
-            conversation_id: messageData.conversation_id,
-            sender_id: messageData.sender_id,
-            receiver_id: messageData.receiver_id,
-            message_text: messageData.message_text,
-            is_read: messageData.is_read,
-            created_at: messageData.created_at,
-            sender_name: messageData.sender_name,
-            sender_business_name: messageData.sender_business_name,
-            sender_role: messageData.sender_role
+            text: messageData.text,
+            sender: messageData.sender,
+            senderName: messageData.sender === 'buyer' ? currentUserName : currentConversation.participant.name,
+            timestamp: messageData.timestamp,
+            status: messageData.status || 'delivered'
           };
           
-          return [...filteredMessages, newMessage];
+          return [...filteredMessages, formattedMessage];
         });
 
-        // Update conversations list
-        fetchConversations();
+        // ✅ Conversation list update
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.id === currentConversation.id 
+              ? {
+                  ...conv,
+                  lastMessage: {
+                    text: messageData.text,
+                    timestamp: messageData.timestamp,
+                    sender: messageData.sender
+                  }
+                }
+              : conv
+          )
+        );
       }
     };
 
-    // Handle conversation updates
+    // Conversation update handler
     const handleConversationUpdate = (updateData: any) => {
       console.log('🔄 Conversation updated:', updateData);
       fetchConversations();
     };
 
-    // Handle typing indicators
+    // Typing handler
     const handleUserTyping = (data: any) => {
       const currentConversation = conversationRef.current;
-      if (currentConversation && data.userId === currentConversation.participant_id) {
+      if (currentConversation && data.userId === currentConversation.participant.id) {
         if (data.typing) {
           setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
         } else {
@@ -345,33 +360,21 @@ export default function MessagesPage() {
       }
     };
 
-    // Handle new message notifications
-    const handleNewMessageNotification = (notificationData: any) => {
-      console.log('🔔 New message notification:', notificationData);
-      // Refresh conversations to update unread counts
-      fetchConversations();
-      
-      // Play notification sound
-      playNotificationSound();
-    };
-
-    // Register event listeners
+    // Register events
     socket.on('new_message', handleNewMessage);
     socket.on('conversation_updated', handleConversationUpdate);
     socket.on('user_typing', handleUserTyping);
-    socket.on('new_message_notification', handleNewMessageNotification);
 
     // Cleanup
     return () => {
-      console.log('🧹 Cleaning up socket listeners');
+      console.log('🧹 Cleaning up global socket listeners');
       socket.off('new_message', handleNewMessage);
       socket.off('conversation_updated', handleConversationUpdate);
       socket.off('user_typing', handleUserTyping);
-      socket.off('new_message_notification', handleNewMessageNotification);
     };
-  }, [socket]);
+  }, [socket, currentUserName]);
 
-  // Join/leave conversation rooms
+  // ✅ Conversation-specific socket setup
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
@@ -420,24 +423,12 @@ export default function MessagesPage() {
     };
   }, [newMessage, handleTypingStart, handleTypingStop]);
 
-  // Play notification sound
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio('/notification.mp3'); // Add this sound file to your public folder
-      audio.play().catch(() => {
-        // Silent fail if audio can't play
-      });
-    } catch (error) {
-      console.log('🔇 Could not play notification sound');
-    }
-  };
-
   // Initial load
   useEffect(() => {
     fetchConversations().finally(() => setLoading(false));
   }, []);
 
-  // Load messages when conversation is selected
+  // ✅ FIXED: When conversation is selected
   useEffect(() => {
     if (selectedConversation) {
       console.log('🔄 Loading messages for conversation:', selectedConversation.id);
@@ -448,84 +439,45 @@ export default function MessagesPage() {
     }
   }, [selectedConversation]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom
   useEffect(() => {
     if (messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Filter conversations based on search
   const filteredConversations = conversations.filter(conv =>
-    conv.participant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.participant_business_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.part_name.toLowerCase().includes(searchQuery.toLowerCase())
+    conv.participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.relatedRequest.partName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Utility functions
   const formatTime = (timestamp: string) => {
     try {
       const date = new Date(timestamp);
-      const now = new Date();
-      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-      
-      if (diffInHours < 24) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } else {
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      }
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch (error) {
       return 'Just now';
     }
   };
 
-  const formatDate = (timestamp: string) => {
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleDateString([], { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return timestamp;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'sending':
+        return <Clock className="w-3 h-3 text-gray-400" />;
+      case 'sent':
+        return <Check className="w-3 h-3 text-gray-400" />;
+      case 'delivered':
+        return <CheckCheck className="w-3 h-3 text-gray-400" />;
+      case 'read':
+        return <CheckCheck className="w-3 h-3 text-blue-500" />;
+      case 'failed':
+        return <Clock className="w-3 h-3 text-red-500" />;
+      default:
+        return <Clock className="w-3 h-3 text-gray-400" />;
     }
   };
 
-  const getStatusIcon = (message: Message) => {
-    if (message.sender_id !== currentUserId) return null;
-
-    if (isTemporaryMessage(message.id)) {
-      return <Clock className="w-3 h-3 text-gray-400" />;
-    }
-
-    if (message.message_text.includes('(Failed)')) {
-      return <Clock className="w-3 h-3 text-red-500" />;
-    }
-
-    return message.is_read ? 
-      <CheckCheck className="w-3 h-3 text-blue-500" /> : 
-      <Check className="w-3 h-3 text-gray-400" />;
-  };
-
-  const isCurrentUser = (message: Message) => {
-    return message.sender_id === currentUserId;
-  };
-
-  const getParticipantDisplayName = (conversation: Conversation) => {
-    return conversation.participant_business_name || conversation.participant_name;
-  };
-
-  const getAvatarUrl = (conversation: Conversation) => {
-    // You can implement your own avatar logic here
-    return conversation.participant_role === 'seller' 
-      ? 'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA='
-      : 'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg?semt=ais_hybrid&w=740&q=80';
-  };
-
-  // Typing indicator component
+  // Typing indicator
   const typingIndicator = typingUsers.length > 0 && (
     <div className="flex justify-start">
       <div className="bg-gray-100 rounded-lg p-3 max-w-xs">
@@ -534,9 +486,7 @@ export default function MessagesPage() {
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">
-          {selectedConversation?.participant_name} is typing...
-        </p>
+        <p className="text-xs text-gray-500 mt-1">{selectedConversation?.participant.name} is typing...</p>
       </div>
     </div>
   );
@@ -555,8 +505,8 @@ export default function MessagesPage() {
   return (
     <div className="h-screen bg-gray-50 flex">
       {/* Conversations Sidebar */}
-      <div className={`w-full md:w-1/3 bg-white border-r border-gray-200 ${selectedConversation ? 'hidden md:block' : 'block'}`}>
-        <div className="p-4 border-b border-gray-200">
+      <div className={`w-full md:w-1/3 bg-white border-r ${selectedConversation ? 'hidden md:block' : 'block'}`}>
+        <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold text-gray-800">Messages</h1>
             <div className="flex items-center gap-2">
@@ -577,60 +527,54 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        <div className="overflow-y-auto h-[calc(100vh-120px)]">
+        <div className="overflow-y-auto h-full">
           {filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium mb-2">No conversations yet</p>
-              <p className="text-sm">Start a conversation by contacting a seller or responding to a buyer.</p>
+              <p>No conversations yet</p>
             </div>
           ) : (
             filteredConversations.map((conversation) => (
               <div
                 key={conversation.id}
                 onClick={() => setSelectedConversation(conversation)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedConversation?.id === conversation.id ? 'bg-blue-50 border-r-4 border-r-blue-500' : ''
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="relative flex-shrink-0">
+                  <div className="relative">
                     <img
-                      src={getAvatarUrl(conversation)}
-                      alt={getParticipantDisplayName(conversation)}
-                      className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                      src={conversation.participant.avatar}
+                      alt={conversation.participant.name}
+                      className="w-12 h-12 rounded-full object-cover"
                     />
-                    <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                      conversation.participant_role === 'seller' ? 'bg-green-500' : 'bg-blue-500'
-                    }`}></div>
+                    {conversation.participant.online && (
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="font-semibold text-gray-800 truncate">
-                        {getParticipantDisplayName(conversation)}
+                        {conversation.participant.name}
                       </h3>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {formatTime(conversation.last_message_time)}
+                      <span className="text-xs text-gray-500">
+                        {formatTime(conversation.lastMessage.timestamp)}
                       </span>
                     </div>
 
                     <p className="text-sm text-gray-600 truncate mb-1">
-                      {conversation.last_message || 'No messages yet'}
+                      {conversation.lastMessage.text || 'No messages yet'}
                     </p>
 
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                          {conversation.part_name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {conversation.make_name} {conversation.model_name} ({conversation.vehicle_year})
-                        </span>
-                      </div>
-                      {conversation.unread_count > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {conversation.relatedRequest.partName}
+                      </span>
+                      {conversation.unreadCount > 0 && (
                         <div className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                          {conversation.unread_count}
+                          {conversation.unreadCount}
                         </div>
                       )}
                     </div>
@@ -647,31 +591,32 @@ export default function MessagesPage() {
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+            <div className="bg-white border-b p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectedConversation(null)}
-                  className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
                 >
-                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                  <ArrowLeft className="w-5 h-5" />
                 </button>
 
                 <img
-                  src={getAvatarUrl(selectedConversation)}
-                  alt={getParticipantDisplayName(selectedConversation)}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                  src={selectedConversation.participant.avatar}
+                  alt={selectedConversation.participant.name}
+                  className="w-10 h-10 rounded-full object-cover"
                 />
 
                 <div>
                   <h2 className="font-semibold text-gray-800">
-                    {getParticipantDisplayName(selectedConversation)}
+                    {selectedConversation.participant.name}
                   </h2>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <MapPin className="w-3 h-3" />
-                    <span>{selectedConversation.participant_location}</span>
-                    <span className="capitalize px-2 py-1 bg-gray-100 rounded text-xs">
-                      {selectedConversation.participant_role}
-                    </span>
+                    <User className="w-4 h-4" />
+                    <span>Seller</span>
+                    <span className={`w-2 h-2 rounded-full ${
+                      selectedConversation.participant.online ? 'bg-green-500' : 'bg-gray-400'
+                    }`}></span>
+                    {selectedConversation.participant.online ? 'Online' : 'Offline'}
                   </div>
                 </div>
               </div>
@@ -679,67 +624,53 @@ export default function MessagesPage() {
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  <span className="capitalize">{currentUserRole}</span>
+                  <span>You: {currentUserName}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+                  <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
                 </div>
               </div>
             </div>
 
-            {/* Related Request Info */}
-            <div className="bg-blue-50 border-b border-blue-100 p-3">
-              <div className="flex items-center justify-between text-sm">
-                <div>
-                  <span className="font-medium text-blue-800">Part Request:</span>
-                  <span className="text-blue-700 ml-2">{selectedConversation.part_name}</span>
-                </div>
-                <div className="text-blue-600">
-                  {selectedConversation.make_name} {selectedConversation.model_name} ({selectedConversation.vehicle_year})
-                </div>
-              </div>
-            </div>
-
-            {/* Messages Area */}
+            {/* Messages Area - IMPROVED WITH SENDER NAMES */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-lg font-medium mb-2">No messages yet</p>
-                  <p className="text-sm">Start the conversation by sending a message</p>
+                  <p>No messages yet</p>
+                  <p className="text-sm mt-2">Start the conversation by sending a message</p>
                 </div>
               ) : (
                 <>
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${isCurrentUser(message) ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${message.sender === 'buyer' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`max-w-xs lg:max-w-md ${
-                        isCurrentUser(message)
+                        message.sender === 'buyer'
                           ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg'
-                          : 'bg-white border border-gray-200 rounded-r-lg rounded-tl-lg shadow-sm'
-                      } p-3`}>
-                        {/* Sender Name - Only show for other user */}
-                        {!isCurrentUser(message) && (
-                          <div className="flex items-center gap-2 mb-1 text-gray-600">
-                            <User className="w-3 h-3" />
-                            <span className="text-xs font-medium">
-                              {message.sender_business_name || message.sender_name}
-                            </span>
-                          </div>
-                        )}
+                          : 'bg-white border rounded-r-lg rounded-tl-lg'
+                      } p-3 shadow-sm`}>
+                        {/* ✅ Sender Name Display */}
+                        <div className={`flex items-center gap-2 mb-1 ${
+                          message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-600'
+                        }`}>
+                          <User className="w-3 h-3" />
+                          <span className="text-xs font-medium">
+                            {message.senderName || (message.sender === 'buyer' ? currentUserName : selectedConversation.participant.name)}
+                          </span>
+                        </div>
                         
-                        <p className="text-sm break-words">{message.message_text}</p>
+                        <p className="text-sm">{message.text}</p>
                         
                         <div className={`flex items-center justify-between mt-2 ${
-                          isCurrentUser(message) ? 'text-blue-100' : 'text-gray-500'
+                          message.sender === 'buyer' ? 'text-blue-100' : 'text-gray-500'
                         }`}>
-                          <span className="text-xs">{formatTime(message.created_at)}</span>
-                          {isCurrentUser(message) && (
+                          <span className="text-xs">{formatTime(message.timestamp)}</span>
+                          {message.sender === 'buyer' && (
                             <div className="ml-2 flex items-center gap-1">
-                              {getStatusIcon(message)}
+                              {getStatusIcon(message.status)}
                             </div>
                           )}
                         </div>
@@ -753,9 +684,9 @@ export default function MessagesPage() {
             </div>
 
             {/* Message Input */}
-            <div className="bg-white border-t border-gray-200 p-4">
+            <div className="bg-white border-t p-4">
               <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <button className="p-2 hover:bg-gray-100 rounded-lg">
                   <Paperclip className="w-5 h-5 text-gray-600" />
                 </button>
 
@@ -764,22 +695,17 @@ export default function MessagesPage() {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Type a message..."
                     disabled={sending}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   />
                 </div>
 
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || sending}
-                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {sending ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -795,7 +721,7 @@ export default function MessagesPage() {
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a conversation</h3>
-              <p className="text-gray-600">Choose a conversation from the list to start messaging</p>
+              <p className="text-gray-600">Choose a conversation to start messaging</p>
             </div>
           </div>
         )}

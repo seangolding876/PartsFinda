@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/jwt';
 
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 
 export async function GET(
@@ -21,7 +22,7 @@ export async function GET(
     const userInfo = verifyToken(token);
     const conversationId = params.conversationId;
 
-    // Verify access
+    // Verify user has access to this conversation
     const accessCheck = await query(
       'SELECT id FROM conversations WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)',
       [conversationId, userInfo.userId]
@@ -34,19 +35,14 @@ export async function GET(
       );
     }
 
-    // Get messages with proper sender names
+    // Get messages
     const messages = await query(
       `SELECT 
         m.*,
         u.name as sender_name,
-        u.business_name as sender_business_name,
-        CASE 
-          WHEN u.id = c.buyer_id THEN 'buyer'
-          ELSE 'seller'
-        END as sender_role
+        'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg?semt=ais_hybrid&w=740&q=80' as sender_avatar
        FROM messages m
        INNER JOIN users u ON m.sender_id = u.id
-       INNER JOIN conversations c ON m.conversation_id = c.id
        WHERE m.conversation_id = $1
        ORDER BY m.created_at ASC`,
       [conversationId]
@@ -54,16 +50,26 @@ export async function GET(
 
     // Mark messages as read
     await query(
-      'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = false',
+      'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND receiver_id = $2',
       [conversationId, userInfo.userId]
     );
 
+    const formattedMessages = messages.rows.map(msg => ({
+      id: msg.id.toString(),
+      text: msg.message_text,
+      sender: msg.sender_id === userInfo.userId ? 'buyer' : 'seller',
+      timestamp: msg.created_at,
+      status: msg.is_read ? 'read' : 'delivered',
+      image: msg.attachment_url || null,
+      caption: null
+    }));
+
     return NextResponse.json({
       success: true,
-      data: messages.rows
+      data: formattedMessages
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch messages' },
@@ -134,38 +140,36 @@ export async function POST(
     );
 
     // Send email notification
-// In your message sending logic
-try {
-  const receiverInfo = await query(
-    'SELECT name, email FROM users WHERE id = $1',
-    [receiverId]
-  );
+    try {
+      const receiverInfo = await query(
+        'SELECT name, email FROM users WHERE id = $1',
+        [receiverId]
+      );
 
-  if (receiverInfo.rows.length > 0) {
-    const senderInfo = await query(
-      'SELECT name, business_name FROM users WHERE id = $1',
-      [userInfo.userId]
-    );
+      if (receiverInfo.rows.length > 0) {
+        const senderInfo = await query(
+          'SELECT name FROM users WHERE id = $1',
+          [userInfo.userId]
+        );
 
-    await fetch('/api/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: receiverInfo.rows[0].email,
-        subject: 'New Message on PartsFinda',
-        template: 'new-message',
-        data: {
-          senderName: senderInfo.rows[0]?.business_name || senderInfo.rows[0]?.name,
-          messagePreview: messageText.length > 50 ? 
-            messageText.substring(0, 50) + '...' : messageText,
-          conversationLink: `${process.env.NEXTAUTH_URL}/messages`
-        }
-      })
-    });
-  }
-} catch (emailError) {
-  console.error('Email sending failed:', emailError);
-}
+        await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'new_message',
+            userId: receiverId,
+            data: {
+              senderName: senderInfo.rows[0]?.name || 'A user',
+              partName: 'your part request', // You can get this from conversation
+              messagePreview: messageText.length > 50 ? 
+                messageText.substring(0, 50) + '...' : messageText
+            }
+          })
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+    }
 
     return NextResponse.json({
       success: true,
