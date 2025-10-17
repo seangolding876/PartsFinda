@@ -58,43 +58,65 @@ export async function GET(request: NextRequest) {
       query(pendingQuery)
     ]);
 
-    console.log('🔍 Database Query Results:', {
-      totalStats: totalStats.rows,
-      todayStats: todayStats.rows, 
-      pendingRequests: pendingRequests.rows
+    console.log('🔍 RAW Database Query Results:', {
+      totalStats,
+      todayStats, 
+      pendingRequests
     });
 
-    // Process pending requests data
+    // ✅ FIX: Properly handle database response structure
     let pendingArray = [];
     
-    if (pendingRequests && pendingRequests.rows) {
-      pendingArray = pendingRequests.rows;
-    } else if (pendingRequests && Array.isArray(pendingRequests)) {
-      pendingArray = pendingRequests;
+    // Check different possible response structures
+    if (pendingRequests) {
+      // Case 1: Direct array (most common)
+      if (Array.isArray(pendingRequests)) {
+        pendingArray = pendingRequests;
+      }
+      // Case 2: Object with rows property
+      else if (pendingRequests.rows && Array.isArray(pendingRequests.rows)) {
+        pendingArray = pendingRequests.rows;
+      }
+      // Case 3: Object with data property
+      else if (pendingRequests.data && Array.isArray(pendingRequests.data)) {
+        pendingArray = pendingRequests.data;
+      }
+      // Case 4: Single object in array
+      else if (Array.isArray(pendingRequests) && pendingRequests.length > 0) {
+        pendingArray = pendingRequests;
+      }
     }
 
-    console.log('📊 Processed Pending Requests:', pendingArray);
+    console.log('📊 Processed Pending Requests Array:', pendingArray);
+    console.log('📊 Pending Requests Count:', pendingArray.length);
+
+    // ✅ FIX: Properly handle totalStats and todayStats
+    const totalData = Array.isArray(totalStats) ? totalStats[0] : totalStats?.rows?.[0] || totalStats;
+    const todayData = Array.isArray(todayStats) ? todayStats[0] : todayStats?.rows?.[0] || todayStats;
+
+    console.log('📊 Total Stats Data:', totalData);
+    console.log('📊 Today Stats Data:', todayData);
 
     // Structure the response data
     const stats = {
       total: {
-        requests: parseInt(totalStats.rows?.[0]?.total_requests) || 0,
-        completed: parseInt(totalStats.rows?.[0]?.completed) || 0,
-        failed: parseInt(totalStats.rows?.[0]?.failed) || 0,
-        processing: parseInt(totalStats.rows?.[0]?.processing) || 0,
-        pending: parseInt(totalStats.rows?.[0]?.pending) || 0
+        requests: parseInt(totalData?.total_requests) || 0,
+        completed: parseInt(totalData?.completed) || 0,
+        failed: parseInt(totalData?.failed) || 0,
+        processing: parseInt(totalData?.processing) || 0,
+        pending: parseInt(totalData?.pending) || 0
       },
       today: {
-        processed: parseInt(todayStats.rows?.[0]?.processed_today) || 0,
-        completed: parseInt(todayStats.rows?.[0]?.completed_today) || 0,
-        failed: parseInt(todayStats.rows?.[0]?.failed_today) || 0
+        processed: parseInt(todayData?.processed_today) || 0,
+        completed: parseInt(todayData?.completed_today) || 0,
+        failed: parseInt(todayData?.failed_today) || 0
       },
       pending_requests: pendingArray,
-      success_rate: totalStats.rows?.[0]?.total_requests ? 
-        ((parseInt(totalStats.rows[0].completed) / parseInt(totalStats.rows[0].total_requests)) * 100).toFixed(1) + '%' : '0%'
+      success_rate: totalData?.total_requests ? 
+        ((parseInt(totalData.completed) / parseInt(totalData.total_requests)) * 100).toFixed(1) + '%' : '0%'
     };
 
-    console.log('✅ Final Stats:', stats);
+    console.log('✅ Final Stats Response:', JSON.stringify(stats, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -108,7 +130,8 @@ export async function GET(request: NextRequest) {
       { 
         success: false, 
         error: 'Failed to fetch queue stats',
-        details: error.message 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
       { status: 500 }
     );
