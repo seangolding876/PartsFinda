@@ -266,13 +266,13 @@ export default function LiveQueueMonitor() {
                     <td className="px-6 py-4 text-sm text-gray-900">₹{request.budget}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        request.priority === 'high' 
+                        request.urgency === 'high' 
                           ? 'bg-red-100 text-red-800'
-                          : request.priority === 'medium'
+                          : request.urgency === 'medium'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {request.priority}
+                        {request.urgency}
                       </span>
                     </td>
                   </tr>
