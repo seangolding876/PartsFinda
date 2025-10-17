@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_today,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue 
-      WHERE DATE(created_at) = CURDATE() OR DATE(processed_at) = CURDATE()
+      WHERE DATE(created_at) = NOW()::date OR DATE(processed_at) = NOW()::date
     `;
 
     // Pending requests with details
