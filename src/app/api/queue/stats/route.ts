@@ -77,10 +77,7 @@ export async function GET(request: NextRequest) {
       else if (pendingRequests.rows && Array.isArray(pendingRequests.rows)) {
         pendingArray = pendingRequests.rows;
       }
-      // Case 3: Object with data property
-      else if (pendingRequests.data && Array.isArray(pendingRequests.data)) {
-        pendingArray = pendingRequests.data;
-      }
+      // Case 3: Object with data property (removed as it's not possible with current types)
       // Case 4: Single object in array
       else if (Array.isArray(pendingRequests) && pendingRequests.length > 0) {
         pendingArray = pendingRequests;
