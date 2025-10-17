@@ -134,36 +134,38 @@ export async function POST(
     );
 
     // Send email notification
-    try {
-      const receiverInfo = await query(
-        'SELECT name, email FROM users WHERE id = $1',
-        [receiverId]
-      );
+// In your message sending logic
+try {
+  const receiverInfo = await query(
+    'SELECT name, email FROM users WHERE id = $1',
+    [receiverId]
+  );
 
-      if (receiverInfo.rows.length > 0) {
-        const senderInfo = await query(
-          'SELECT name FROM users WHERE id = $1',
-          [userInfo.userId]
-        );
+  if (receiverInfo.rows.length > 0) {
+    const senderInfo = await query(
+      'SELECT name, business_name FROM users WHERE id = $1',
+      [userInfo.userId]
+    );
 
-        await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'new_message',
-            userId: receiverId,
-            data: {
-              senderName: senderInfo.rows[0]?.name || 'A user',
-              partName: 'your part request', // You can get this from conversation
-              messagePreview: messageText.length > 50 ? 
-                messageText.substring(0, 50) + '...' : messageText
-            }
-          })
-        });
-      }
-    } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
-    }
+    await fetch('/api/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: receiverInfo.rows[0].email,
+        subject: 'New Message on PartsFinda',
+        template: 'new-message',
+        data: {
+          senderName: senderInfo.rows[0]?.business_name || senderInfo.rows[0]?.name,
+          messagePreview: messageText.length > 50 ? 
+            messageText.substring(0, 50) + '...' : messageText,
+          conversationLink: `${process.env.NEXTAUTH_URL}/messages`
+        }
+      })
+    });
+  }
+} catch (emailError) {
+  console.error('Email sending failed:', emailError);
+}
 
     return NextResponse.json({
       success: true,
