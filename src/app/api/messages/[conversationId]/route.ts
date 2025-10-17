@@ -5,7 +5,6 @@ import { verifyToken } from '@/lib/jwt';
 
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
 
 
 export async function GET(
@@ -22,7 +21,7 @@ export async function GET(
     const userInfo = verifyToken(token);
     const conversationId = params.conversationId;
 
-    // Verify user has access to this conversation
+    // Verify access
     const accessCheck = await query(
       'SELECT id FROM conversations WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)',
       [conversationId, userInfo.userId]
@@ -35,14 +34,19 @@ export async function GET(
       );
     }
 
-    // Get messages
+    // Get messages with proper sender names
     const messages = await query(
       `SELECT 
         m.*,
         u.name as sender_name,
-        'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg?semt=ais_hybrid&w=740&q=80' as sender_avatar
+        u.business_name as sender_business_name,
+        CASE 
+          WHEN u.id = c.buyer_id THEN 'buyer'
+          ELSE 'seller'
+        END as sender_role
        FROM messages m
        INNER JOIN users u ON m.sender_id = u.id
+       INNER JOIN conversations c ON m.conversation_id = c.id
        WHERE m.conversation_id = $1
        ORDER BY m.created_at ASC`,
       [conversationId]
@@ -50,26 +54,16 @@ export async function GET(
 
     // Mark messages as read
     await query(
-      'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND receiver_id = $2',
+      'UPDATE messages SET is_read = true WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = false',
       [conversationId, userInfo.userId]
     );
 
-    const formattedMessages = messages.rows.map(msg => ({
-      id: msg.id.toString(),
-      text: msg.message_text,
-      sender: msg.sender_id === userInfo.userId ? 'buyer' : 'seller',
-      timestamp: msg.created_at,
-      status: msg.is_read ? 'read' : 'delivered',
-      image: msg.attachment_url || null,
-      caption: null
-    }));
-
     return NextResponse.json({
       success: true,
-      data: formattedMessages
+      data: messages.rows
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch messages' },
