@@ -39,9 +39,16 @@ module.exports = {
         NODE_ENV: 'production',
         SOCKET_PORT: 3001,
         JWT_SECRET: 'r9fQqsPeEJP6QbbN82RytCYqt1Dw1cc82AR66IibocE',
-        DATABASE_URL: 'postgresql://postgres:C5%2Ay%24gRPGFiNuVveagleEye7%24@97.74.85.166:5432/myprojectdb'
-      },
-       env_file: '/var/www/partsfinda/opt/socket-server/.env',
+        DATABASE_URL: 'postgresql://postgres:C5%2Ay%24gRPGFiNuVveagleEye7%24@97.74.85.166:5432/myprojectdb',
+        REDIS_URL: 'redis://localhost:6379',
+        REDIS_PASSWORD: '123@123',
+        SMTP_HOST: 'smtp.office365.com',
+        SMTP_PORT: 587,
+        SMTP_USER: 'support@partsfinda.com',
+        SMTP_PASS: 'Partsfinda@123',
+        SMTP_FROM: '"PartsFinda Support" <support@partsfinda.com>',
+        NEXTAUTH_URL: 'https://partsfinda.com'
+      }
     }
   ]
 };
