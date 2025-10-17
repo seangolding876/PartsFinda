@@ -41,20 +41,12 @@ export default function LiveQueueMonitor() {
       setError(null);
       console.log('Fetching data...');
       
-      // Fetch queue stats
-      const [statsResponse, workerResponse] = await Promise.all([
-        fetch('/api/queue/stats'),
-        fetch('/api/worker/status')
-      ]);
-
-      console.log('Stats Response:', statsResponse.status);
-      console.log('Worker Response:', workerResponse.status);
+      // Only fetch queue stats if worker API is not working
+      const statsResponse = await fetch('/api/queue/stats');
+      console.log('Stats Response Status:', statsResponse.status);
 
       const statsData = await statsResponse.json();
-      const workerData = await workerResponse.json();
-
       console.log('Stats Data:', statsData);
-      console.log('Worker Data:', workerData);
 
       if (statsData.success) {
         setQueueStats(statsData.data);
@@ -62,11 +54,43 @@ export default function LiveQueueMonitor() {
         setError(`Stats API Error: ${statsData.error}`);
       }
 
-      if (workerData.success && workerData.worker) {
-        setWorkerStatus(workerData.worker);
-      } else {
-        console.log('Worker not available:', workerData);
+      // Try to fetch worker status separately
+      try {
+        const workerResponse = await fetch('/api/worker/status');
+        console.log('Worker Response Status:', workerResponse.status);
+        
+        if (workerResponse.ok) {
+          const workerData = await workerResponse.json();
+          console.log('Worker Data:', workerData);
+          
+          if (workerData.success && workerData.worker) {
+            setWorkerStatus(workerData.worker);
+          }
+        } else {
+          console.log('Worker API not available, using default status');
+          setWorkerStatus({
+            status: 'stopped',
+            name: 'parts-worker',
+            uptime: 0,
+            memory: 0,
+            cpu: 0,
+            restarts: 0,
+            pid: 0
+          });
+        }
+      } catch (workerError) {
+        console.log('Worker API failed, using default status');
+        setWorkerStatus({
+          status: 'stopped',
+          name: 'parts-worker',
+          uptime: 0,
+          memory: 0,
+          cpu: 0,
+          restarts: 0,
+          pid: 0
+        });
       }
+
     } catch (error) {
       console.error('Error fetching data:', error);
       setError(`Network Error: ${error.message}`);
@@ -96,7 +120,7 @@ export default function LiveQueueMonitor() {
       }
     } catch (error) {
       console.error('Worker control error:', error);
-      alert(`Error: ${error}`);
+      alert(`Worker control API not available. Please check if worker is running.`);
     }
   };
 
@@ -199,34 +223,45 @@ export default function LiveQueueMonitor() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className={`text-lg font-bold ${
-                  workerStatus.status === 'online' ? 'text-green-600' : 'text-red-600'
+                  workerStatus.status === 'online' ? 'text-green-600' : 
+                  workerStatus.status === 'stopped' ? 'text-red-600' : 'text-yellow-600'
                 }`}>
                   {workerStatus.status.toUpperCase()}
                 </div>
                 <div className="text-sm text-gray-600">Status</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{workerStatus.pid}</div>
+                <div className="text-lg font-bold">
+                  {workerStatus.pid || 'N/A'}
+                </div>
                 <div className="text-sm text-gray-600">PID</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{Math.round(workerStatus.uptime / 1000 / 60)}m</div>
+                <div className="text-lg font-bold">
+                  {workerStatus.uptime ? Math.round(workerStatus.uptime / 1000 / 60) + 'm' : '0m'}
+                </div>
                 <div className="text-sm text-gray-600">Uptime</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold">{workerStatus.restarts}</div>
+                <div className="text-lg font-bold">
+                  {workerStatus.restarts || 0}
+                </div>
                 <div className="text-sm text-gray-600">Restarts</div>
               </div>
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-red-600">Worker not running</p>
-              <button
-                onClick={() => controlWorker('start')}
-                className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                Start Worker Now
-              </button>
+              <p className="text-red-600">Worker status unavailable</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-gray-600">
+                  Worker API is not responding. Please check:
+                </p>
+                <ul className="text-sm text-gray-600 text-left max-w-md mx-auto">
+                  <li>• Worker process is running</li>
+                  <li>• API endpoints are properly configured</li>
+                  <li>• Server logs for errors</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
@@ -270,7 +305,7 @@ export default function LiveQueueMonitor() {
               Worker: <span className={
                 workerStatus?.status === 'online' ? 'text-green-600' : 'text-red-600'
               }>
-                {workerStatus?.status || 'stopped'}
+                {workerStatus?.status || 'unknown'}
               </span>
             </div>
           </div>
