@@ -36,101 +36,54 @@ export default function LiveQueueMonitor() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    try {
-      setError(null);
-      console.log('🔍 Fetching queue data...');
-      
-      // Fetch queue stats
-      const statsResponse = await fetch('/api/queue/stats');
-      console.log('📊 Stats Response Status:', statsResponse.status);
+const fetchData = async () => {
+  try {
+    setError(null);
+    console.log('🔍 Fetching queue data...');
+    
+    const statsResponse = await fetch('/api/queue/stats');
+    console.log('📊 Stats Response Status:', statsResponse.status);
 
-      if (!statsResponse.ok) {
-        throw new Error(`API Error: ${statsResponse.status}`);
-      }
-
-      const statsData = await statsResponse.json();
-      console.log('📈 Stats Data:', statsData);
-
-      if (statsData.success) {
-        setQueueStats(statsData.data);
-        console.log('✅ Queue stats set successfully');
-        
-        // Log important numbers for debugging
-        console.log('📋 Current Stats:', {
-          total: statsData.data.total,
-          today: statsData.data.today,
-          pending_count: statsData.data.pending_requests?.length
-        });
-      } else {
-        setError(`Stats API Error: ${statsData.error}`);
-      }
-
-      // Set default worker status since worker API might not be available
-      setWorkerStatus({
-        status: 'online',
-        name: 'parts-worker',
-        uptime: 3600000, // 1 hour in milliseconds
-        memory: 256,
-        cpu: 15,
-        restarts: 2,
-        pid: 12345
-      });
-
-    } catch (error) {
-      console.error('❌ Error fetching data:', error);
-      setError(`Network Error: ${error.message}`);
-      
-      // Set demo data for testing
-      setQueueStats({
-        total: {
-          requests: 150,
-          completed: 120,
-          failed: 10,
-          processing: 5,
-          pending: 15
-        },
-        today: {
-          processed: 25,
-          completed: 20,
-          failed: 5
-        },
-        pending_requests: [
-          {
-            id: 1001,
-            part_name: "Engine Oil Filter",
-            urgency: "high",
-            budget: 1500,
-            seller_name: "AutoParts Delhi",
-            membership_plan: "premium",
-            buyer_name: "Rahul Sharma"
-          },
-          {
-            id: 1002,
-            part_name: "Brake Pads",
-            urgency: "medium", 
-            budget: 2500,
-            seller_name: "CarCare Mumbai",
-            membership_plan: "basic",
-            buyer_name: "Priya Singh"
-          }
-        ],
-        success_rate: "85.7%"
-      });
-      
-      setWorkerStatus({
-        status: 'online',
-        name: 'parts-worker',
-        uptime: 3600000,
-        memory: 256,
-        cpu: 15,
-        restarts: 2,
-        pid: 12345
-      });
-    } finally {
-      setLoading(false);
+    if (!statsResponse.ok) {
+      throw new Error(`API Error: ${statsResponse.status}`);
     }
-  };
+
+    const statsData = await statsResponse.json();
+    console.log('📈 Full Stats Response:', statsData);
+
+    if (statsData.success) {
+      console.log('📋 Processed Data Structure:', {
+        total: statsData.data.total,
+        today: statsData.data.today,
+        pending_requests_type: typeof statsData.data.pending_requests,
+        pending_requests_length: statsData.data.pending_requests?.length,
+        pending_requests_sample: statsData.data.pending_requests?.[0]
+      });
+      
+      setQueueStats(statsData.data);
+    } else {
+      setError(`Stats API Error: ${statsData.error}`);
+    }
+
+    // Worker status...
+    try {
+      const workerResponse = await fetch('/api/worker/status');
+      const workerData = await workerResponse.json();
+      
+      if (workerData.success && workerData.worker) {
+        setWorkerStatus(workerData.worker);
+      }
+    } catch (workerError) {
+      console.log('Worker API failed');
+    }
+
+  } catch (error) {
+    console.error('❌ Error fetching data:', error);
+    setError(`Network Error: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const controlWorker = async (action: string) => {
     try {

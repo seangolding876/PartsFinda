@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_today,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue 
-      WHERE DATE(created_at) = DATE(NOW()) OR DATE(processed_at) = DATE(NOW())
+      WHERE DATE(created_at) = CURDATE() OR DATE(processed_at) = CURDATE()
     `;
 
     // Pending requests with details
@@ -56,15 +56,31 @@ export async function GET(request: NextRequest) {
       query(pendingQuery)
     ]);
 
-    // ✅ Pending requests ko properly handle karein
+    console.log('🔍 Database Query Results:', {
+      totalStats,
+      todayStats, 
+      pendingRequests
+    });
+
+    // ✅ Properly handle database results
     let pendingArray = [];
     
-    if (Array.isArray(pendingRequests)) {
-      pendingArray = pendingRequests;
-    } else if (pendingRequests && typeof pendingRequests === 'object') {
-      // Agar object hai toh array mein convert karein
-      pendingArray = [pendingRequests];
+    if (pendingRequests && Array.isArray(pendingRequests)) {
+      // Check if it's a query result object with rows property
+      if (pendingRequests[0] && pendingRequests[0].rows && Array.isArray(pendingRequests[0].rows)) {
+        pendingArray = pendingRequests[0].rows;
+      } 
+      // Check if it's direct array of rows
+      else if (pendingRequests[0] && Array.isArray(pendingRequests[0])) {
+        pendingArray = pendingRequests[0];
+      }
+      // Check if it's already the data array
+      else if (pendingRequests.length > 0 && pendingRequests[0].id) {
+        pendingArray = pendingRequests;
+      }
     }
+
+    console.log('📊 Processed Pending Requests:', pendingArray);
 
     const stats = {
       total: {
@@ -79,10 +95,12 @@ export async function GET(request: NextRequest) {
         completed: parseInt(todayStats[0]?.completed_today) || 0,
         failed: parseInt(todayStats[0]?.failed_today) || 0
       },
-      pending_requests: pendingArray, // ✅ Always array ensure karein
+      pending_requests: pendingArray,
       success_rate: totalStats[0]?.total_requests ? 
         ((parseInt(totalStats[0].completed) / parseInt(totalStats[0].total_requests)) * 100).toFixed(1) + '%' : '0%'
     };
+
+    console.log('✅ Final Stats:', stats);
 
     return NextResponse.json({
       success: true,
@@ -91,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Queue stats error:', error);
+    console.error('❌ Queue stats error:', error);
     return NextResponse.json(
       { 
         success: false, 
