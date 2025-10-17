@@ -34,27 +34,42 @@ export default function LiveQueueMonitor() {
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
+      setError(null);
+      console.log('Fetching data...');
+      
       // Fetch queue stats
       const [statsResponse, workerResponse] = await Promise.all([
         fetch('/api/queue/stats'),
         fetch('/api/worker/status')
       ]);
 
+      console.log('Stats Response:', statsResponse.status);
+      console.log('Worker Response:', workerResponse.status);
+
       const statsData = await statsResponse.json();
       const workerData = await workerResponse.json();
 
+      console.log('Stats Data:', statsData);
+      console.log('Worker Data:', workerData);
+
       if (statsData.success) {
         setQueueStats(statsData.data);
+      } else {
+        setError(`Stats API Error: ${statsData.error}`);
       }
 
       if (workerData.success && workerData.worker) {
         setWorkerStatus(workerData.worker);
+      } else {
+        console.log('Worker not available:', workerData);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setError(`Network Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -94,6 +109,27 @@ export default function LiveQueueMonitor() {
     }
   }, [autoRefresh]);
 
+  // ✅ Error display component
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <strong>Error: </strong>{error}
+          </div>
+          <div className="text-center py-8">
+            <button
+              onClick={fetchData}
+              className="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -106,6 +142,11 @@ export default function LiveQueueMonitor() {
       </div>
     );
   }
+
+  // ✅ Safe array handling for pending_requests
+  const pendingRequests = Array.isArray(queueStats?.pending_requests) 
+    ? queueStats.pending_requests 
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -238,7 +279,7 @@ export default function LiveQueueMonitor() {
         {/* Pending Requests Table */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="px-6 py-4 border-b">
-            <h2 className="text-xl font-semibold">Pending Requests ({queueStats?.pending_requests.length || 0})</h2>
+            <h2 className="text-xl font-semibold">Pending Requests ({pendingRequests.length})</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -253,7 +294,7 @@ export default function LiveQueueMonitor() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {queueStats?.pending_requests.map((request) => (
+                {pendingRequests.map((request) => (
                   <tr key={request.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">#{request.id}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{request.part_name}</td>
@@ -279,7 +320,7 @@ export default function LiveQueueMonitor() {
                 ))}
               </tbody>
             </table>
-            {(!queueStats?.pending_requests || queueStats.pending_requests.length === 0) && (
+            {pendingRequests.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 No pending requests in queue
               </div>
