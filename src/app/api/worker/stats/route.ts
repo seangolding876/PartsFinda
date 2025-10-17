@@ -1,9 +1,10 @@
+// app/api/worker/stats/route.js
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get worker process stats
+    // Worker process stats query
     const workerStatsQuery = `
       SELECT 
         COUNT(*) as total_processed,
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       WHERE processed_at IS NOT NULL OR status = 'processing'
     `;
 
-    // Get pending requests stats
+    // Pending requests stats query
     const pendingStatsQuery = `
       SELECT 
         COUNT(*) as total_pending,
@@ -27,17 +28,17 @@ export async function GET(request: NextRequest) {
       WHERE rq.processed_at IS NULL AND rq.status = 'pending'
     `;
 
-    // Get today's stats
+    // Today's stats query
     const todayStatsQuery = `
       SELECT 
         COUNT(*) as processed_today,
         SUM(CASE WHEN rq.status = 'completed' THEN 1 ELSE 0 END) as success_today,
         SUM(CASE WHEN rq.status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue rq
-      WHERE DATE(rq.processed_at) = NOW()::date
+      WHERE DATE(rq.processed_at) = CURRENT_DATE
     `;
 
-    // Get queue details for monitoring
+    // Queue details for monitoring
     const queueDetailsQuery = `
       SELECT 
         rq.id, 
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
       LIMIT 50
     `;
 
+    // Execute all queries in parallel
     const [workerStats, pendingStats, todayStats, queueDetails] = await Promise.all([
       query(workerStatsQuery),
       query(pendingStatsQuery),
@@ -76,29 +78,30 @@ export async function GET(request: NextRequest) {
       query(queueDetailsQuery)
     ]);
 
+    // Process and structure the data
     const stats = {
       worker: {
-        total_processed: workerStats[0]?.total_processed || 0,
-        total_failed: workerStats[0]?.total_failed || 0,
-        total_completed: workerStats[0]?.total_completed || 0,
-        currently_processing: workerStats[0]?.currently_processing || 0,
-        success_rate: workerStats[0]?.total_processed ? 
-          ((workerStats[0].total_completed / workerStats[0].total_processed) * 100).toFixed(1) + '%' : '0%'
+        total_processed: parseInt(workerStats.rows?.[0]?.total_processed) || 0,
+        total_failed: parseInt(workerStats.rows?.[0]?.total_failed) || 0,
+        total_completed: parseInt(workerStats.rows?.[0]?.total_completed) || 0,
+        currently_processing: parseInt(workerStats.rows?.[0]?.currently_processing) || 0,
+        success_rate: workerStats.rows?.[0]?.total_processed ? 
+          ((parseInt(workerStats.rows[0].total_completed) / parseInt(workerStats.rows[0].total_processed)) * 100).toFixed(1) + '%' : '0%'
       },
       pending: {
-        total_pending: pendingStats[0]?.total_pending || 0,
-        high_urgency: pendingStats[0]?.high_urgency || 0,
-        premium_sellers: pendingStats[0]?.premium_sellers || 0,
-        avg_budget: pendingStats[0]?.avg_budget || 0
+        total_pending: parseInt(pendingStats.rows?.[0]?.total_pending) || 0,
+        high_urgency: parseInt(pendingStats.rows?.[0]?.high_urgency) || 0,
+        premium_sellers: parseInt(pendingStats.rows?.[0]?.premium_sellers) || 0,
+        avg_budget: parseFloat(pendingStats.rows?.[0]?.avg_budget) || 0
       },
       today: {
-        processed_today: todayStats[0]?.processed_today || 0,
-        success_today: todayStats[0]?.success_today || 0,
-        failed_today: todayStats[0]?.failed_today || 0,
-        success_rate_today: todayStats[0]?.processed_today ? 
-          ((todayStats[0].success_today / todayStats[0].processed_today) * 100).toFixed(1) + '%' : '0%'
+        processed_today: parseInt(todayStats.rows?.[0]?.processed_today) || 0,
+        success_today: parseInt(todayStats.rows?.[0]?.success_today) || 0,
+        failed_today: parseInt(todayStats.rows?.[0]?.failed_today) || 0,
+        success_rate_today: todayStats.rows?.[0]?.processed_today ? 
+          ((parseInt(todayStats.rows[0].success_today) / parseInt(todayStats.rows[0].processed_today)) * 100).toFixed(1) + '%' : '0%'
       },
-      queue_details: queueDetails
+      queue_details: queueDetails.rows || []
     };
 
     return NextResponse.json({
@@ -108,9 +111,13 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching worker stats:', error);
+    console.error('❌ Error fetching worker stats:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch worker stats' },
+      { 
+        success: false, 
+        error: 'Failed to fetch worker stats',
+        details: error.message 
+      },
       { status: 500 }
     );
   }

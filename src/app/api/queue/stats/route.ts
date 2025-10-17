@@ -1,9 +1,10 @@
+// app/api/queue/stats/route.js
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    // Total processed requests
+    // Total requests query
     const totalQuery = `
       SELECT 
         COUNT(*) as total_requests,
@@ -14,21 +15,21 @@ export async function GET(request: NextRequest) {
       FROM request_queue
     `;
 
-    // Today's stats
+    // Today's stats query
     const todayQuery = `
       SELECT 
         COUNT(*) as processed_today,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_today,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue 
-      WHERE DATE(created_at) = NOW()::date OR DATE(processed_at) = NOW()::date
+      WHERE DATE(created_at) = CURRENT_DATE OR DATE(processed_at) = CURRENT_DATE
     `;
 
-    // Pending requests with details
+    // Pending requests with details query
     const pendingQuery = `
       SELECT 
         rq.id,
-        pr.urgency,
+        pr.urgency as priority,
         rq.created_at,
         pr.part_name,
         pr.budget,
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
       LIMIT 20
     `;
 
+    // Execute queries
     const [totalStats, todayStats, pendingRequests] = await Promise.all([
       query(totalQuery),
       query(todayQuery),
@@ -57,47 +59,39 @@ export async function GET(request: NextRequest) {
     ]);
 
     console.log('🔍 Database Query Results:', {
-      totalStats,
-      todayStats, 
-      pendingRequests
+      totalStats: totalStats.rows,
+      todayStats: todayStats.rows, 
+      pendingRequests: pendingRequests.rows
     });
 
-    // ✅ Properly handle database results
+    // Process pending requests data
     let pendingArray = [];
     
-    if (pendingRequests && Array.isArray(pendingRequests)) {
-      // Check if it's a query result object with rows property
-      if (pendingRequests[0] && pendingRequests[0].rows && Array.isArray(pendingRequests[0].rows)) {
-        pendingArray = pendingRequests[0].rows;
-      } 
-      // Check if it's direct array of rows
-      else if (pendingRequests[0] && Array.isArray(pendingRequests[0])) {
-        pendingArray = pendingRequests[0];
-      }
-      // Check if it's already the data array
-      else if (pendingRequests.length > 0 && pendingRequests[0].id) {
-        pendingArray = pendingRequests;
-      }
+    if (pendingRequests && pendingRequests.rows) {
+      pendingArray = pendingRequests.rows;
+    } else if (pendingRequests && Array.isArray(pendingRequests)) {
+      pendingArray = pendingRequests;
     }
 
     console.log('📊 Processed Pending Requests:', pendingArray);
 
+    // Structure the response data
     const stats = {
       total: {
-        requests: parseInt(totalStats[0]?.total_requests) || 0,
-        completed: parseInt(totalStats[0]?.completed) || 0,
-        failed: parseInt(totalStats[0]?.failed) || 0,
-        processing: parseInt(totalStats[0]?.processing) || 0,
-        pending: parseInt(totalStats[0]?.pending) || 0
+        requests: parseInt(totalStats.rows?.[0]?.total_requests) || 0,
+        completed: parseInt(totalStats.rows?.[0]?.completed) || 0,
+        failed: parseInt(totalStats.rows?.[0]?.failed) || 0,
+        processing: parseInt(totalStats.rows?.[0]?.processing) || 0,
+        pending: parseInt(totalStats.rows?.[0]?.pending) || 0
       },
       today: {
-        processed: parseInt(todayStats[0]?.processed_today) || 0,
-        completed: parseInt(todayStats[0]?.completed_today) || 0,
-        failed: parseInt(todayStats[0]?.failed_today) || 0
+        processed: parseInt(todayStats.rows?.[0]?.processed_today) || 0,
+        completed: parseInt(todayStats.rows?.[0]?.completed_today) || 0,
+        failed: parseInt(todayStats.rows?.[0]?.failed_today) || 0
       },
       pending_requests: pendingArray,
-      success_rate: totalStats[0]?.total_requests ? 
-        ((parseInt(totalStats[0].completed) / parseInt(totalStats[0].total_requests)) * 100).toFixed(1) + '%' : '0%'
+      success_rate: totalStats.rows?.[0]?.total_requests ? 
+        ((parseInt(totalStats.rows[0].completed) / parseInt(totalStats.rows[0].total_requests)) * 100).toFixed(1) + '%' : '0%'
     };
 
     console.log('✅ Final Stats:', stats);
