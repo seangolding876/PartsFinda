@@ -56,22 +56,32 @@ export async function GET(request: NextRequest) {
       query(pendingQuery)
     ]);
 
+    // ✅ Pending requests ko properly handle karein
+    let pendingArray = [];
+    
+    if (Array.isArray(pendingRequests)) {
+      pendingArray = pendingRequests;
+    } else if (pendingRequests && typeof pendingRequests === 'object') {
+      // Agar object hai toh array mein convert karein
+      pendingArray = [pendingRequests];
+    }
+
     const stats = {
       total: {
-        requests: totalStats[0]?.total_requests || 0,
-        completed: totalStats[0]?.completed || 0,
-        failed: totalStats[0]?.failed || 0,
-        processing: totalStats[0]?.processing || 0,
-        pending: totalStats[0]?.pending || 0
+        requests: parseInt(totalStats[0]?.total_requests) || 0,
+        completed: parseInt(totalStats[0]?.completed) || 0,
+        failed: parseInt(totalStats[0]?.failed) || 0,
+        processing: parseInt(totalStats[0]?.processing) || 0,
+        pending: parseInt(totalStats[0]?.pending) || 0
       },
       today: {
-        processed: todayStats[0]?.processed_today || 0,
-        completed: todayStats[0]?.completed_today || 0,
-        failed: todayStats[0]?.failed_today || 0
+        processed: parseInt(todayStats[0]?.processed_today) || 0,
+        completed: parseInt(todayStats[0]?.completed_today) || 0,
+        failed: parseInt(todayStats[0]?.failed_today) || 0
       },
-      pending_requests: pendingRequests,
+      pending_requests: pendingArray, // ✅ Always array ensure karein
       success_rate: totalStats[0]?.total_requests ? 
-        ((totalStats[0].completed / totalStats[0].total_requests) * 100).toFixed(1) + '%' : '0%'
+        ((parseInt(totalStats[0].completed) / parseInt(totalStats[0].total_requests)) * 100).toFixed(1) + '%' : '0%'
     };
 
     return NextResponse.json({
@@ -83,7 +93,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Queue stats error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch queue stats' },
+      { 
+        success: false, 
+        error: 'Failed to fetch queue stats',
+        details: error.message 
+      },
       { status: 500 }
     );
   }
