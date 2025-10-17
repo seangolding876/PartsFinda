@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const pendingStatsQuery = `
       SELECT 
         COUNT(*) as total_pending,
-        COUNT(CASE WHEN rq.urgency = 'high' THEN 1 END) as high_urgency,
+        COUNT(CASE WHEN pr.urgency = 'high' THEN 1 END) as high_urgency,
         COUNT(CASE WHEN s.membership_plan = 'premium' THEN 1 END) as premium_sellers,
         AVG(pr.budget) as avg_budget
       FROM request_queue rq
