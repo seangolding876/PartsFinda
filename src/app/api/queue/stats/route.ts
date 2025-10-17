@@ -21,14 +21,14 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_today,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_today
       FROM request_queue 
-      WHERE DATE(created_at) = CURDATE() OR DATE(processed_at) = CURDATE()
+      WHERE DATE(created_at) = DATE(NOW()) OR DATE(processed_at) = DATE(NOW())
     `;
 
     // Pending requests with details
     const pendingQuery = `
       SELECT 
         rq.id,
-        rq.priority,
+        pr.urgency,
         rq.created_at,
         pr.part_name,
         pr.budget,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON pr.user_id = u.id
       WHERE rq.status = 'pending'
       ORDER BY 
-        CASE rq.priority 
+        CASE pr.urgency 
           WHEN 'high' THEN 1
           WHEN 'medium' THEN 2
           ELSE 3
