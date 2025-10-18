@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, User } from 'lucide-react';
+import { Search, Send, Paperclip, Phone, Video, MoreVertical, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, User, RefreshCw } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 
 export const dynamic = 'force-dynamic';
@@ -79,9 +79,11 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [manualRefresh, setManualRefresh] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected } = useSocket();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const refreshIntervalRef = useRef<NodeJS.Timeout>();
 
   // ✅ Get current user info
   const currentUserId = getCurrentUserId();
@@ -96,7 +98,8 @@ export default function MessagesPage() {
       const response = await fetch('/api/messages/conversations', {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: 'no-store'
       });
 
       if (response.ok) {
@@ -117,10 +120,11 @@ export default function MessagesPage() {
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await fetch(`/api/messages/${conversationId}`, {
+      const response = await fetch(`/api/messages/${conversationId}?t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        cache: 'no-store'
       });
 
       if (response.ok) {
@@ -157,7 +161,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Send Message Function
+  // ✅ FIXED: Send Message Function with REAL-TIME updates
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -166,24 +170,19 @@ export default function MessagesPage() {
       
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      // ✅ CORRECT: Create temporary message with proper sender info
+      // ✅ Create temporary message for immediate UI update
       const tempMessage: Message = {
         id: tempId,
         text: newMessage.trim(),
-        sender: 'buyer', // Current user is always buyer in this context
+        sender: 'buyer',
         senderName: 'You',
         senderId: currentUserId || '',
         timestamp: new Date().toISOString(),
         status: 'sending'
       };
       
-      // ✅ Add message immediately for real-time feel
-      setMessages(prev => {
-        const newMessages = [...prev, tempMessage];
-        messageTracker.add(tempId);
-        return newMessages;
-      });
-      
+      // ✅ IMMEDIATELY add to UI for real-time feel
+      setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
 
       // Update conversation list
@@ -203,7 +202,7 @@ export default function MessagesPage() {
         )
       );
 
-      // Send via API (socket will handle real-time updates)
+      // ✅ Send via API
       const token = getAuthToken();
       const response = await fetch(`/api/messages/${selectedConversation.id}`, {
         method: 'POST',
@@ -217,8 +216,20 @@ export default function MessagesPage() {
       });
 
       if (response.ok) {
-        // Refresh messages to get actual ID and status
-        await fetchMessages(selectedConversation.id);
+        const result = await response.json();
+        
+        if (result.success) {
+          // ✅ Replace temporary message with real one
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === tempId 
+                ? { ...result.data, status: 'sent' }
+                : msg
+            )
+          );
+          
+          console.log('✅ Message sent successfully');
+        }
       } else {
         // Mark as failed
         setMessages(prev => 
@@ -240,16 +251,19 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Socket Event Handlers - SIMPLIFIED
+  // ✅ FIXED: REAL-TIME Socket Event Handlers
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) {
+      console.log('❌ Socket not available, using polling');
+      return;
+    }
 
-    console.log('🎯 Setting up socket listeners');
+    console.log('🎯 Setting up REAL-TIME socket listeners');
 
     const handleNewMessage = (messageData: any) => {
-      console.log('📨 Socket received new message:', messageData);
+      console.log('📨 REAL-TIME: Socket received new message:', messageData);
       
-      const messageId = String(messageData.id);
+      const messageId = String(messageData.id || messageData.messageId);
       
       // Prevent duplicates
       if (messageTracker.has(messageId)) {
@@ -259,19 +273,22 @@ export default function MessagesPage() {
 
       messageTracker.add(messageId);
 
-      // Only add if it's for the current conversation
-      if (selectedConversation && messageData.conversation_id === selectedConversation.id) {
-        console.log('💬 Adding message to current conversation');
+      // Check if this message belongs to current conversation
+      const currentConvId = selectedConversation?.id;
+      const messageConvId = messageData.conversation_id || messageData.conversationId;
+      
+      if (currentConvId && messageConvId === currentConvId) {
+        console.log('💬 Adding REAL-TIME message to current conversation');
         
-        const isCurrentUser = messageData.sender_id === currentUserId;
+        const isCurrentUser = messageData.sender_id === currentUserId || messageData.senderId === currentUserId;
         
         const formattedMessage: Message = {
           id: messageId,
-          text: messageData.text,
+          text: messageData.text || messageData.message_text,
           sender: isCurrentUser ? 'buyer' : 'seller',
           senderName: isCurrentUser ? 'You' : selectedConversation.participant.name,
-          senderId: messageData.sender_id,
-          timestamp: messageData.timestamp,
+          senderId: messageData.sender_id || messageData.senderId,
+          timestamp: messageData.timestamp || new Date().toISOString(),
           status: 'delivered'
         };
 
@@ -286,19 +303,27 @@ export default function MessagesPage() {
         // Update conversation last message
         setConversations(prev => 
           prev.map(conv => 
-            conv.id === selectedConversation.id 
+            conv.id === currentConvId 
               ? {
                   ...conv,
                   lastMessage: {
-                    text: messageData.text,
-                    timestamp: messageData.timestamp,
+                    text: messageData.text || messageData.message_text,
+                    timestamp: messageData.timestamp || new Date().toISOString(),
                     sender: isCurrentUser ? 'buyer' : 'seller'
                   }
                 }
               : conv
           )
         );
+      } else {
+        console.log('🔄 New message for different conversation, refreshing list');
+        fetchConversations(); // Refresh conversation list
       }
+    };
+
+    const handleMessageSent = (data: any) => {
+      console.log('✅ Message sent confirmation:', data);
+      // Update message status if needed
     };
 
     const handleConversationUpdate = () => {
@@ -306,12 +331,18 @@ export default function MessagesPage() {
       fetchConversations();
     };
 
+    // Register all socket events
     socket.on('new_message', handleNewMessage);
+    socket.on('message_sent', handleMessageSent);
     socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('message_received', handleNewMessage);
 
     return () => {
+      console.log('🧹 Cleaning up socket listeners');
       socket.off('new_message', handleNewMessage);
+      socket.off('message_sent', handleMessageSent);
       socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('message_received', handleNewMessage);
     };
   }, [socket, selectedConversation, currentUserId]);
 
@@ -319,21 +350,56 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
-    console.log('🎯 Joining conversation:', selectedConversation.id);
-    socket.emit('join_conversation', selectedConversation.id);
+    console.log('🎯 Joining conversation room:', selectedConversation.id);
+    socket.emit('join_conversation', { 
+      conversationId: selectedConversation.id,
+      userId: currentUserId 
+    });
 
     return () => {
-      console.log('🎯 Leaving conversation:', selectedConversation.id);
-      socket.emit('leave_conversation', selectedConversation.id);
+      console.log('🎯 Leaving conversation room:', selectedConversation.id);
+      socket.emit('leave_conversation', { 
+        conversationId: selectedConversation.id,
+        userId: currentUserId 
+      });
     };
-  }, [socket, selectedConversation]);
+  }, [socket, selectedConversation, currentUserId]);
+
+  // ✅ AUTO-REFRESH MESSAGES (Polling fallback)
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    // Refresh messages every 3 seconds if socket is not connected
+    if (!isConnected) {
+      refreshIntervalRef.current = setInterval(() => {
+        console.log('🔄 Auto-refreshing messages (polling fallback)');
+        fetchMessages(selectedConversation.id);
+      }, 3000);
+    }
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [selectedConversation, isConnected, manualRefresh]);
+
+  // ✅ Manual refresh function
+  const handleManualRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
+    setManualRefresh(prev => prev + 1);
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+    }
+    fetchConversations();
+  };
 
   // Initial load
   useEffect(() => {
     fetchConversations().finally(() => setLoading(false));
   }, []);
 
-  // ✅ FIXED: Load messages when conversation changes
+  // ✅ Load messages when conversation changes
   useEffect(() => {
     if (selectedConversation) {
       console.log('🔄 Loading messages for conversation:', selectedConversation.id);
@@ -343,12 +409,14 @@ export default function MessagesPage() {
     } else {
       setMessages([]);
     }
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, manualRefresh]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     }
   }, [messages]);
 
@@ -383,7 +451,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Determine if message is from current user
+  // ✅ Determine if message is from current user
   const isCurrentUserMessage = (message: Message) => {
     return message.senderName === 'You' || message.senderId === currentUserId;
   };
@@ -421,6 +489,13 @@ export default function MessagesPage() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold text-gray-800">Messages</h1>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={handleManualRefresh}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Refresh messages"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-600 ${manualRefresh > 0 ? 'animate-spin' : ''}`} />
+              </button>
               <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-xs text-gray-500">{isConnected ? 'Connected' : 'Disconnected'}</span>
             </div>
@@ -532,13 +607,22 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleManualRefresh}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Refresh messages"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-600 ${manualRefresh > 0 ? 'animate-spin' : ''}`} />
+                </button>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span>{isConnected ? 'Real-time' : 'Polling'}</span>
+                </div>
               </div>
             </div>
 
-            {/* ✅ FIXED: Messages Area */}
+            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
