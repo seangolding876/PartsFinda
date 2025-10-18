@@ -1,4 +1,4 @@
-// app/api/messages/send/route.ts
+// app/api/messages/send/route.ts - SIMPLIFIED
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -40,14 +40,9 @@ export async function POST(request: NextRequest) {
       [conversationId, userInfo.userId, receiverId, messageText]
     );
 
-    // Update conversation last message time
-    await query(
-      'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [conversationId]
-    );
-
     return NextResponse.json({
       success: true,
+      conversationId: conversationId,
       messageId: messageResult.rows[0].id
     });
 
