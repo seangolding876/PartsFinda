@@ -387,7 +387,7 @@ export default function LiveQueueMonitor() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
+        {/* <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
           <div className="flex flex-wrap gap-4">
             <button 
@@ -409,7 +409,7 @@ export default function LiveQueueMonitor() {
               View Raw API Data
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
