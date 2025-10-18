@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
+import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
-
-
+import { useSocket } from '@/hooks/useSocket'; // Your existing hook
 
 // Auth utility
 const getAuthData = () => {
@@ -67,8 +66,134 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [newRequestCount, setNewRequestCount] = useState(0);
+  const [showNotification, setShowNotification] = useState(false);
 
-  // Fetch data based on active tab
+  // Use your existing socket hook
+  const { socket, isConnected, connectionError, reconnectAttempts } = useSocket();
+
+  // WebSocket event handlers
+  useEffect(() => {
+    if (!socket) return;
+
+    console.log('🎯 Setting up socket event listeners...');
+
+    // Handle new part requests
+    const handleNewRequest = (data: any) => {
+      console.log('📦 New request received:', data);
+      
+      // Show notification
+      setNewRequestCount(prev => prev + 1);
+      setShowNotification(true);
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => {
+        setShowNotification(false);
+      }, 5000);
+
+      // Add new request to the beginning of the list
+      setRequests(prev => {
+        // Check if request already exists to avoid duplicates
+        const exists = prev.some(req => req.id === data.request.id);
+        if (!exists) {
+          return [data.request, ...prev];
+        }
+        return prev;
+      });
+
+      // Update stats
+      if (stats) {
+        setStats(prev => prev ? {
+          ...prev,
+          pendingQuotes: prev.pendingQuotes + 1
+        } : prev);
+      }
+    };
+
+    // Handle request updates
+    const handleRequestUpdated = (data: any) => {
+      console.log('🔄 Request updated:', data);
+      setRequests(prev => prev.map(req => 
+        req.id === data.request.id ? { ...req, ...data.request } : req
+      ));
+    };
+
+    // Handle expired requests
+    const handleRequestExpired = (data: any) => {
+      console.log('⏰ Request expired:', data);
+      setRequests(prev => prev.filter(req => req.id !== data.requestId));
+    };
+
+    // Handle stats updates
+    const handleStatsUpdated = (data: any) => {
+      console.log('📊 Stats updated:', data);
+      if (data.stats) {
+        setStats(data.stats);
+      }
+    };
+
+    // Handle quote submitted by other sellers
+    const handleQuoteSubmitted = (data: any) => {
+      console.log('💰 Quote submitted by other seller:', data);
+      setRequests(prev => prev.map(req => 
+        req.id === data.requestId ? { 
+          ...req, 
+          totalQuotes: (req.totalQuotes || 0) + 1 
+        } : req
+      ));
+    };
+
+    // Register event listeners
+    socket.on('NEW_REQUEST', handleNewRequest);
+    socket.on('REQUEST_UPDATED', handleRequestUpdated);
+    socket.on('REQUEST_EXPIRED', handleRequestExpired);
+    socket.on('STATS_UPDATED', handleStatsUpdated);
+    socket.on('QUOTE_SUBMITTED', handleQuoteSubmitted);
+
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up socket listeners');
+      socket.off('NEW_REQUEST', handleNewRequest);
+      socket.off('REQUEST_UPDATED', handleRequestUpdated);
+      socket.off('REQUEST_EXPIRED', handleRequestExpired);
+      socket.off('STATS_UPDATED', handleStatsUpdated);
+      socket.off('QUOTE_SUBMITTED', handleQuoteSubmitted);
+    };
+  }, [socket, stats]);
+
+  // Manual refresh function
+  const refreshRequests = async () => {
+    const authData = getAuthData();
+    if (!authData?.token) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authData.token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setRequests(result.data);
+          setLastRefreshed(new Date());
+          setNewRequestCount(0); // Reset new request count after manual refresh
+        }
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch data based on active tab - ORIGINAL CODE WITH POLLING AS FALLBACK
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -93,6 +218,7 @@ function SellerDashboard() {
             const requestsResult = await requestsResponse.json();
             if (requestsResult.success) {
               setRequests(requestsResult.data);
+              setLastRefreshed(new Date());
             }
           }
 
@@ -120,57 +246,79 @@ function SellerDashboard() {
     };
 
     fetchData();
-  }, [activeTab, filterStatus]);
 
-const handleSubmitQuote = async (quoteData: any) => {
-  const authData = getAuthData();
-  if (!authData?.token) return;
-
-  setSubmittingQuote(quoteData.requestId);
-
-  try {
-    const response = await fetch('/api/seller/quotes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      },
-      body: JSON.stringify(quoteData)
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      // Update local state
-      setRequests(prev => prev.map(req => 
-        req.id === quoteData.requestId ? { 
-          ...req, 
-          hasQuoted: true, 
-          quoted: true,
-          totalQuotes: req.totalQuotes + 1
-        } : req
-      ));
-      
-      setShowQuoteModal(false);
-      setSelectedRequest(null);
-      
-      // Show success message
-      alert('Quote submitted successfully!');
-    } else {
-      alert('Failed to submit quote: ' + result.error);
+    // Set up polling as fallback only if socket is not connected (every 60 seconds)
+    let pollInterval: NodeJS.Timeout;
+    if (!isConnected) {
+      console.log('🔌 Socket not connected, starting polling fallback...');
+      pollInterval = setInterval(fetchData, 60000);
     }
-  } catch (error) {
-    console.error('Error submitting quote:', error);
-    alert('Failed to submit quote. Please try again.');
-  } finally {
-    setSubmittingQuote(null);
-  }
-};
 
-const openQuoteModal = (request: SellerRequest) => {
-  setSelectedRequest(request);
-  setShowQuoteModal(true);
-};
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [activeTab, filterStatus, isConnected]);
+
+  const handleSubmitQuote = async (quoteData: any) => {
+    const authData = getAuthData();
+    if (!authData?.token) return;
+
+    setSubmittingQuote(quoteData.requestId);
+
+    try {
+      const response = await fetch('/api/seller/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(quoteData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setRequests(prev => prev.map(req => 
+          req.id === quoteData.requestId ? { 
+            ...req, 
+            hasQuoted: true, 
+            quoted: true,
+            totalQuotes: req.totalQuotes + 1
+          } : req
+        ));
+        
+        setShowQuoteModal(false);
+        setSelectedRequest(null);
+        
+        // Emit socket event about quote submission
+        if (socket && isConnected) {
+          socket.emit('QUOTE_SUBMITTED', {
+            requestId: quoteData.requestId,
+            sellerId: authData.userId
+          });
+        }
+        
+        // Show success message
+        alert('Quote submitted successfully!');
+      } else {
+        alert('Failed to submit quote: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      alert('Failed to submit quote. Please try again.');
+    } finally {
+      setSubmittingQuote(null);
+    }
+  };
+
+  const openQuoteModal = (request: SellerRequest) => {
+    setSelectedRequest(request);
+    setShowQuoteModal(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -261,6 +409,37 @@ const openQuoteModal = (request: SellerRequest) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Real-time Notification */}
+      {showNotification && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            <span>
+              {newRequestCount} new request{newRequestCount > 1 ? 's' : ''} received!
+            </span>
+            <button 
+              onClick={() => setShowNotification(false)}
+              className="ml-2 hover:text-gray-200"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <div className="bg-yellow-500 text-white px-4 py-2 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>
+              {connectionError || 'Connecting to server...'} 
+              {reconnectAttempts > 0 && ` (Retry ${reconnectAttempts}/5)`}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -268,8 +447,25 @@ const openQuoteModal = (request: SellerRequest) => {
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Seller Dashboard</h1>
               <p className="text-gray-600 mt-1">Manage your inventory, quotes, and orders</p>
+              <div className="flex items-center gap-4 mt-2">
+                <div className={`flex items-center gap-1 text-sm ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                  {isConnected ? 'Live updates connected' : `Disconnected - ${connectionError || 'Trying to reconnect...'}`}
+                </div>
+                <span className="text-sm text-gray-500">
+                  Last updated: {lastRefreshed.toLocaleTimeString()}
+                </span>
+              </div>
             </div>
             <div className="flex gap-3">
+              <button
+                onClick={refreshRequests}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                disabled={loading}
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
               <Link
                 href="/seller/add-part"
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
@@ -332,6 +528,11 @@ const openQuoteModal = (request: SellerRequest) => {
                   <span>Part Requests</span>
                   <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                     {requests.filter(r => !r.hasQuoted).length}
+                    {newRequestCount > 0 && (
+                      <span className="ml-1 bg-white text-red-500 px-1 rounded-full text-xs">
+                        +{newRequestCount}
+                      </span>
+                    )}
                   </span>
                 </button>
                 {/* ... other nav items ... */}
@@ -339,7 +540,7 @@ const openQuoteModal = (request: SellerRequest) => {
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Main Content - SAME AS BEFORE */}
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
               <div className="space-y-6">
@@ -420,7 +621,7 @@ const openQuoteModal = (request: SellerRequest) => {
               <div className="space-y-6">
                 {/* Search and Filter */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-center">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <input
@@ -440,10 +641,18 @@ const openQuoteModal = (request: SellerRequest) => {
                       <option value="unquoted">Not Quoted</option>
                       <option value="quoted">Already Quoted</option>
                     </select>
+                    <button
+                      onClick={refreshRequests}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                      disabled={loading}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                      {loading ? 'Refreshing...' : 'Refresh'}
+                    </button>
                   </div>
                 </div>
 
-                {/* Requests List */}
+                {/* Requests List - SAME AS BEFORE */}
                 {loading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
@@ -495,35 +704,30 @@ const openQuoteModal = (request: SellerRequest) => {
                         </div>
 
                         <div className="flex gap-3">
-                     {!request.hasQuoted ? (
-  <button 
-    onClick={() => openQuoteModal(request)}
-    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-  >
-    <Send className="w-4 h-4" />
-    Submit Quote
-  </button>
-) : (
-  <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-    <Edit className="w-4 h-4" />
-    View Quote
-  </button>
-)}
-                          {/* <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                          {!request.hasQuoted ? (
+                            <button 
+                              onClick={() => openQuoteModal(request)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                            >
+                              <Send className="w-4 h-4" />
+                              Submit Quote
+                            </button>
+                          ) : (
+                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                              <Edit className="w-4 h-4" />
+                              View Quote
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => {
+                              setSelectedRequestForDetails(request);
+                              setShowDetailsModal(true);
+                            }}
+                            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                          >
                             <Eye className="w-4 h-4" />
                             View Details
-                          </button> */}
-<button 
-  onClick={() => {
-    setSelectedRequestForDetails(request);
-    setShowDetailsModal(true);
-  }}
-  className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
->
-  <Eye className="w-4 h-4" />
-  View Details
-</button>
-
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -544,12 +748,11 @@ const openQuoteModal = (request: SellerRequest) => {
                 )}
               </div>
             )}
-
-            {/* Other tabs would be similar... */}
           </div>
         </div>
       </div>
-        {/* MODEL POPUP */}
+
+      {/* MODAL POPUP */}
       <QuoteModal
         isOpen={showQuoteModal}
         onClose={() => {
@@ -573,7 +776,6 @@ const openQuoteModal = (request: SellerRequest) => {
   );
 }
 
-
 export default function SellerDashboardPage() {
   return (
     <Suspense fallback={
@@ -586,9 +788,5 @@ export default function SellerDashboardPage() {
     }>
       <SellerDashboard />
     </Suspense>
-
-    
   );
-
-
 }
