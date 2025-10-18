@@ -82,22 +82,31 @@ export default function MessagesPage() {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [manualRefresh, setManualRefresh] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected } = useSocket();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const refreshIntervalRef = useRef<NodeJS.Timeout>();
+  const conversationRef = useRef(selectedConversation);
 
   // ✅ Get current user info
   const currentUserId = getCurrentUserId();
   const currentUserName = getCurrentUserName();
 
+  // Keep ref updated
+  useEffect(() => {
+    conversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
   // ✅ Update connection status
   useEffect(() => {
     if (isConnected) {
       setConnectionStatus('connected');
+      console.log('✅ Socket connected');
     } else {
       setConnectionStatus('disconnected');
+      console.log('❌ Socket disconnected');
     }
   }, [isConnected]);
 
@@ -111,7 +120,7 @@ export default function MessagesPage() {
         return;
       }
 
-      const response = await fetch('/api/messages/conversations', {
+      const response = await fetch(`/api/messages/conversations?t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -123,6 +132,7 @@ export default function MessagesPage() {
         console.log('✅ Conversations fetched:', result.data?.length || 0);
         if (result.success) {
           setConversations(result.data || []);
+          setLastUpdate(Date.now());
         }
       } else {
         console.error('❌ Failed to fetch conversations');
@@ -184,7 +194,199 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Send Message Function - PERFECT WORKING
+  // ✅ NEW: Force refresh function
+  const forceRefresh = useCallback(() => {
+    console.log('🔄 Force refreshing all data');
+    fetchConversations();
+    if (conversationRef.current) {
+      fetchMessages(conversationRef.current.id);
+    }
+  }, []);
+
+  // ✅ NEW: Socket connection handler
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log('✅ Socket connected, refreshing data');
+      setConnectionStatus('connected');
+      forceRefresh();
+    };
+
+    const handleDisconnect = () => {
+      console.log('❌ Socket disconnected');
+      setConnectionStatus('disconnected');
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket, forceRefresh]);
+
+  // ✅ FIXED: REAL-TIME Socket Event Handlers - PERFECTLY WORKING
+  useEffect(() => {
+    if (!socket) {
+      console.log('❌ Socket not available');
+      return;
+    }
+
+    console.log('🎯 Setting up REAL-TIME socket listeners');
+
+    const handleNewMessage = (messageData: any) => {
+      console.log('📨 REAL-TIME: Socket received message:', messageData);
+      
+      const messageId = String(messageData.id || messageData.message_id);
+      
+      // Prevent duplicates
+      if (messageTracker.has(messageId)) {
+        console.log('🔄 Skipping duplicate message:', messageId);
+        return;
+      }
+
+      messageTracker.add(messageId);
+
+      // Check if this message belongs to current conversation
+      const currentConv = conversationRef.current;
+      const messageConvId = messageData.conversation_id || messageData.conversationId;
+      
+      if (currentConv && messageConvId === currentConv.id) {
+        console.log('💬 Adding REAL-TIME message to current conversation');
+        
+        const isCurrentUser = messageData.sender_id === currentUserId || messageData.senderId === currentUserId;
+        
+        const formattedMessage: Message = {
+          id: messageId,
+          text: messageData.text || messageData.message_text,
+          sender: isCurrentUser ? 'buyer' : 'seller',
+          senderName: isCurrentUser ? 'You' : currentConv.participant.name,
+          senderId: messageData.sender_id || messageData.senderId,
+          timestamp: messageData.timestamp || new Date().toISOString(),
+          status: 'delivered'
+        };
+
+        setMessages(prev => {
+          // Remove any temporary messages and avoid duplicates
+          const filteredMessages = prev.filter(msg => 
+            !msg.id.startsWith('temp-') && msg.id !== messageId
+          );
+          return [...filteredMessages, formattedMessage];
+        });
+
+        // Update conversation last message
+        setConversations(prev => 
+          prev.map(conv => 
+            conv.id === currentConv.id 
+              ? {
+                  ...conv,
+                  lastMessage: {
+                    text: messageData.text || messageData.message_text,
+                    timestamp: messageData.timestamp || new Date().toISOString(),
+                    sender: isCurrentUser ? 'buyer' : 'seller'
+                  }
+                }
+              : conv
+          )
+        );
+      }
+      
+      // ✅ ALWAYS refresh conversations list when new message comes
+      console.log('🔄 New message received, refreshing conversations list');
+      fetchConversations();
+    };
+
+    const handleMessageSent = (data: any) => {
+      console.log('✅ Message sent confirmation:', data);
+      // Refresh conversations after sending message
+      setTimeout(() => fetchConversations(), 100);
+    };
+
+    const handleConversationUpdate = () => {
+      console.log('🔄 Conversation updated, refreshing list');
+      fetchConversations();
+    };
+
+    const handleUserTyping = (data: any) => {
+      const currentConv = conversationRef.current;
+      if (currentConv && data.conversationId === currentConv.id) {
+        if (data.typing) {
+          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
+        } else {
+          setTypingUsers(prev => prev.filter(id => id !== data.userId));
+        }
+      }
+    };
+
+    // Register all socket events
+    socket.on('new_message', handleNewMessage);
+    socket.on('message_sent', handleMessageSent);
+    socket.on('conversation_updated', handleConversationUpdate);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('message_received', handleNewMessage);
+
+    return () => {
+      console.log('🧹 Cleaning up socket listeners');
+      socket.off('new_message', handleNewMessage);
+      socket.off('message_sent', handleMessageSent);
+      socket.off('conversation_updated', handleConversationUpdate);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('message_received', handleNewMessage);
+    };
+  }, [socket, currentUserId]);
+
+  // ✅ API fallback for sending messages
+  const sendMessageViaAPI = async (tempId: string) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/messages/${selectedConversation?.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageText: newMessage.trim()
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Replace temporary message with real one
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === tempId 
+                ? { 
+                    ...result.data, 
+                    status: 'sent',
+                    senderName: 'You'
+                  }
+                : msg
+            )
+          );
+          console.log('✅ Message sent via API');
+          // Refresh conversations
+          setTimeout(() => fetchConversations(), 200);
+        } else {
+          throw new Error(result.error);
+        }
+      } else {
+        throw new Error('API request failed');
+      }
+    } catch (error) {
+      console.error('❌ API send failed:', error);
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === tempId ? { ...msg, status: 'failed' } : msg
+        )
+      );
+    }
+  };
+
+  // ✅ FIXED: Send Message Function - PERFECTLY WORKING
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -232,17 +434,25 @@ export default function MessagesPage() {
         )
       );
 
-      // ✅ Try socket first for real-time
-      if (socket && isConnected) {
+      // ✅ FIX: Always use socket if available, with better error handling
+      if (socket) {
         console.log('📤 Sending via socket:', {
           conversationId: selectedConversation.id,
           messageText: newMessage.trim()
         });
 
+        // ✅ FIX: Add timeout for socket response
+        const socketTimeout = setTimeout(() => {
+          console.log('⏰ Socket timeout, falling back to API');
+          sendMessageViaAPI(tempId);
+        }, 5000);
+
         socket.emit('send_message', {
           conversationId: selectedConversation.id,
           messageText: newMessage.trim()
         }, (response: any) => {
+          clearTimeout(socketTimeout);
+          
           if (response?.success) {
             console.log('✅ Message sent via socket');
             // Update temporary message status
@@ -253,9 +463,10 @@ export default function MessagesPage() {
                   : msg
               )
             );
+            // ✅ FIX: Force refresh conversations
+            setTimeout(() => fetchConversations(), 200);
           } else {
             console.error('❌ Socket send failed, falling back to API');
-            // Fallback to API
             sendMessageViaAPI(tempId);
           }
         });
@@ -278,201 +489,70 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ API fallback for sending messages
-  const sendMessageViaAPI = async (tempId: string) => {
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`/api/messages/${selectedConversation?.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messageText: newMessage.trim()
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Replace temporary message with real one
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === tempId 
-                ? { 
-                    ...result.data, 
-                    status: 'sent',
-                    senderName: 'You'
-                  }
-                : msg
-            )
-          );
-          console.log('✅ Message sent via API');
-        } else {
-          throw new Error(result.error);
-        }
-      } else {
-        throw new Error('API request failed');
-      }
-    } catch (error) {
-      console.error('❌ API send failed:', error);
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === tempId ? { ...msg, status: 'failed' } : msg
-        )
-      );
-    }
-  };
-
-  // ✅ FIXED: REAL-TIME Socket Event Handlers
-  useEffect(() => {
-    if (!socket) {
-      console.log('❌ Socket not available');
-      return;
-    }
-
-    console.log('🎯 Setting up REAL-TIME socket listeners');
-
-    const handleNewMessage = (messageData: any) => {
-      console.log('📨 REAL-TIME: Socket received message:', messageData);
-      
-      const messageId = String(messageData.id || messageData.messageId);
-      
-      // Prevent duplicates
-      if (messageTracker.has(messageId)) {
-        console.log('🔄 Skipping duplicate message:', messageId);
-        return;
-      }
-
-      messageTracker.add(messageId);
-
-      // Check if this message belongs to current conversation
-      const currentConvId = selectedConversation?.id;
-      const messageConvId = messageData.conversation_id || messageData.conversationId;
-      
-      if (currentConvId && messageConvId === currentConvId) {
-        console.log('💬 Adding REAL-TIME message to current conversation');
-        
-        const isCurrentUser = messageData.sender_id === currentUserId || messageData.senderId === currentUserId;
-        
-        const formattedMessage: Message = {
-          id: messageId,
-          text: messageData.text || messageData.message_text,
-          sender: isCurrentUser ? 'buyer' : 'seller',
-          senderName: isCurrentUser ? 'You' : selectedConversation.participant.name,
-          senderId: messageData.sender_id || messageData.senderId,
-          timestamp: messageData.timestamp || new Date().toISOString(),
-          status: 'delivered'
-        };
-
-        setMessages(prev => {
-          // Remove any temporary messages and avoid duplicates
-          const filteredMessages = prev.filter(msg => 
-            !msg.id.startsWith('temp-') && msg.id !== messageId
-          );
-          return [...filteredMessages, formattedMessage];
-        });
-
-        // Update conversation last message
-        setConversations(prev => 
-          prev.map(conv => 
-            conv.id === currentConvId 
-              ? {
-                  ...conv,
-                  lastMessage: {
-                    text: messageData.text || messageData.message_text,
-                    timestamp: messageData.timestamp || new Date().toISOString(),
-                    sender: isCurrentUser ? 'buyer' : 'seller'
-                  }
-                }
-              : conv
-          )
-        );
-      } else {
-        console.log('🔄 New message for different conversation, refreshing list');
-        fetchConversations(); // Refresh conversation list
-      }
-    };
-
-    const handleMessageSent = (data: any) => {
-      console.log('✅ Message sent confirmation:', data);
-    };
-
-    const handleConversationUpdate = () => {
-      console.log('🔄 Conversation updated, refreshing list');
-      fetchConversations();
-    };
-
-    const handleUserTyping = (data: any) => {
-      if (selectedConversation && data.conversationId === selectedConversation.id) {
-        if (data.typing) {
-          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
-        } else {
-          setTypingUsers(prev => prev.filter(id => id !== data.userId));
-        }
-      }
-    };
-
-    // Register all socket events
-    socket.on('new_message', handleNewMessage);
-    socket.on('message_sent', handleMessageSent);
-    socket.on('conversation_updated', handleConversationUpdate);
-    socket.on('user_typing', handleUserTyping);
-
-    return () => {
-      console.log('🧹 Cleaning up socket listeners');
-      socket.off('new_message', handleNewMessage);
-      socket.off('message_sent', handleMessageSent);
-      socket.off('conversation_updated', handleConversationUpdate);
-      socket.off('user_typing', handleUserTyping);
-    };
-  }, [socket, selectedConversation, currentUserId]);
-
-  // ✅ Join conversation room when selected
+  // ✅ FIXED: Join conversation room when selected - PROPERLY WORKING
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
     console.log('🎯 Joining conversation room:', selectedConversation.id);
+    
+    // ✅ FIX: Proper room joining with timeout
     socket.emit('join_conversation', { 
-      conversationId: selectedConversation.id
+      conversationId: selectedConversation.id,
+      userId: currentUserId
     });
+
+    // ✅ FIX: Force refresh messages after joining room
+    setTimeout(() => {
+      fetchMessages(selectedConversation.id);
+      fetchConversations();
+    }, 500);
 
     return () => {
       console.log('🎯 Leaving conversation room:', selectedConversation.id);
       socket.emit('leave_conversation', { 
-        conversationId: selectedConversation.id
+        conversationId: selectedConversation.id,
+        userId: currentUserId
       });
     };
-  }, [socket, selectedConversation]);
+  }, [socket, selectedConversation, currentUserId]);
 
-  // ✅ AUTO-REFRESH MESSAGES (Polling fallback every 5 seconds)
+  // ✅ FIXED: AUTO-REFRESH MESSAGES (Better polling)
   useEffect(() => {
     if (!selectedConversation) return;
 
+    console.log('🔄 Starting auto-refresh for conversation:', selectedConversation.id);
+
+    // ✅ FIX: Always refresh every 3 seconds, regardless of socket status
     refreshIntervalRef.current = setInterval(() => {
-      if (!isConnected) {
-        console.log('🔄 Auto-refreshing messages (polling fallback)');
-        fetchMessages(selectedConversation.id);
-      }
-    }, 5000);
+      console.log('🔄 Auto-refreshing messages and conversations');
+      fetchMessages(selectedConversation.id);
+      fetchConversations();
+    }, 3000);
 
     return () => {
+      console.log('🔄 Stopping auto-refresh');
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [selectedConversation, isConnected]);
+  }, [selectedConversation]);
 
-  // ✅ Manual refresh function
-  const handleManualRefresh = () => {
+  // ✅ FIXED: Manual refresh function - BETTER
+  const handleManualRefresh = useCallback(() => {
     console.log('🔄 Manual refresh triggered');
     setManualRefresh(prev => prev + 1);
+    
+    // ✅ FIX: Force refresh everything
+    fetchConversations();
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
     }
-    fetchConversations();
-  };
+    
+    // ✅ FIX: Show loading state
+    setLoading(true);
+    setTimeout(() => setLoading(false), 500);
+    
+  }, [selectedConversation]);
 
   // ✅ Initial load
   useEffect(() => {
