@@ -1,4 +1,4 @@
-// app/api/quotes/submit/route.ts (example)
+// app/api/quotes/submit/route.ts - UPDATED
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -46,6 +46,21 @@ export async function POST(request: NextRequest) {
       );
 
       const sellerName = sellerInfo.rows[0]?.business_name || sellerInfo.rows[0]?.name;
+
+      // ✅ Create BUYER notification in single table
+      await query(
+        `INSERT INTO notifications 
+         (user_id, part_request_id, title, message, type, user_type) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          partRequest.buyer_id,
+          requestId,
+          'New Quote Received',
+          `${sellerName} sent you a quote for ${partRequest.part_name} at J$${price}`,
+          'new_quote',
+          'buyer'
+        ]
+      );
 
       // Send email notification to buyer
       try {

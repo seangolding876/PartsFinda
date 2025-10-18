@@ -3,10 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,7 +72,37 @@ export async function POST(request: NextRequest) {
       ['rejected', quote.request_id, quoteId]
     );
 
-    // 5. Create conversation automatically
+    // ✅ 5. Create BUYER notification in single table
+    await query(
+      `INSERT INTO notifications 
+       (user_id, part_request_id, title, message, type, user_type) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        userInfo.userId, // buyer user_id
+        quote.request_id,
+        'Quote Accepted Successfully',
+        `You have accepted the quote for ${quote.part_name} from ${quote.seller_name} at J$${quote.price}`,
+        'quote_accepted',
+        'buyer'
+      ]
+    );
+
+    // ✅ 6. Create SELLER notification in single table
+    await query(
+      `INSERT INTO notifications 
+       (user_id, part_request_id, title, message, type, user_type) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        quote.seller_id, // seller user_id
+        quote.request_id,
+        'Your Quote Was Accepted!',
+        `${quote.buyer_name} has accepted your quote for ${quote.part_name} at J$${quote.price}`,
+        'quote_accepted',
+        'seller'
+      ]
+    );
+
+    // 7. Create conversation automatically
     const existingConv = await query(
       'SELECT id FROM conversations WHERE part_request_id = $1 AND buyer_id = $2 AND seller_id = $3',
       [quote.request_id, userInfo.userId, quote.seller_id]
@@ -92,7 +120,7 @@ export async function POST(request: NextRequest) {
       conversationId = existingConv.rows[0].id;
     }
 
-    // 6. Send automatic acceptance message
+    // 8. Send automatic acceptance message
     await query(
       `INSERT INTO messages (conversation_id, sender_id, receiver_id, message_text) 
        VALUES ($1, $2, $3, $4)`,
@@ -100,7 +128,7 @@ export async function POST(request: NextRequest) {
        `Hello! I have accepted your quote for ${quote.part_name} at J$${quote.price}. Please let me know the next steps for pickup/delivery.`]
     );
 
-    // 7. Update conversation last message time
+    // 9. Update conversation last message time
     await query(
       'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
       [conversationId]
@@ -108,9 +136,9 @@ export async function POST(request: NextRequest) {
 
     await query('COMMIT');
 
-    console.log('✅ Quote accepted and conversation created:', quoteId);
+    console.log('✅ Quote accepted and notifications created:', quoteId);
 
-    // 8. Send email notification to seller
+    // 10. Send email notification to seller
     try {
       await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
         method: 'POST',

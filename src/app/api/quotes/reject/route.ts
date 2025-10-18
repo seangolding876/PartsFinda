@@ -1,4 +1,4 @@
-// app/api/quotes/reject/route.ts
+// app/api/quotes/reject/route.ts - UPDATED
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -27,9 +27,12 @@ export async function POST(request: NextRequest) {
 
     // Verify that quote exists and belongs to buyer's request
     const quoteCheck = await query(
-      `SELECT rq.*, pr.user_id as buyer_id 
+      `SELECT rq.*, pr.user_id as buyer_id, rq.seller_id, pr.part_name,
+              s.name as seller_name, u.name as buyer_name
        FROM request_quotes rq
        INNER JOIN part_requests pr ON rq.request_id = pr.id
+       INNER JOIN users u ON pr.user_id = u.id
+       INNER JOIN users s ON rq.seller_id = s.id
        WHERE rq.id = $1 AND pr.user_id = $2`,
       [quoteId, userInfo.userId]
     );
@@ -41,13 +44,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const quote = quoteCheck.rows[0];
+
     // Update quote status to 'rejected'
     await query(
       'UPDATE request_quotes SET status = $1 WHERE id = $2',
       ['rejected', quoteId]
     );
 
-    console.log('✅ Quote rejected successfully:', quoteId);
+    // ✅ Create BUYER notification in single table
+    await query(
+      `INSERT INTO notifications 
+       (user_id, part_request_id, title, message, type, user_type) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        userInfo.userId,
+        quote.request_id,
+        'Quote Rejected',
+        `You have rejected the quote for ${quote.part_name} from ${quote.seller_name}`,
+        'quote_rejected',
+        'buyer'
+      ]
+    );
+
+    // ✅ Create SELLER notification in single table
+    await query(
+      `INSERT INTO notifications 
+       (user_id, part_request_id, title, message, type, user_type) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        quote.seller_id,
+        quote.request_id,
+        'Quote Was Rejected',
+        `${quote.buyer_name} has rejected your quote for ${quote.part_name}`,
+        'quote_rejected',
+        'seller'
+      ]
+    );
+
+    console.log('✅ Quote rejected and notifications created:', quoteId);
 
     return NextResponse.json({
       success: true,

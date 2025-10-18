@@ -1,9 +1,8 @@
-// app/api/notifications/route.ts
+// app/api/notifications/route.ts - SIMPLE SINGLE TABLE
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-// Dynamic export add karen
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
@@ -17,8 +16,12 @@ export async function GET(request: NextRequest) {
     const token = authHeader.replace('Bearer ', '');
     const userInfo = verifyToken(token);
 
+    // ✅ SIRF EK TABLE SE DATA - ALL NOTIFICATIONS
     const notifications = await query(
-      `SELECT * FROM notifications 
+      `SELECT 
+        id, title, message, type, user_type, is_read, created_at, 
+        part_request_id
+       FROM notifications 
        WHERE user_id = $1 
        ORDER BY created_at DESC 
        LIMIT 50`,
@@ -46,25 +49,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId, type, title, message, related_entity_type, related_entity_id } = await request.json();
+    const token = authHeader.replace('Bearer ', '');
+    const userInfo = verifyToken(token);
+    const { notificationId } = await request.json();
 
-    const result = await query(
-      `INSERT INTO notifications 
-       (user_id, type, title, message, related_entity_type, related_entity_id) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
-       RETURNING *`,
-      [userId, type, title, message, related_entity_type, related_entity_id]
+    // ✅ SIRF EK TABLE UPDATE
+    await query(
+      'UPDATE notifications SET is_read = true, read_at = NOW() WHERE id = $1 AND user_id = $2',
+      [notificationId, userInfo.userId]
     );
 
     return NextResponse.json({
       success: true,
-      data: result.rows[0]
+      message: 'Notification marked as read'
     });
 
-  } catch (error) {
-    console.error('Error creating notification:', error);
+  } catch (error: any) {
+    console.error('Error marking notification as read:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create notification' },
+      { success: false, error: 'Failed to mark notification as read' },
       { status: 500 }
     );
   }
