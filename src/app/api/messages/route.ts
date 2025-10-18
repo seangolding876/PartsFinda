@@ -24,14 +24,14 @@ export async function GET(request: NextRequest) {
     const result = await query(
       `SELECT 
          m.id,
-         m.content,
+         m.message_text,
          m.is_read,
          m.created_at,
          m.sender_id,
          p.name as sender_name,
          c.id as conversation_id
        FROM messages m
-       LEFT JOIN profiles p ON m.sender_id = p.id
+       LEFT JOIN users p ON m.sender_id = p.id
        LEFT JOIN conversations c ON m.conversation_id = c.id
        WHERE m.sender_id = $1 OR $1 IN (
          SELECT user_id FROM conversation_participants WHERE conversation_id = m.conversation_id
