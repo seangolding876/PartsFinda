@@ -121,8 +121,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ FIXED: Fetch messages function - Proper API call
-// ✅ FIXED: Fetch messages function - Proper API call
+// ✅ IMPROVED: Fetch messages function with better error handling
 const fetchMessages = async (conversationId: string) => {
   try {
     console.log('🔄 Fetching messages for conversation:', conversationId);
@@ -144,46 +143,30 @@ const fetchMessages = async (conversationId: string) => {
       const result = await response.json();
       console.log('📨 Messages API response:', result);
       
-      if (result.success && result.data) {
-        // ✅ CORRECTED: Use the proper response structure
-        const messagesData = result.data.messages;
-        
-        const formattedMessages: Message[] = messagesData.map((msg: any) => {
-          return {
-            id: String(msg.id),
-            text: msg.text,
-            sender: msg.sender, // 'buyer' or 'seller'
-            senderName: msg.senderName,
-            timestamp: msg.timestamp,
-            status: msg.status
-          };
-        });
+      if (result.success && result.data && result.data.messages) {
+        const formattedMessages: Message[] = result.data.messages.map((msg: any) => ({
+          id: String(msg.id),
+          text: msg.text,
+          sender: msg.sender,
+          senderName: msg.senderName,
+          timestamp: msg.timestamp,
+          status: msg.status
+        }));
 
-        // Clear tracker for this conversation
         messageTracker.clear();
         formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
         
         setMessages(formattedMessages);
         console.log('✅ Messages loaded:', formattedMessages.length, 'messages');
-        
-        // ✅ Update participant info if needed
-        if (result.data.participant && selectedConversation) {
-          setSelectedConversation(prev => prev ? {
-            ...prev,
-            participant: {
-              ...prev.participant,
-              name: result.data.participant.name
-            }
-          } : prev);
-        }
       } else {
         console.log('❌ No messages in response:', result);
         setMessages([]);
       }
     } else {
-      console.error('❌ Failed to fetch messages, status:', response.status);
+      // ✅ Better error details
       const errorText = await response.text();
-      console.error('Error response:', errorText);
+      console.error('❌ Failed to fetch messages, status:', response.status);
+      console.error('❌ Error details:', errorText);
       setMessages([]);
     }
   } catch (error) {
