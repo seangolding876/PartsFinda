@@ -122,65 +122,75 @@ export default function MessagesPage() {
   };
 
   // ✅ FIXED: Fetch messages function - Proper API call
-  const fetchMessages = async (conversationId: string) => {
-    try {
-      console.log('🔄 Fetching messages for conversation:', conversationId);
-      const token = getAuthToken();
-      if (!token) {
-        console.log('❌ No token found');
-        return;
+// ✅ FIXED: Fetch messages function - Proper API call
+const fetchMessages = async (conversationId: string) => {
+  try {
+    console.log('🔄 Fetching messages for conversation:', conversationId);
+    const token = getAuthToken();
+    if (!token) {
+      console.log('❌ No token found');
+      return;
+    }
+
+    const response = await fetch(`/api/messages/${conversationId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
+    });
 
-      const response = await fetch(`/api/messages/${conversationId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      console.log('📨 API Response status:', response.status);
+    console.log('📨 API Response status:', response.status);
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log('📨 Messages API response:', result);
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('📨 Messages API response:', result);
+      if (result.success && result.data) {
+        // ✅ CORRECTED: Use the proper response structure
+        const messagesData = result.data.messages;
         
-        if (result.success && result.data) {
-          // ✅ CORRECTED: Handle the response structure properly
-          const messagesData = result.data.messages || result.data;
-          
-          const formattedMessages: Message[] = messagesData.map((msg: any) => {
-            // ✅ Determine if current user is buyer or seller
-            const isCurrentUser = msg.sender === 'buyer';
-            
-            return {
-              id: String(msg.id),
-              text: msg.text || msg.message_text,
-              sender: msg.sender,
-              senderName: isCurrentUser ? currentUserName : (selectedConversation?.participant.name || 'Seller'),
-              timestamp: msg.timestamp || msg.created_at,
-              status: msg.status || 'delivered'
-            };
-          });
+        const formattedMessages: Message[] = messagesData.map((msg: any) => {
+          return {
+            id: String(msg.id),
+            text: msg.text,
+            sender: msg.sender, // 'buyer' or 'seller'
+            senderName: msg.senderName,
+            timestamp: msg.timestamp,
+            status: msg.status
+          };
+        });
 
-          // Clear tracker for this conversation
-          messageTracker.clear();
-          formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
-          
-          setMessages(formattedMessages);
-          console.log('✅ Messages loaded:', formattedMessages.length, 'messages');
-        } else {
-          console.log('❌ No messages in response:', result);
-          setMessages([]);
+        // Clear tracker for this conversation
+        messageTracker.clear();
+        formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
+        
+        setMessages(formattedMessages);
+        console.log('✅ Messages loaded:', formattedMessages.length, 'messages');
+        
+        // ✅ Update participant info if needed
+        if (result.data.participant && selectedConversation) {
+          setSelectedConversation(prev => prev ? {
+            ...prev,
+            participant: {
+              ...prev.participant,
+              name: result.data.participant.name
+            }
+          } : prev);
         }
       } else {
-        console.error('❌ Failed to fetch messages, status:', response.status);
+        console.log('❌ No messages in response:', result);
         setMessages([]);
       }
-    } catch (error) {
-      console.error('❌ Error fetching messages:', error);
+    } else {
+      console.error('❌ Failed to fetch messages, status:', response.status);
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
       setMessages([]);
     }
-  };
-
+  } catch (error) {
+    console.error('❌ Error fetching messages:', error);
+    setMessages([]);
+  }
+};
   // Send Message Function
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
@@ -474,9 +484,52 @@ export default function MessagesPage() {
   };
 
   // ✅ FIXED: Determine if message is from current user
-  const isCurrentUserMessage = (message: Message) => {
-    return message.sender === 'buyer'; // Ya phir current user role ke hisaab se
-  };
+// ✅ FIXED: Determine if message is from current user
+const isCurrentUserMessage = (message: Message) => {
+  // Current user is always the one who sent the message with senderName 'You'
+  return message.senderName === 'You';
+};
+
+// ✅ In your message rendering:
+{messages.map((message) => {
+  const isCurrentUser = isCurrentUserMessage(message);
+  
+  return (
+    <div
+      key={message.id}
+      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+    >
+      <div className={`max-w-xs lg:max-w-md ${
+        isCurrentUser
+          ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg' // ✅ Current user - Light Blue
+          : 'bg-white border rounded-r-lg rounded-tl-lg' // ✅ Other user - White
+      } p-3 shadow-sm`}>
+        {/* Sender Name Display */}
+        <div className={`flex items-center gap-2 mb-1 ${
+          isCurrentUser ? 'text-blue-100' : 'text-gray-600'
+        }`}>
+          <User className="w-3 h-3" />
+          <span className="text-xs font-medium">
+            {message.senderName}
+          </span>
+        </div>
+        
+        <p className="text-sm">{message.text}</p>
+        
+        <div className={`flex items-center justify-between mt-2 ${
+          isCurrentUser ? 'text-blue-100' : 'text-gray-500'
+        }`}>
+          <span className="text-xs">{formatTime(message.timestamp)}</span>
+          {isCurrentUser && (
+            <div className="ml-2 flex items-center gap-1">
+              {getStatusIcon(message.status)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
 
   // Typing indicator
   const typingIndicator = typingUsers.length > 0 && (
