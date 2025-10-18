@@ -1,4 +1,3 @@
-// app/messages/page.tsx - FIXED VERSION
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -64,16 +63,12 @@ interface Message {
   sender: 'buyer' | 'seller';
   timestamp: string;
   status: string;
-  senderName?: string;
+  senderName: string;
+  senderId: string;
 }
 
 // Message tracking to prevent duplicates
 const messageTracker = new Set();
-
-const isTemporaryMessage = (id: string | number): boolean => {
-  const idStr = String(id);
-  return idStr.startsWith('temp-');
-};
 
 export default function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -87,18 +82,12 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected } = useSocket();
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const conversationRef = useRef(selectedConversation);
 
   // ✅ Get current user info
   const currentUserId = getCurrentUserId();
   const currentUserName = getCurrentUserName();
 
-  // Keep ref updated
-  useEffect(() => {
-    conversationRef.current = selectedConversation;
-  }, [selectedConversation]);
-
-  // Fetch conversations
+  // ✅ Fetch conversations
   const fetchConversations = async () => {
     try {
       const token = getAuthToken();
@@ -121,60 +110,54 @@ export default function MessagesPage() {
     }
   };
 
-// ✅ IMPROVED: Fetch messages function with better error handling
-const fetchMessages = async (conversationId: string) => {
-  try {
-    console.log('🔄 Fetching messages for conversation:', conversationId);
-    const token = getAuthToken();
-    if (!token) {
-      console.log('❌ No token found');
-      return;
-    }
+  // ✅ FIXED: Fetch messages with proper user mapping
+  const fetchMessages = async (conversationId: string) => {
+    try {
+      console.log('🔄 Fetching messages for conversation:', conversationId);
+      const token = getAuthToken();
+      if (!token) return;
 
-    const response = await fetch(`/api/messages/${conversationId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+      const response = await fetch(`/api/messages/${conversationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-    console.log('📨 API Response status:', response.status);
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log('📨 Messages API response:', result);
-      
-      if (result.success && result.data && result.data.messages) {
-        const formattedMessages: Message[] = result.data.messages.map((msg: any) => ({
-          id: String(msg.id),
-          text: msg.text,
-          sender: msg.sender,
-          senderName: msg.senderName,
-          timestamp: msg.timestamp,
-          status: msg.status
-        }));
-
-        messageTracker.clear();
-        formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
+      if (response.ok) {
+        const result = await response.json();
+        console.log('📨 Messages API response:', result);
         
-        setMessages(formattedMessages);
-        console.log('✅ Messages loaded:', formattedMessages.length, 'messages');
+        if (result.success && result.data && result.data.messages) {
+          const formattedMessages: Message[] = result.data.messages.map((msg: any) => ({
+            id: String(msg.id),
+            text: msg.text,
+            sender: msg.sender,
+            senderName: msg.senderName,
+            senderId: msg.senderId,
+            timestamp: msg.timestamp,
+            status: msg.status
+          }));
+
+          messageTracker.clear();
+          formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
+          
+          setMessages(formattedMessages);
+          console.log('✅ Messages loaded:', formattedMessages.length, 'messages');
+        } else {
+          console.log('❌ No messages in response');
+          setMessages([]);
+        }
       } else {
-        console.log('❌ No messages in response:', result);
+        console.error('❌ Failed to fetch messages');
         setMessages([]);
       }
-    } else {
-      // ✅ Better error details
-      const errorText = await response.text();
-      console.error('❌ Failed to fetch messages, status:', response.status);
-      console.error('❌ Error details:', errorText);
+    } catch (error) {
+      console.error('❌ Error fetching messages:', error);
       setMessages([]);
     }
-  } catch (error) {
-    console.error('❌ Error fetching messages:', error);
-    setMessages([]);
-  }
-};
-  // Send Message Function
+  };
+
+  // ✅ FIXED: Send Message Function
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -183,18 +166,18 @@ const fetchMessages = async (conversationId: string) => {
       
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      // ✅ FIXED: Current user role determine karo
-      const currentUserRole = 'buyer'; // Ya phir API se pata karo
-      
+      // ✅ CORRECT: Create temporary message with proper sender info
       const tempMessage: Message = {
         id: tempId,
         text: newMessage.trim(),
-        sender: currentUserRole,
-        senderName: currentUserName,
+        sender: 'buyer', // Current user is always buyer in this context
+        senderName: 'You',
+        senderId: currentUserId || '',
         timestamp: new Date().toISOString(),
         status: 'sending'
       };
       
+      // ✅ Add message immediately for real-time feel
       setMessages(prev => {
         const newMessages = [...prev, tempMessage];
         messageTracker.add(tempId);
@@ -203,7 +186,7 @@ const fetchMessages = async (conversationId: string) => {
       
       setNewMessage('');
 
-      // Update conversation list optimistically
+      // Update conversation list
       setConversations(prev => 
         prev.map(conv => 
           conv.id === selectedConversation.id 
@@ -212,7 +195,7 @@ const fetchMessages = async (conversationId: string) => {
                 lastMessage: {
                   text: newMessage.trim(),
                   timestamp: new Date().toISOString(),
-                  sender: currentUserRole
+                  sender: 'buyer'
                 },
                 unreadCount: 0
               }
@@ -220,55 +203,36 @@ const fetchMessages = async (conversationId: string) => {
         )
       );
 
-      // Try socket first
-      if (socket && isConnected) {
-        console.log('📤 Sending via socket:', {
-          conversationId: selectedConversation.id,
-          messageText: newMessage.trim(),
-          receiverId: selectedConversation.participant.id
-        });
+      // Send via API (socket will handle real-time updates)
+      const token = getAuthToken();
+      const response = await fetch(`/api/messages/${selectedConversation.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageText: newMessage.trim()
+        })
+      });
 
-        socket.emit('send_message', {
-          conversationId: selectedConversation.id,
-          messageText: newMessage.trim(),
-          receiverId: selectedConversation.participant.id
-        });
-
+      if (response.ok) {
+        // Refresh messages to get actual ID and status
+        await fetchMessages(selectedConversation.id);
       } else {
-        // Fallback to API
-        console.log('📤 Using API fallback');
-        const token = getAuthToken();
-        const response = await fetch(`/api/messages/${selectedConversation.id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            messageText: newMessage.trim()
-          })
-        });
-
-        if (response.ok) {
-          await fetchMessages(selectedConversation.id);
-          await fetchConversations();
-        } else {
-          setMessages(prev => 
-            prev.map(msg => 
-              isTemporaryMessage(msg.id) 
-                ? { ...msg, status: 'failed' }
-                : msg
-            )
-          );
-        }
+        // Mark as failed
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempId ? { ...msg, status: 'failed' } : msg
+          )
+        );
       }
+
     } catch (error) {
       console.error('❌ Error sending message:', error);
       setMessages(prev => 
         prev.map(msg => 
-          isTemporaryMessage(msg.id) 
-            ? { ...msg, status: 'failed' }
-            : msg
+          msg.id.startsWith('temp-') ? { ...msg, status: 'failed' } : msg
         )
       );
     } finally {
@@ -276,17 +240,18 @@ const fetchMessages = async (conversationId: string) => {
     }
   };
 
-  // Socket Event Handlers
+  // ✅ FIXED: Socket Event Handlers - SIMPLIFIED
   useEffect(() => {
     if (!socket) return;
 
-    console.log('🎯 Setting up global socket listeners');
+    console.log('🎯 Setting up socket listeners');
 
     const handleNewMessage = (messageData: any) => {
-      console.log('📨 Received new message:', messageData);
+      console.log('📨 Socket received new message:', messageData);
       
       const messageId = String(messageData.id);
       
+      // Prevent duplicates
       if (messageTracker.has(messageId)) {
         console.log('🔄 Skipping duplicate message:', messageId);
         return;
@@ -294,39 +259,40 @@ const fetchMessages = async (conversationId: string) => {
 
       messageTracker.add(messageId);
 
-      const currentConversation = conversationRef.current;
-      
-      if (currentConversation) {
+      // Only add if it's for the current conversation
+      if (selectedConversation && messageData.conversation_id === selectedConversation.id) {
         console.log('💬 Adding message to current conversation');
         
+        const isCurrentUser = messageData.sender_id === currentUserId;
+        
+        const formattedMessage: Message = {
+          id: messageId,
+          text: messageData.text,
+          sender: isCurrentUser ? 'buyer' : 'seller',
+          senderName: isCurrentUser ? 'You' : selectedConversation.participant.name,
+          senderId: messageData.sender_id,
+          timestamp: messageData.timestamp,
+          status: 'delivered'
+        };
+
         setMessages(prev => {
-          const filteredMessages = prev.filter(msg => !isTemporaryMessage(msg.id));
-          
-          if (filteredMessages.some(msg => String(msg.id) === messageId)) {
-            return filteredMessages;
-          }
-          
-          const formattedMessage: Message = {
-            id: messageId,
-            text: messageData.text,
-            sender: messageData.sender,
-            senderName: messageData.sender === 'buyer' ? currentUserName : currentConversation.participant.name,
-            timestamp: messageData.timestamp,
-            status: messageData.status || 'delivered'
-          };
-          
+          // Remove any temporary messages and avoid duplicates
+          const filteredMessages = prev.filter(msg => 
+            !msg.id.startsWith('temp-') && msg.id !== messageId
+          );
           return [...filteredMessages, formattedMessage];
         });
 
+        // Update conversation last message
         setConversations(prev => 
           prev.map(conv => 
-            conv.id === currentConversation.id 
+            conv.id === selectedConversation.id 
               ? {
                   ...conv,
                   lastMessage: {
                     text: messageData.text,
                     timestamp: messageData.timestamp,
-                    sender: messageData.sender
+                    sender: isCurrentUser ? 'buyer' : 'seller'
                   }
                 }
               : conv
@@ -335,35 +301,21 @@ const fetchMessages = async (conversationId: string) => {
       }
     };
 
-    const handleConversationUpdate = (updateData: any) => {
-      console.log('🔄 Conversation updated:', updateData);
+    const handleConversationUpdate = () => {
+      console.log('🔄 Conversation updated, refreshing list');
       fetchConversations();
-    };
-
-    const handleUserTyping = (data: any) => {
-      const currentConversation = conversationRef.current;
-      if (currentConversation && data.userId === currentConversation.participant.id) {
-        if (data.typing) {
-          setTypingUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
-        } else {
-          setTypingUsers(prev => prev.filter(id => id !== data.userId));
-        }
-      }
     };
 
     socket.on('new_message', handleNewMessage);
     socket.on('conversation_updated', handleConversationUpdate);
-    socket.on('user_typing', handleUserTyping);
 
     return () => {
-      console.log('🧹 Cleaning up global socket listeners');
       socket.off('new_message', handleNewMessage);
       socket.off('conversation_updated', handleConversationUpdate);
-      socket.off('user_typing', handleUserTyping);
     };
-  }, [socket, currentUserName]);
+  }, [socket, selectedConversation, currentUserId]);
 
-  // Conversation-specific socket setup
+  // ✅ Join conversation room when selected
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
@@ -376,57 +328,22 @@ const fetchMessages = async (conversationId: string) => {
     };
   }, [socket, selectedConversation]);
 
-  // Typing handlers
-  const handleTypingStart = useCallback(() => {
-    if (socket && selectedConversation) {
-      socket.emit('typing_start', { conversationId: selectedConversation.id });
-    }
-  }, [socket, selectedConversation]);
-
-  const handleTypingStop = useCallback(() => {
-    if (socket && selectedConversation) {
-      socket.emit('typing_stop', { conversationId: selectedConversation.id });
-    }
-  }, [socket, selectedConversation]);
-
-  // Debounced typing stop
-  useEffect(() => {
-    if (newMessage.trim()) {
-      handleTypingStart();
-      
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      
-      typingTimeoutRef.current = setTimeout(() => {
-        handleTypingStop();
-      }, 1000);
-    } else {
-      handleTypingStop();
-    }
-
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [newMessage, handleTypingStart, handleTypingStop]);
-
   // Initial load
   useEffect(() => {
     fetchConversations().finally(() => setLoading(false));
   }, []);
 
-  // ✅ FIXED: When conversation is selected - Proper dependency
+  // ✅ FIXED: Load messages when conversation changes
   useEffect(() => {
     if (selectedConversation) {
       console.log('🔄 Loading messages for conversation:', selectedConversation.id);
       setMessages([]);
+      messageTracker.clear();
       fetchMessages(selectedConversation.id);
     } else {
       setMessages([]);
     }
-  }, [selectedConversation?.id]); // ✅ Only depend on conversation ID
+  }, [selectedConversation?.id]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -467,52 +384,9 @@ const fetchMessages = async (conversationId: string) => {
   };
 
   // ✅ FIXED: Determine if message is from current user
-// ✅ FIXED: Determine if message is from current user
-const isCurrentUserMessage = (message: Message) => {
-  // Current user is always the one who sent the message with senderName 'You'
-  return message.senderName === 'You';
-};
-
-// ✅ In your message rendering:
-{messages.map((message) => {
-  const isCurrentUser = isCurrentUserMessage(message);
-  
-  return (
-    <div
-      key={message.id}
-      className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-    >
-      <div className={`max-w-xs lg:max-w-md ${
-        isCurrentUser
-          ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg' // ✅ Current user - Light Blue
-          : 'bg-white border rounded-r-lg rounded-tl-lg' // ✅ Other user - White
-      } p-3 shadow-sm`}>
-        {/* Sender Name Display */}
-        <div className={`flex items-center gap-2 mb-1 ${
-          isCurrentUser ? 'text-blue-100' : 'text-gray-600'
-        }`}>
-          <User className="w-3 h-3" />
-          <span className="text-xs font-medium">
-            {message.senderName}
-          </span>
-        </div>
-        
-        <p className="text-sm">{message.text}</p>
-        
-        <div className={`flex items-center justify-between mt-2 ${
-          isCurrentUser ? 'text-blue-100' : 'text-gray-500'
-        }`}>
-          <span className="text-xs">{formatTime(message.timestamp)}</span>
-          {isCurrentUser && (
-            <div className="ml-2 flex items-center gap-1">
-              {getStatusIcon(message.status)}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-})}
+  const isCurrentUserMessage = (message: Message) => {
+    return message.senderName === 'You' || message.senderId === currentUserId;
+  };
 
   // Typing indicator
   const typingIndicator = typingUsers.length > 0 && (
@@ -658,19 +532,13 @@ const isCurrentUserMessage = (message: Message) => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>You: {currentUserName}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
               </div>
             </div>
 
-            {/* ✅ FIXED: Messages Area with Proper Colors */}
+            {/* ✅ FIXED: Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -689,18 +557,19 @@ const isCurrentUserMessage = (message: Message) => {
                       >
                         <div className={`max-w-xs lg:max-w-md ${
                           isCurrentUser
-                            ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg' // ✅ Current user - Light Blue
-                            : 'bg-white border rounded-r-lg rounded-tl-lg' // ✅ Other user - White
+                            ? 'bg-blue-500 text-white rounded-l-lg rounded-tr-lg'
+                            : 'bg-white border rounded-r-lg rounded-tl-lg'
                         } p-3 shadow-sm`}>
-                          {/* Sender Name Display */}
-                          <div className={`flex items-center gap-2 mb-1 ${
-                            isCurrentUser ? 'text-blue-100' : 'text-gray-600'
-                          }`}>
-                            <User className="w-3 h-3" />
-                            <span className="text-xs font-medium">
-                              {message.senderName}
-                            </span>
-                          </div>
+                          
+                          {/* Sender Name - Only show for other user */}
+                          {!isCurrentUser && (
+                            <div className="flex items-center gap-2 mb-1 text-gray-600">
+                              <User className="w-3 h-3" />
+                              <span className="text-xs font-medium">
+                                {message.senderName}
+                              </span>
+                            </div>
+                          )}
                           
                           <p className="text-sm">{message.text}</p>
                           
