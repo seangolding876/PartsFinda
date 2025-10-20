@@ -268,30 +268,48 @@ const checkRatingStatus = async (conversationId: string) => {
   }
 };
 
-// ✅ Submit rating function - IMPROVED VERSION
+// ✅ EMERGENCY FIX - Direct conversation se user ID le lo
 const handleRatingSubmit = async (rating: number, comment: string) => {
-  if (!selectedConversation || !ratingStatus || !ratingStatus.userToRate) {
-    console.error('❌ Missing data for rating submission:', {
-      selectedConversation: !!selectedConversation,
-      ratingStatus: !!ratingStatus,
-      userToRate: ratingStatus?.userToRate
-    });
-    alert('Missing information to submit rating');
+  if (!selectedConversation) {
+    console.error('❌ No conversation selected');
+    alert('No conversation selected');
     return false;
   }
 
   try {
     const token = getAuthToken();
+    const currentUserId = getCurrentUserId();
     
+    // EMERGENCY FIX: Conversation se directly user ID calculate karo
+    let ratedUserId;
+    
+    if (ratingStatus?.userToRate?.id) {
+      // Pehla option: ratingStatus se lo
+      ratedUserId = ratingStatus.userToRate.id;
+      console.log('✅ Using ratedUserId from ratingStatus:', ratedUserId);
+    } else {
+      // Emergency fallback: Conversation participants se calculate karo
+      // Assume karo ke jo current user nahi hai, usko rate karna hai
+      ratedUserId = selectedConversation.participant.id;
+      console.log('🆘 EMERGENCY: Using participant ID as ratedUserId:', ratedUserId);
+    }
+
+    // Final validation
+    if (!ratedUserId || ratedUserId === currentUserId) {
+      console.error('❌ Invalid ratedUserId:', { ratedUserId, currentUserId });
+      alert('Cannot determine user to rate. Please try again.');
+      return false;
+    }
+
     // Prepare the request body
     const requestBody = {
       conversationId: selectedConversation.id,
-      ratedUserId: ratingStatus.userToRate.id, // ✅ Yeh ab properly set hoga
+      ratedUserId: ratedUserId, // ✅ Ab yeh definitely set hoga
       rating: rating,
       comment: comment || ''
     };
 
-    console.log('📤 Submitting rating with data:', requestBody);
+    console.log('📤 FINAL Rating submission data:', requestBody);
 
     const response = await fetch('/api/ratings', {
       method: 'POST',
@@ -324,7 +342,6 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     throw error;
   }
 };
-
   // ✅ Conversation select hone par rating status check karo
   useEffect(() => {
     if (selectedConversation) {
