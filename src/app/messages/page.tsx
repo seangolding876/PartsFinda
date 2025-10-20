@@ -202,26 +202,29 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ Check rating status function
-  const checkRatingStatus = async (conversationId: string) => {
-    try {
-      const token = getAuthToken();
-      const response = await fetch('/api/ratings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ conversationId })
-      });
+// ✅ Check rating status function - IMPROVED VERSION
+const checkRatingStatus = async (conversationId: string) => {
+  try {
+    const token = getAuthToken();
+    const response = await fetch('/api/ratings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ conversationId })
+    });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setRatingStatus(result.data);
-          
-          // Get user details for the person to rate
-          if (result.data.userToRate) {
+    if (response.ok) {
+      const result = await response.json();
+      console.log('📊 Rating status check result:', result);
+      
+      if (result.success) {
+        setRatingStatus(result.data);
+        
+        // Get user details for the person to rate
+        if (result.data.userToRate) {
+          try {
             const userResponse = await fetch(`/api/users/${result.data.userToRate}`, {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -231,58 +234,96 @@ export default function MessagesPage() {
             if (userResponse.ok) {
               const userResult = await userResponse.json();
               if (userResult.success) {
+                console.log('👤 User details fetched:', userResult.data);
                 setRatingStatus(prev => prev ? {
                   ...prev,
                   userToRate: userResult.data
                 } : null);
               }
             }
+          } catch (userError) {
+            console.error('❌ Error fetching user details:', userError);
+            // Fallback: create basic user object
+            setRatingStatus(prev => prev ? {
+              ...prev,
+              userToRate: {
+                id: result.data.userToRate,
+                name: selectedConversation?.participant.name || 'User',
+                business_name: selectedConversation?.participant.name || 'User'
+              }
+            } : null);
           }
-          
-          return result.data.canRate;
         }
+        
+        return result.data.canRate;
       }
-      return false;
-    } catch (error) {
-      console.error('Error checking rating status:', error);
-      return false;
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Rating status check failed:', errorText);
     }
-  };
+    return false;
+  } catch (error) {
+    console.error('❌ Error checking rating status:', error);
+    return false;
+  }
+};
 
-  // ✅ Submit rating function
-  const handleRatingSubmit = async (rating: number, comment: string) => {
-    if (!selectedConversation || !ratingStatus) return;
+// ✅ Submit rating function - IMPROVED VERSION
+const handleRatingSubmit = async (rating: number, comment: string) => {
+  if (!selectedConversation || !ratingStatus || !ratingStatus.userToRate) {
+    console.error('❌ Missing data for rating submission:', {
+      selectedConversation: !!selectedConversation,
+      ratingStatus: !!ratingStatus,
+      userToRate: ratingStatus?.userToRate
+    });
+    alert('Missing information to submit rating');
+    return false;
+  }
 
-    try {
-      const token = getAuthToken();
-      const response = await fetch('/api/ratings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          conversationId: selectedConversation.id,
-          ratedUserId: ratingStatus.userToRate.id,
-          rating,
-          comment
-        })
-      });
+  try {
+    const token = getAuthToken();
+    
+    // Prepare the request body
+    const requestBody = {
+      conversationId: selectedConversation.id,
+      ratedUserId: ratingStatus.userToRate.id, // ✅ Yeh ab properly set hoga
+      rating: rating,
+      comment: comment || ''
+    };
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          console.log('✅ Rating submitted successfully');
-          setRatingStatus(prev => prev ? { ...prev, canRate: false, alreadyRated: true } : null);
-          return true;
-        }
-      }
-      throw new Error('Failed to submit rating');
-    } catch (error) {
-      console.error('Error submitting rating:', error);
-      throw error;
+    console.log('📤 Submitting rating with data:', requestBody);
+
+    const response = await fetch('/api/ratings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const result = await response.json();
+    console.log('📨 Rating submission response:', result);
+
+    if (response.ok && result.success) {
+      console.log('✅ Rating submitted successfully');
+      setRatingStatus(prev => prev ? { 
+        ...prev, 
+        canRate: false, 
+        alreadyRated: true 
+      } : null);
+      return true;
+    } else {
+      console.error('❌ Rating submission failed:', result.error);
+      alert(`Failed to submit rating: ${result.error}`);
+      throw new Error(result.error || 'Failed to submit rating');
     }
-  };
+  } catch (error) {
+    console.error('❌ Error submitting rating:', error);
+    alert('Error submitting rating. Please try again.');
+    throw error;
+  }
+};
 
   // ✅ Conversation select hone par rating status check karo
   useEffect(() => {
