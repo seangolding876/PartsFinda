@@ -223,6 +223,33 @@ export async function POST(request: NextRequest) {
         [conversationId, raterIdInt, ratedUserIdInt, rating, comment || null]
       );
       console.log('✅ Rating inserted successfully:', result.rows[0]);
+
+       // ✅ ✅ ✅ YEH NEW CODE ADD KAREIN - NOTIFICATION CREATE KARO
+  try {
+    // Rated user ko notification bhejo
+    await query(
+      `INSERT INTO notifications 
+       (user_id, type, title, message, related_entity_type, related_entity_id, user_type) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        ratedUserIdInt, // user_id - jisko rating mili
+        'rating_received', // type
+        'New Rating Received! ⭐', // title
+        `You received a ${rating} star rating${comment ? ` with comment: "${comment}"` : ''}`, // message
+        'rating', // related_entity_type
+        result.rows[0].id, // related_entity_id - rating ID
+        'user' // user_type
+      ]
+    );
+    
+    console.log('✅ Rating notification created for user:', ratedUserIdInt);
+    
+  } catch (notifError) {
+    console.error('⚠️ Notification creation failed (non-critical):', notifError);
+    // Rating successful hai, notification fail hua toh bhi continue karo
+  }
+
+  
     } catch (dbError: any) {
       console.error('❌ Database error inserting rating:', dbError);
       return NextResponse.json(
