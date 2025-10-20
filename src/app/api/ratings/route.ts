@@ -243,13 +243,15 @@ export async function POST(request: NextRequest) {
     );
     
     console.log('✅ Rating notification created for user:', ratedUserIdInt);
+
+    
     
   } catch (notifError) {
     console.error('⚠️ Notification creation failed (non-critical):', notifError);
     // Rating successful hai, notification fail hua toh bhi continue karo
   }
 
-  
+
     } catch (dbError: any) {
       console.error('❌ Database error inserting rating:', dbError);
       return NextResponse.json(
