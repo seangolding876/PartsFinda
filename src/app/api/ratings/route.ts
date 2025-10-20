@@ -331,7 +331,7 @@ export async function GET(request: NextRequest) {
         SELECT r.*, 
                u.name as rater_name,
                u.business_name as rater_business_name,
-               u.avatar_url as rater_avatar
+               'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA=' as rater_avatar
         FROM ratings r
         JOIN users u ON r.rater_id = u.id
         WHERE r.conversation_id = $1
@@ -344,7 +344,7 @@ export async function GET(request: NextRequest) {
         SELECT r.*, 
                u.name as rater_name,
                u.business_name as rater_business_name,
-               u.avatar_url as rater_avatar,
+               'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA=' as rater_avatar,
                c.id as conversation_id
         FROM ratings r
         JOIN users u ON r.rater_id = u.id
