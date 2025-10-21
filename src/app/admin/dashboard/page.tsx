@@ -78,7 +78,7 @@ interface UserData {
   role: string;
 }
 
-// Auth utility - YEH WALA FUNCTION USE KARENGE
+// Auth utility - EXACTLY APKE SELLER DASHBOARD JAISA
 const getAuthData = () => {
   if (typeof window === 'undefined') return null;
   try {
@@ -99,58 +99,34 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
 
-  // Check authentication on component mount
+  // Check authentication on component mount - SIMPLE CHECK JAISA SELLER DASHBOARD MEIN HAI
   useEffect(() => {
-    checkAuth();
+    const authData = getAuthData();
+    
+    if (!authData?.token) {
+      window.location.href = '/admin/login';
+      return;
+    }
+
+    // Directly set user from authData - NO SEPARATE VERIFY API CALL
+    setUser(authData);
+    
+    // Fetch initial data
+    fetchData();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const authData = getAuthData();
-      
-      if (!authData?.token) {
-        window.location.href = '/admin/login';
-        return;
-      }
-
-      // Verify token with backend - admin role check
-      const response = await fetch('/api/admin/verify', {
-        headers: {
-          'Authorization': `Bearer ${authData.token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid token or not admin');
-      }
-
-      const userData = await response.json();
-      
-      // Check if user is admin
-      if (userData.data.role !== 'admin') {
-        throw new Error('Admin access required');
-      }
-
-      setUser(userData.data);
-      setAuthLoading(false);
-      
-      // Fetch initial data
-      fetchData();
-    } catch (error) {
-      console.error('Auth error:', error);
-      localStorage.removeItem('authData');
-      window.location.href = '/admin/login';
-    }
-  };
+  // Refresh data when tab changes
+  useEffect(() => {
+    fetchData();
+  }, [activeTab, filterStatus]);
 
   const handleLogout = () => {
     localStorage.removeItem('authData');
     window.location.href = '/admin/login';
   };
 
-  // Fetch data based on active tab
+  // Fetch data based on active tab - EXACTLY APKE SELLER DASHBOARD JAISA
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -348,12 +324,12 @@ export default function AdminDashboardPage() {
   ] : [];
 
   // Show loading while checking authentication
-  if (authLoading) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying admin access...</p>
+          <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
         </div>
       </div>
     );
