@@ -22,130 +22,154 @@ export default function MessageModal({ isOpen, onClose, supplier }: MessageModal
 
   if (!isOpen || !supplier) return null;
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) {
-      alert('Please enter a message');
+// components/MessageModal.tsx - Updated handleSendMessage function
+const handleSendMessage = async () => {
+  if (!message.trim()) {
+    alert('Please enter a message');
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // Get auth data
+    const getAuthData = () => {
+      if (typeof window === 'undefined') return null;
+      try {
+        const authData = localStorage.getItem('authData');
+        return authData ? JSON.parse(authData) : null;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const authData = getAuthData();
+    if (!authData?.token) {
+      alert('Authentication required');
       return;
     }
 
+    // Step 1: First try to get existing conversations
+    let conversationId = null;
+    
     try {
-      setLoading(true);
-
-      // Get auth data
-      const getAuthData = () => {
-        if (typeof window === 'undefined') return null;
-        try {
-          const authData = localStorage.getItem('authData');
-          return authData ? JSON.parse(authData) : null;
-        } catch (error) {
-          return null;
+      const conversationsResponse = await fetch('/api/conversations', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
         }
-      };
+      });
 
-      const authData = getAuthData();
-      if (!authData?.token) {
-        alert('Authentication required');
-        return;
+      if (conversationsResponse.ok) {
+        const conversationsData = await conversationsResponse.json();
+        // Find existing conversation with this supplier
+        const existingConv = conversationsData.data?.find((conv: any) => 
+          conv.participant?.id === supplier.id
+        );
+        if (existingConv) {
+          conversationId = existingConv.id;
+        }
       }
+    } catch (convError) {
+      console.log('No existing conversations found, will create new one');
+    }
 
-      // Step 1: Create conversation using existing API
-      const conversationResponse = await fetch('/api/conversations', {
+    // Step 2: If no existing conversation, create one using messages API
+    if (!conversationId) {
+      // Use messages/send API as fallback
+      const createResponse = await fetch('/api/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
-          sellerId: supplier.id,
-          partRequestId: null, // Admin conversation, no part request
+          receiverId: supplier.id,
+          partRequestId: null,
           messageText: message.trim()
         })
       });
 
-      if (!conversationResponse.ok) {
-        const errorData = await conversationResponse.json();
-        throw new Error(errorData.error || 'Failed to create conversation');
+      if (createResponse.ok) {
+        const createResult = await createResponse.json();
+        conversationId = createResult.conversationId;
+      } else {
+        throw new Error('Failed to create conversation');
       }
+    }
 
-      const conversationResult = await conversationResponse.json();
-      const conversationId = conversationResult.data?.id || conversationResult.conversationId;
+    // Step 3: If we have conversationId but need to send message separately
+    if (conversationId) {
+      // Send message to the conversation
+      const messageResponse = await fetch(`/api/messages/${conversationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          messageText: message.trim()
+        })
+      });
 
-      // Step 2: If conversation already exists, send message to existing conversation
-      if (conversationResult.message === 'Conversation already exists') {
-        const existingConvId = conversationResult.data.id;
-        
-        // Send message to existing conversation
-        const messageResponse = await fetch(`/api/messages/${existingConvId}`, {
+      if (!messageResponse.ok) {
+        throw new Error('Failed to send message');
+      }
+    }
+
+    // Step 4: Send email if requested
+    if (sendEmail) {
+      try {
+        const emailTemplate = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Message from PartsFinda Admin</h2>
+            <p>Dear ${supplier.ownerName},</p>
+            <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <p style="margin: 0; font-style: italic;">"${message.trim()}"</p>
+            </div>
+            <p>This message was sent to you by the PartsFinda Admin team.</p>
+            <p>You can reply to this message by logging into your seller dashboard.</p>
+            <br />
+            <p>Best regards,<br/>PartsFinda Team</p>
+          </div>
+        `;
+
+        const emailResponse = await fetch('/api/send-email', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.token}`
           },
           body: JSON.stringify({
-            messageText: message.trim()
+            to: supplier.email,
+            subject: `Message from PartsFinda Admin - ${supplier.businessName}`,
+            template: emailTemplate
           })
         });
 
-        if (!messageResponse.ok) {
-          throw new Error('Failed to send message to existing conversation');
+        if (!emailResponse.ok) {
+          console.warn('Email sending failed, but message was sent');
         }
+      } catch (emailError) {
+        console.warn('Email sending error:', emailError);
       }
-
-      // Step 3: Send email if requested
-      if (sendEmail) {
-        try {
-          const emailTemplate = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #2563eb;">Message from PartsFinda Admin</h2>
-              <p>Dear ${supplier.ownerName},</p>
-              <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-                <p style="margin: 0; font-style: italic;">"${message.trim()}"</p>
-              </div>
-              <p>This message was sent to you by the PartsFinda Admin team.</p>
-              <p>You can reply to this message by logging into your seller dashboard.</p>
-              <br />
-              <p>Best regards,<br/>PartsFinda Team</p>
-            </div>
-          `;
-
-          const emailResponse = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              to: supplier.email,
-              subject: `Message from PartsFinda Admin - ${supplier.businessName}`,
-              template: emailTemplate
-            })
-          });
-
-          if (!emailResponse.ok) {
-            console.warn('Email sending failed, but conversation was created');
-          }
-        } catch (emailError) {
-          console.warn('Email sending error:', emailError);
-          // Continue even if email fails
-        }
-      }
-
-      alert('Message sent successfully!');
-      setMessage('');
-      onClose();
-
-      // Open messages page in new tab
-      const finalConversationId = conversationResult.data?.id || conversationId;
-      if (finalConversationId) {
-        window.open(`/admin/messages?conversation=${finalConversationId}`, '_blank');
-      }
-
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      alert(error.message || 'Failed to send message. Please try again.');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    alert('Message sent successfully!');
+    setMessage('');
+    onClose();
+
+    // Open messages page if we have conversationId
+    if (conversationId) {
+      window.open(`/admin/messages?conversation=${conversationId}`, '_blank');
+    }
+
+  } catch (error: any) {
+    console.error('Error sending message:', error);
+    alert(error.message || 'Failed to send message. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     setMessage('');
