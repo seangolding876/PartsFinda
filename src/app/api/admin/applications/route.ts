@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         name as "ownerName",
         email,
         phone,
-        location,
+        address as location,
         business_type as "businessType",
         years_in_business as "yearsInBusiness",
         specializations,
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         business_license as "businessLicense",
         tax_certificate as "taxCertificate",
         insurance_certificate as "insuranceCertificate",
-        revenue,
+        0 as revenue,
         CASE 
           WHEN business_license IS NOT NULL AND business_license != '' AND
                tax_certificate IS NOT NULL AND tax_certificate != '' AND
