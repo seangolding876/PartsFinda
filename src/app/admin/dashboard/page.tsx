@@ -80,9 +80,29 @@ export default function AdminDashboardPage() {
   const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   // Get token from localStorage or your auth context
-  const getToken = () => {
-    return localStorage.getItem('token'); // Adjust based on your auth setup
-  };
+ const getToken = () => {
+  // Check multiple possible token locations
+  if (typeof window !== 'undefined') {
+    // Try different localStorage keys
+    const token = localStorage.getItem('token') || 
+                  localStorage.getItem('authToken') ||
+                  localStorage.getItem('accessToken') ||
+                  sessionStorage.getItem('token') ||
+                  sessionStorage.getItem('authToken');
+    
+    if (token) {
+      console.log('🔐 Token found:', token.substring(0, 20) + '...');
+      return token;
+    } else {
+      console.warn('⚠️ No token found in storage');
+      // Agar token nahi mila toh login page redirect karo
+      window.location.href = '/login';
+      return null;
+    }
+  }
+  return null;
+};
+
 
   // Fetch data based on active tab
   useEffect(() => {
