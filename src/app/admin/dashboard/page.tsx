@@ -23,7 +23,9 @@ import {
   Calendar,
   Star,
   BarChart3,
-  Loader2
+  Loader2,
+  LogOut,
+  User
 } from 'lucide-react';
 
 interface AdminStats {
@@ -69,6 +71,24 @@ interface VerifiedSupplier {
   totalQuotes: number;
 }
 
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
+// Auth utility - YEH WALA FUNCTION USE KARENGE
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,49 +98,71 @@ export default function AdminDashboardPage() {
   const [suppliers, setSuppliers] = useState<VerifiedSupplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // Get token from localStorage or your auth context
- const getToken = () => {
-  // Check multiple possible token locations
-  if (typeof window !== 'undefined') {
-    // Try different localStorage keys
-    const token = localStorage.getItem('token') || 
-                  localStorage.getItem('authToken') ||
-                  localStorage.getItem('accessToken') ||
-                  sessionStorage.getItem('token') ||
-                  sessionStorage.getItem('authToken');
-    
-    if (token) {
-      console.log('🔐 Token found:', token.substring(0, 20) + '...');
-      return token;
-    } else {
-      console.warn('⚠️ No token found in storage');
-      // Agar token nahi mila toh login page redirect karo
-      window.location.href = '/login';
-      return null;
+  // Check authentication on component mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const authData = getAuthData();
+      
+      if (!authData?.token) {
+        window.location.href = '/admin/login';
+        return;
+      }
+
+      // Verify token with backend - admin role check
+      const response = await fetch('/api/admin/verify', {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid token or not admin');
+      }
+
+      const userData = await response.json();
+      
+      // Check if user is admin
+      if (userData.data.role !== 'admin') {
+        throw new Error('Admin access required');
+      }
+
+      setUser(userData.data);
+      setAuthLoading(false);
+      
+      // Fetch initial data
+      fetchData();
+    } catch (error) {
+      console.error('Auth error:', error);
+      localStorage.removeItem('authData');
+      window.location.href = '/admin/login';
     }
-  }
-  return null;
-};
+  };
 
+  const handleLogout = () => {
+    localStorage.removeItem('authData');
+    window.location.href = '/admin/login';
+  };
 
   // Fetch data based on active tab
-  useEffect(() => {
-    fetchData();
-  }, [activeTab, searchQuery, filterStatus]);
-
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = getToken();
+      const authData = getAuthData();
 
-      if (!token) {
+      if (!authData?.token) {
         console.error('No authentication token found');
         return;
       }
 
       const headers = {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${authData.token}`
       };
 
       if (activeTab === 'overview') {
@@ -166,13 +208,18 @@ export default function AdminDashboardPage() {
   const handleApproveApplication = async (applicationId: string) => {
     try {
       setProcessingAction(applicationId);
-      const token = getToken();
+      const authData = getAuthData();
+
+      if (!authData?.token) {
+        alert('Authentication required');
+        return;
+      }
 
       const response = await fetch('/api/admin/approve-supplier', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
           applicationId,
@@ -201,13 +248,18 @@ export default function AdminDashboardPage() {
 
     try {
       setProcessingAction(applicationId);
-      const token = getToken();
+      const authData = getAuthData();
+
+      if (!authData?.token) {
+        alert('Authentication required');
+        return;
+      }
 
       const response = await fetch('/api/admin/approve-supplier', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
           applicationId,
@@ -295,6 +347,18 @@ export default function AdminDashboardPage() {
     }
   ] : [];
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verifying admin access...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -305,12 +369,22 @@ export default function AdminDashboardPage() {
               <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
               <p className="text-gray-600 mt-1">PartsFinda Platform Management</p>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                Export Report
-              </button>
-              <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors">
-                Send Notifications
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-gray-800">{user?.name || 'Admin User'}</p>
+                  <p className="text-sm text-gray-600">{user?.email}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
               </button>
             </div>
           </div>
