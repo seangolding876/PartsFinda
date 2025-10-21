@@ -18,16 +18,20 @@ export async function sendMail({
       smtpUser: process.env.SMTP_USER
     });
 
+    // Validate required environment variables
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      throw new Error('SMTP configuration is missing');
+    }
+
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST!,
-      port: Number(process.env.SMTP_PORT!) || 587,
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
-        user: process.env.SMTP_USER!,
-        pass: process.env.SMTP_PASS!,
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
-      // Add better error handling
-      connectionTimeout: 10000, // 10 seconds
+      connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 10000,
     });
@@ -41,7 +45,6 @@ export async function sendMail({
       to,
       subject,
       html,
-      // Add text version for better deliverability
       text: html.replace(/<[^>]*>/g, ''), // Basic HTML to text conversion
     };
 
