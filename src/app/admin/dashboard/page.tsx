@@ -27,6 +27,7 @@ import {
   LogOut,
   User
 } from 'lucide-react';
+import ViewProfileModal from '@/components/ViewProfileModal';
 
 interface AdminStats {
   totalSuppliers: number;
@@ -55,20 +56,56 @@ interface SupplierApplication {
   revenue: string;
 }
 
+
 interface VerifiedSupplier {
   id: string;
   businessName: string;
   ownerName: string;
   email: string;
+  phone: string;
   location: string;
+  businessType: string;
+  yearsInBusiness: string;
+  specializations: string[];
   membershipPlan: string;
   dateJoined: string;
   rating: string;
   reviews: number;
   revenue: string;
   status: string;
-  lastActive: string;
+  businessLicense?: string;
+  taxCertificate?: string;
+  insuranceCertificate?: string;
   totalQuotes: number;
+  lastActive: string;
+}
+
+interface SupplierProfile {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  location: string;
+  businessType: string;
+  yearsInBusiness: string;
+  specializations: string[];
+  membershipPlan: string;
+  dateJoined: string;
+  rating: string;
+  reviews: number;
+  revenue: string;
+  status: string;
+  businessLicense?: string;
+  taxCertificate?: string;
+  insuranceCertificate?: string;
+  documents: {
+    businessLicense: boolean;
+    taxCertificate: boolean;
+    insurance: boolean;
+  };
+  totalQuotes?: number;
+  lastActive?: string;
 }
 
 interface UserData {
@@ -99,6 +136,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<SupplierProfile | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check authentication on component mount - SIMPLE CHECK JAISA SELLER DASHBOARD MEIN HAI
   useEffect(() => {
@@ -333,6 +372,80 @@ const statsData = stats ? [
       </div>
     );
   }
+
+    const handleViewProfile = (supplier: VerifiedSupplier) => {
+    setSelectedSupplier({
+      ...supplier,
+      documents: {
+        businessLicense: !!supplier.businessLicense,
+        taxCertificate: !!supplier.taxCertificate,
+        insurance: !!supplier.insuranceCertificate
+      }
+    });
+    setShowProfileModal(true);
+  };
+   // Start Conversation handler
+  const handleStartConversation = async (supplierId: string) => {
+    try {
+      const authData = getAuthData();
+      if (!authData?.token) return;
+
+      // Create conversation with supplier
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          sellerId: supplierId,
+          partRequestId: null, // Admin conversation
+          messageText: "Hello, I'm contacting you from PartsFinda Admin"
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Redirect to messages page or open chat
+        window.open(`/admin/messages?conversation=${result.conversationId}`, '_blank');
+      } else {
+        alert('Failed to start conversation');
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      alert('Error starting conversation');
+    }
+  };
+
+  // Suspend User handler
+  const handleSuspendUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to suspend this user?')) return;
+
+    try {
+      const authData = getAuthData();
+      if (!authData?.token) return;
+
+      const response = await fetch('/api/admin/suspend-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({ userId })
+      });
+
+      if (response.ok) {
+        alert('User suspended successfully');
+        fetchData(); // Refresh data
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error suspending user:', error);
+      alert('Error suspending user');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -691,98 +804,108 @@ const statsData = stats ? [
               </div>
             )}
 
-            {activeTab === 'suppliers' && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-gray-800">Verified Suppliers</h3>
+      {/* Suppliers Tab */}
+      {activeTab === 'suppliers' && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-gray-800">Verified Suppliers</h3>
 
-                <div className="space-y-4">
-                  {loading ? (
-                    // Loading skeleton for suppliers
-                    Array(2).fill(0).map((_, index) => (
-                      <div key={index} className="bg-white border rounded-lg p-6 animate-pulse">
-                        <div className="grid lg:grid-cols-4 gap-6">
-                          <div className="lg:col-span-2 space-y-4">
-                            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                            <div className="grid md:grid-cols-2 gap-4">
-                              {Array(4).fill(0).map((_, i) => (
-                                <div key={i} className="space-y-2">
-                                  <div className="h-3 bg-gray-200 rounded"></div>
-                                  <div className="h-4 bg-gray-200 rounded"></div>
-                                </div>
-                              ))}
-                            </div>
+          <div className="space-y-4">
+            {loading ? (
+              // Loading skeleton
+              Array(2).fill(0).map((_, index) => (
+                <div key={index} className="bg-white border rounded-lg p-6 animate-pulse">
+                  <div className="grid lg:grid-cols-4 gap-6">
+                    <div className="lg:col-span-2 space-y-4">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {Array(4).fill(0).map((_, i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="h-3 bg-gray-200 rounded"></div>
+                            <div className="h-4 bg-gray-200 rounded"></div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))
-                  ) : suppliers.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h4 className="text-lg font-semibold text-gray-800 mb-2">No Verified Suppliers</h4>
-                      <p className="text-gray-600">There are no verified suppliers in the system yet.</p>
                     </div>
-                  ) : (
-                    suppliers.map((supplier) => (
-                      <div key={supplier.id} className="bg-white border rounded-lg p-6">
-                        <div className="grid lg:grid-cols-4 gap-6">
-                          <div className="lg:col-span-2">
-                            <div className="flex items-start justify-between mb-4">
-                              <div>
-                                <h4 className="text-lg font-bold text-gray-800">{supplier.businessName}</h4>
-                                <p className="text-gray-600">{supplier.ownerName}</p>
-                                <p className="text-sm text-gray-500">{supplier.email}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(supplier.status)}`}>
-                                  {supplier.status}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                  <span className="text-sm font-medium">{supplier.rating}</span>
-                                  <span className="text-xs text-gray-500">({supplier.reviews} reviews)</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="grid md:grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-500">Location</p>
-                                <p className="font-medium">{supplier.location}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Member Since</p>
-                                <p className="font-medium">{new Date(supplier.dateJoined).toLocaleDateString()}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Membership</p>
-                                <p className="font-medium capitalize">{supplier.membershipPlan} - {supplier.revenue}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Quotes Submitted</p>
-                                <p className="font-medium">{supplier.totalQuotes}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="lg:col-span-2 flex items-center justify-end gap-2">
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                              View Profile
-                            </button>
-                            <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                              Send Message
-                            </button>
-                            <button className="border border-red-300 hover:bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                              Suspend
-                            </button>
+                  </div>
+                </div>
+              ))
+            ) : suppliers.length === 0 ? (
+              <div className="text-center py-12">
+                <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">No Verified Suppliers</h4>
+                <p className="text-gray-600">There are no verified suppliers in the system yet.</p>
+              </div>
+            ) : (
+              suppliers.map((supplier) => (
+                <div key={supplier.id} className="bg-white border rounded-lg p-6">
+                  <div className="grid lg:grid-cols-4 gap-6">
+                    <div className="lg:col-span-2">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h4 className="text-lg font-bold text-gray-800">{supplier.businessName}</h4>
+                          <p className="text-gray-600">{supplier.ownerName}</p>
+                          <p className="text-sm text-gray-500">{supplier.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(supplier.status)}`}>
+                            {supplier.status}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                            <span className="text-sm font-medium">{supplier.rating}</span>
+                            <span className="text-xs text-gray-500">({supplier.reviews} reviews)</span>
                           </div>
                         </div>
                       </div>
-                    ))
-                  )}
+
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-500">Location</p>
+                          <p className="font-medium">{supplier.location}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Member Since</p>
+                          <p className="font-medium">{new Date(supplier.dateJoined).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Membership</p>
+                          <p className="font-medium capitalize">{supplier.membershipPlan} - {supplier.revenue}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Quotes Submitted</p>
+                          <p className="font-medium">{supplier.totalQuotes}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-2 flex items-center justify-end gap-2">
+                      <button 
+                        onClick={() => handleViewProfile(supplier)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        View Profile
+                      </button>
+                      <button 
+                        onClick={() => handleStartConversation(supplier.id)}
+                        className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        Send Message
+                      </button>
+                      <button 
+                        onClick={() => handleSuspendUser(supplier.id)}
+                        className="border border-red-300 hover:bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        Suspend
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))
             )}
+          </div>
+        </div>
+      )}
 
             {(activeTab === 'analytics' || activeTab === 'messages') && (
               <div className="text-center py-12">
@@ -806,6 +929,15 @@ const statsData = stats ? [
           </div>
         </div>
       </div>
+         {/* View Profile Modal */}
+      <ViewProfileModal
+        isOpen={showProfileModal}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedSupplier(null);
+        }}
+        supplier={selectedSupplier}
+      />
     </div>
   );
 }
