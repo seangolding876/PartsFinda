@@ -257,6 +257,10 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
       
       <div class="features">
         <div class="feature">
+          <strong>🛍️ List Products</strong>
+          <p>Add and manage your products easily</p>
+        </div>
+        <div class="feature">
           <strong>👥 Reach Customers</strong>
           <p>Connect with thousands of potential buyers</p>
         </div>
@@ -271,7 +275,7 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
       </div>
 
       <center>
-        <a href="${process.env.NEXTAUTH_URL}/seller/dashboard" class="button" style="text-align: center; color: white; font-size: 14px;">
+        <a href="${process.env.NEXTAUTH_URL}/seller/dashboard" class="button">
           🚀 Start Selling Now
         </a>
       </center>
@@ -302,6 +306,7 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
     // Don't throw error - email failure shouldn't break the main flow
   }
 }
+
 // ✅ Rejection Email Template
 async function sendRejectionEmail(userEmail: string, userName: string, rejectionReason: string) {
   const emailHtml = `
@@ -441,7 +446,7 @@ async function sendRejectionEmail(userEmail: string, userName: string, rejection
         <p style="margin: 10px 0;">
           <strong>Email:</strong> 
           <a href="mailto:contact@partsfinda.com" style="color: #2563eb;">
-            support@partsfinda.com
+            contact@partsfinda.com
           </a>
         </p>
         <p style="margin: 10px 0;">
