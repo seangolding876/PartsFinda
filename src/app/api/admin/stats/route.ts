@@ -25,29 +25,55 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
     }
 
-    // Get real stats from database
+    // Get real stats from database using users table and payments table
     const [
       totalSuppliersResult,
-      pendingApplicationsResult,
+      verifiedSuppliersResult,
+      pendingVerificationResult,
       activeRequestsResult,
       revenueResult,
-      urgentApplicationsResult,
+      urgentSuppliersResult,
       growthStatsResult
     ] = await Promise.all([
+      // Total suppliers
       query(`SELECT COUNT(*) as count FROM users WHERE role = 'seller' AND email_verified = true`),
-      query(`SELECT COUNT(*) as count FROM supplier_applications WHERE status IN ('pending_review', 'documents_review', 'pending_documents')`),
+      
+      // Verified suppliers (all 3 documents uploaded)
+      query(`SELECT COUNT(*) as count FROM users WHERE role = 'seller' AND 
+             business_license IS NOT NULL AND business_license != '' AND
+             tax_certificate IS NOT NULL AND tax_certificate != '' AND
+             insurance_certificate IS NOT NULL AND insurance_certificate != ''`),
+      
+      // Pending verification (missing documents)
+      query(`SELECT COUNT(*) as count FROM users WHERE role = 'seller' AND 
+             (business_license IS NULL OR business_license = '' OR
+              tax_certificate IS NULL OR tax_certificate = '' OR
+              insurance_certificate IS NULL OR insurance_certificate = '')`),
+      
+      // Active requests
       query(`SELECT COUNT(*) as count FROM part_requests WHERE status = 'open' AND expires_at > NOW()`),
-      query(`SELECT COALESCE(SUM(amount), 0) as revenue FROM transactions WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`),
-      query(`SELECT COUNT(*) as count FROM supplier_applications WHERE urgency = 'urgent' AND status IN ('pending_review', 'documents_review')`),
+      
+      // Monthly revenue from payments table
+      query(`SELECT COALESCE(SUM(amount), 0) as revenue FROM payments 
+             WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`),
+      
+      // Urgent suppliers (missing documents but registered)
+      query(`SELECT COUNT(*) as count FROM users WHERE role = 'seller' AND 
+             (business_license IS NULL OR business_license = '' OR
+              tax_certificate IS NULL OR tax_certificate = '' OR
+              insurance_certificate IS NULL OR insurance_certificate = '')`),
+      
+      // New suppliers this month
       query(`SELECT COUNT(*) as new_suppliers FROM users WHERE role = 'seller' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`)
     ]);
 
     const stats = {
       totalSuppliers: parseInt(totalSuppliersResult.rows[0]?.count) || 0,
-      pendingApplications: parseInt(pendingApplicationsResult.rows[0]?.count) || 0,
+      verifiedSuppliers: parseInt(verifiedSuppliersResult.rows[0]?.count) || 0,
+      pendingVerification: parseInt(pendingVerificationResult.rows[0]?.count) || 0,
       activeRequests: parseInt(activeRequestsResult.rows[0]?.count) || 0,
       monthlyRevenue: parseInt(revenueResult.rows[0]?.revenue) || 0,
-      urgentApplications: parseInt(urgentApplicationsResult.rows[0]?.count) || 0,
+      urgentApplications: parseInt(urgentSuppliersResult.rows[0]?.count) || 0,
       newSuppliersThisMonth: parseInt(growthStatsResult.rows[0]?.new_suppliers) || 0
     };
 

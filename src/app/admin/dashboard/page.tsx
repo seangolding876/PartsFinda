@@ -291,38 +291,37 @@ export default function AdminDashboardPage() {
     }).format(amount);
   };
 
-  // Stats data derived from real API
-  const statsData = stats ? [
-    {
-      icon: <Users className="w-6 h-6" />,
-      label: 'Total Suppliers',
-      value: stats.totalSuppliers.toString(),
-      change: `+${stats.newSuppliersThisMonth} this month`,
-      changeType: 'positive' as const
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      label: 'Pending Applications',
-      value: stats.pendingApplications.toString(),
-      change: `${stats.urgentApplications} urgent`,
-      changeType: stats.urgentApplications > 0 ? 'warning' : 'positive' as const
-    },
-    {
-      icon: <Package className="w-6 h-6" />,
-      label: 'Active Requests',
-      value: stats.activeRequests.toString(),
-      change: 'Live count',
-      changeType: 'positive' as const
-    },
-    {
-      icon: <DollarSign className="w-6 h-6" />,
-      label: 'Monthly Revenue',
-      value: formatCurrency(stats.monthlyRevenue),
-      change: 'Real-time tracking',
-      changeType: 'positive' as const
-    }
-  ] : [];
-
+// Stats data derived from real API - SAME FRONTEND CODE
+const statsData = stats ? [
+  {
+    icon: <Users className="w-6 h-6" />,
+    label: 'Total Suppliers',
+    value: stats.totalSuppliers.toString(),
+    change: `+${stats.newSuppliersThisMonth} this month`,
+    changeType: 'positive' as const
+  },
+  {
+    icon: <Clock className="w-6 h-6" />,
+    label: 'Pending Applications',
+    value: stats.pendingApplications.toString(), // Ab ye pending verification count hoga
+    change: `${stats.urgentApplications} urgent`, // Ab ye urgent verification count hoga
+    changeType: stats.urgentApplications > 0 ? 'warning' : 'positive' as const
+  },
+  {
+    icon: <Package className="w-6 h-6" />,
+    label: 'Active Requests',
+    value: stats.activeRequests.toString(),
+    change: 'Live count',
+    changeType: 'positive' as const
+  },
+  {
+    icon: <DollarSign className="w-6 h-6" />,
+    label: 'Monthly Revenue',
+    value: formatCurrency(stats.monthlyRevenue),
+    change: 'Real-time tracking',
+    changeType: 'positive' as const
+  }
+] : [];
   // Show loading while checking authentication
   if (!user) {
     return (

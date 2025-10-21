@@ -24,66 +24,77 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
+     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
 
     let queryStr = `
       SELECT 
-        sa.*,
-        u.name as owner_name,
-        u.email,
-        u.phone,
-        u.business_name,
-        u.business_type,
-        u.location,
-        u.specializations,
-        u.years_in_business,
-        u.membership_plan,
-        u.created_at as date_submitted,
-        u.estimated_revenue
-      FROM supplier_applications sa
-      JOIN users u ON sa.user_id = u.id
-      WHERE 1=1
+        id,
+        business_name as "businessName",
+        name as "ownerName",
+        email,
+        phone,
+        location,
+        business_type as "businessType",
+        years_in_business as "yearsInBusiness",
+        specializations,
+        membership_plan as "membershipPlan",
+        created_at as "dateSubmitted",
+        business_license as "businessLicense",
+        tax_certificate as "taxCertificate",
+        insurance_certificate as "insuranceCertificate",
+        revenue,
+        CASE 
+          WHEN business_license IS NOT NULL AND business_license != '' AND
+               tax_certificate IS NOT NULL AND tax_certificate != '' AND
+               insurance_certificate IS NOT NULL AND insurance_certificate != ''
+          THEN 'verified'
+          ELSE 'pending_review'
+        END as status,
+        CASE 
+          WHEN business_license IS NULL OR business_license = '' OR
+               tax_certificate IS NULL OR tax_certificate = '' OR
+               insurance_certificate IS NULL OR insurance_certificate = ''
+          THEN 'urgent'
+          ELSE 'normal'
+        END as urgency
+      FROM users 
+      WHERE role = 'seller'
     `;
 
-    const params: any[] = [];
-    let paramCount = 0;
+    const queryParams = [];
 
+    // Status filter
     if (status && status !== 'all') {
-      paramCount++;
-      queryStr += ` AND sa.status = $${paramCount}`;
-      params.push(status);
+      if (status === 'pending_review') {
+        queryStr += ` AND (business_license IS NULL OR business_license = '' OR
+                          tax_certificate IS NULL OR tax_certificate = '' OR
+                          insurance_certificate IS NULL OR insurance_certificate = '')`;
+      } else if (status === 'documents_review') {
+        queryStr += ` AND business_license IS NOT NULL AND business_license != '' AND
+                      tax_certificate IS NOT NULL AND tax_certificate != '' AND
+                      insurance_certificate IS NOT NULL AND insurance_certificate != ''`;
+      }
     }
 
+    // Search filter
     if (search) {
-      paramCount++;
-      queryStr += ` AND (u.business_name ILIKE $${paramCount} OR u.name ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
+      queryStr += ` AND (business_name ILIKE $1 OR name ILIKE $1 OR email ILIKE $1)`;
+      queryParams.push(`%${search}%`);
     }
 
-    queryStr += ` ORDER BY 
-      CASE WHEN sa.urgency = 'urgent' THEN 1 ELSE 2 END,
-      sa.created_at DESC`;
+    queryStr += ` ORDER BY created_at DESC`;
 
-    const applicationsResult = await query(queryStr, params);
+    const applicationsResult = await query(queryStr, queryParams);
 
     const applications = applicationsResult.rows.map(app => ({
-      id: app.id,
-      businessName: app.business_name,
-      ownerName: app.owner_name,
-      email: app.email,
-      phone: app.phone,
-      location: app.location,
-      businessType: app.business_type,
-      yearsInBusiness: app.years_in_business,
-      specializations: app.specializations || [],
-      membershipPlan: app.membership_plan,
-      dateSubmitted: app.date_submitted,
-      documentsUploaded: app.documents_uploaded || [],
-      status: app.status,
-      urgency: app.urgency,
-      revenue: app.estimated_revenue ? `J$${app.estimated_revenue}/month` : 'Not specified'
+      ...app,
+      documentsUploaded: [
+        ...(app.businessLicense ? ['business_license'] : []),
+        ...(app.taxCertificate ? ['tax_certificate'] : []),
+        ...(app.insuranceCertificate ? ['insurance'] : [])
+      ]
     }));
 
     return NextResponse.json({
