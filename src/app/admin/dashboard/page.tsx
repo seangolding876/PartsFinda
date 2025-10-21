@@ -498,7 +498,7 @@ const handleRejectApplication = async (applicationId: string) => {
               <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
               <p className="text-gray-600 mt-1">PartsFinda Platform Management</p>
             </div>
-            <div className="flex items-center gap-4">
+            {/* <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
                   <User className="w-5 h-5 text-blue-600" />
@@ -515,7 +515,7 @@ const handleRejectApplication = async (applicationId: string) => {
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
