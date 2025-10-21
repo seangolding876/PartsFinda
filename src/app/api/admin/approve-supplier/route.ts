@@ -1,114 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Mock supplier applications database
-const supplierApplications = [
-  {
-    id: 'SUP-001',
-    businessName: 'Auto Excellence Ltd',
-    ownerName: 'John Mitchell',
-    email: 'john@autoexcellence.com',
-    phone: '+876 555 0123',
-    location: 'Half Way Tree, Kingston',
-    businessType: 'Auto Parts Shop',
-    status: 'pending_review',
-    dateSubmitted: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: 'SUP-002',
-    businessName: 'Caribbean Motors Supply',
-    ownerName: 'Sarah Johnson',
-    email: 'sarah@caribbeanmotors.com',
-    phone: '+876 555 0456',
-    location: 'Mandeville, Manchester',
-    businessType: 'Parts Distributor',
-    status: 'documents_review',
-    dateSubmitted: '2024-01-14T14:20:00Z'
-  },
-  {
-    id: 'SUP-003',
-    businessName: 'Island Wide Auto',
-    ownerName: 'David Williams',
-    email: 'david@islandwide.com',
-    phone: '+876 555 0789',
-    location: 'Ocho Rios, St. Ann',
-    businessType: 'Mechanic Shop',
-    status: 'pending_documents',
-    dateSubmitted: '2024-01-13T09:15:00Z'
-  }
-];
-
-// Mock function to send email notifications
-async function sendNotificationEmail(supplier: any, action: string, reason?: string) {
-  try {
-    console.log(`📧 Sending ${action} email to ${supplier.email}`);
-
-    const emailContent = action === 'approve'
-      ? {
-          subject: '🎉 Your PartsFinda Supplier Application has been APPROVED!',
-          body: `
-            Dear ${supplier.ownerName},
-
-            Congratulations! Your supplier application for ${supplier.businessName} has been approved.
-
-            You can now:
-            ✅ Access your supplier dashboard
-            ✅ Start receiving part requests
-            ✅ Submit quotes to customers
-            ✅ Manage your inventory
-
-            Login to your dashboard: https://partsfinda.netlify.app/auth/login
-            Use the email and password you provided during registration.
-
-            Welcome to Jamaica's premier auto parts marketplace!
-
-            Best regards,
-            The PartsFinda Team
-            📞 +876 219 3329
-            📧 support@partsfinda.com
-          `
-        }
-      : {
-          subject: '❌ Update on Your PartsFinda Supplier Application',
-          body: `
-            Dear ${supplier.ownerName},
-
-            Thank you for your interest in joining PartsFinda as a supplier.
-
-            Unfortunately, we cannot approve your application at this time.
-
-            Reason: ${reason}
-
-            You can resubmit your application by addressing the issues mentioned above.
-            If you have questions, please contact our support team.
-
-            Best regards,
-            The PartsFinda Team
-            📞 +876 219 3329
-            📧 support@partsfinda.com
-          `
-        };
-
-    // In production, this would use Resend or another email service
-    // For now, we'll log the email content
-    console.log('Email Details:', {
-      to: supplier.email,
-      subject: emailContent.subject,
-      body: emailContent.body
-    });
-
-    return { success: true, message: 'Email notification sent' };
-  } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: 'Failed to send email notification' };
-  }
-}
+import { query } from '@/lib/db';
+import { verifyToken } from '@/lib/jwt';
+import { sendMail } from '@/lib/mailService';
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const userInfo = verifyToken(token);
+    
+    const userCheck = await query(
+      'SELECT role FROM users WHERE id = $1',
+      [userInfo.userId]
+    );
+    
+    if (userCheck.rows.length === 0 || userCheck.rows[0].role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Admin access required' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { applicationId, action, reason } = body;
 
-    // Validate input
     if (!applicationId || !action) {
       return NextResponse.json(
         { success: false, error: 'Application ID and action are required' },
@@ -116,125 +33,116 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['approve', 'reject'].includes(action)) {
-      return NextResponse.json(
-        { success: false, error: 'Action must be either "approve" or "reject"' },
-        { status: 400 }
+    // Start transaction
+    await query('BEGIN');
+
+    try {
+      // Get application details
+      const applicationResult = await query(
+        `SELECT sa.*, u.email, u.business_name, u.name as owner_name
+         FROM supplier_applications sa
+         JOIN users u ON sa.user_id = u.id
+         WHERE sa.id = $1`,
+        [applicationId]
       );
-    }
 
-    if (action === 'reject' && !reason) {
-      return NextResponse.json(
-        { success: false, error: 'Reason is required for rejection' },
-        { status: 400 }
-      );
-    }
-
-    // Find the supplier application
-    const supplierIndex = supplierApplications.findIndex(app => app.id === applicationId);
-
-    if (supplierIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Application not found' },
-        { status: 404 }
-      );
-    }
-
-    const supplier = supplierApplications[supplierIndex];
-
-    // Update application status
-    if (action === 'approve') {
-      supplierApplications[supplierIndex].status = 'approved';
-
-      // Create supplier account in the system
-      console.log(`✅ Creating supplier account for ${supplier.businessName}`);
-
-      // In production, this would:
-      // 1. Create user account in Supabase
-      // 2. Set role to 'seller'
-      // 3. Create supplier profile
-      // 4. Enable dashboard access
-
-    } else {
-      supplierApplications[supplierIndex].status = 'rejected';
-
-      console.log(`❌ Rejecting application for ${supplier.businessName}. Reason: ${reason}`);
-    }
-
-    // Send notification email
-    const emailResult = await sendNotificationEmail(supplier, action, reason);
-
-    // Log the action for admin records
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      adminAction: action,
-      applicationId,
-      supplierName: supplier.businessName,
-      supplierEmail: supplier.email,
-      reason: action === 'reject' ? reason : undefined,
-      emailSent: emailResult.success
-    };
-
-    console.log('📋 Admin Action Log:', logEntry);
-
-    // Return success response
-    return NextResponse.json({
-      success: true,
-      message: action === 'approve'
-        ? `Application approved successfully. ${supplier.ownerName} has been notified and can now access their supplier dashboard.`
-        : `Application rejected. ${supplier.ownerName} has been notified with the reason provided.`,
-      data: {
-        applicationId,
-        action,
-        supplierName: supplier.businessName,
-        emailSent: emailResult.success,
-        timestamp: new Date().toISOString()
+      if (applicationResult.rows.length === 0) {
+        await query('ROLLBACK');
+        return NextResponse.json(
+          { success: false, error: 'Application not found' },
+          { status: 404 }
+        );
       }
-    });
 
-  } catch (error) {
-    console.error('Error processing supplier application:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to process application. Please try again.'
-      },
-      { status: 500 }
-    );
-  }
-}
+      const application = applicationResult.rows[0];
 
-// GET endpoint to check application status
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const applicationId = searchParams.get('applicationId');
+      if (action === 'approve') {
+        // Update application status
+        await query(
+          'UPDATE supplier_applications SET status = $1, reviewed_at = NOW() WHERE id = $2',
+          ['approved', applicationId]
+        );
 
-    if (!applicationId) {
-      return NextResponse.json({
-        success: true,
-        applications: supplierApplications
-      });
+        // Update user role to verified seller
+        await query(
+          'UPDATE users SET role = $1, verified_seller = true WHERE id = $2',
+          ['seller', application.user_id]
+        );
+
+        // Send approval email
+        await sendMail({
+          to: application.email,
+          subject: 'Your Supplier Application Has Been Approved - PartsFinda',
+          html: `
+            <h2>Congratulations! Your application has been approved.</h2>
+            <p>Dear ${application.owner_name},</p>
+            <p>We are pleased to inform you that your supplier application for <strong>${application.business_name}</strong> has been approved.</p>
+            <p>You can now access your supplier dashboard and start receiving part requests.</p>
+            <a href="${process.env.NEXTAUTH_URL}/seller/dashboard" style="background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 16px 0;">
+              Access Your Dashboard
+            </a>
+          `
+        });
+
+        await query('COMMIT');
+
+        return NextResponse.json({
+          success: true,
+          message: 'Application approved successfully'
+        });
+
+      } else if (action === 'reject') {
+        if (!reason) {
+          await query('ROLLBACK');
+          return NextResponse.json(
+            { success: false, error: 'Rejection reason is required' },
+            { status: 400 }
+          );
+        }
+
+        // Update application status
+        await query(
+          'UPDATE supplier_applications SET status = $1, rejection_reason = $2, reviewed_at = NOW() WHERE id = $3',
+          ['rejected', reason, applicationId]
+        );
+
+        // Send rejection email
+        await sendMail({
+          to: application.email,
+          subject: 'Update on Your Supplier Application - PartsFinda',
+          html: `
+            <h2>Update on Your Supplier Application</h2>
+            <p>Dear ${application.owner_name},</p>
+            <p>Thank you for your interest in becoming a supplier on PartsFinda.</p>
+            <p>After careful review, we regret to inform you that your application for <strong>${application.business_name}</strong> could not be approved at this time.</p>
+            <p><strong>Reason:</strong> ${reason}</p>
+            <p>You may reapply after addressing the concerns mentioned above.</p>
+          `
+        });
+
+        await query('COMMIT');
+
+        return NextResponse.json({
+          success: true,
+          message: 'Application rejected successfully'
+        });
+      } else {
+        await query('ROLLBACK');
+        return NextResponse.json(
+          { success: false, error: 'Invalid action' },
+          { status: 400 }
+        );
+      }
+
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
     }
 
-    const application = supplierApplications.find(app => app.id === applicationId);
-
-    if (!application) {
-      return NextResponse.json(
-        { success: false, error: 'Application not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      application
-    });
-
-  } catch (error) {
-    console.error('Error fetching application:', error);
+  } catch (error: any) {
+    console.error('Error processing application:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch application' },
+      { success: false, error: 'Failed to process application' },
       { status: 500 }
     );
   }

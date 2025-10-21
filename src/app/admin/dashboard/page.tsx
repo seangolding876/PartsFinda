@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users,
   Shield,
@@ -22,134 +22,196 @@ import {
   Filter,
   Calendar,
   Star,
-  BarChart3
+  BarChart3,
+  Loader2
 } from 'lucide-react';
+
+interface AdminStats {
+  totalSuppliers: number;
+  pendingApplications: number;
+  activeRequests: number;
+  monthlyRevenue: number;
+  urgentApplications: number;
+  newSuppliersThisMonth: number;
+}
+
+interface SupplierApplication {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  location: string;
+  businessType: string;
+  yearsInBusiness: string;
+  specializations: string[];
+  membershipPlan: string;
+  dateSubmitted: string;
+  documentsUploaded: string[];
+  status: string;
+  urgency: string;
+  revenue: string;
+}
+
+interface VerifiedSupplier {
+  id: string;
+  businessName: string;
+  ownerName: string;
+  email: string;
+  location: string;
+  membershipPlan: string;
+  dateJoined: string;
+  rating: string;
+  reviews: number;
+  revenue: string;
+  status: string;
+  lastActive: string;
+  totalQuotes: number;
+}
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [applications, setApplications] = useState<SupplierApplication[]>([]);
+  const [suppliers, setSuppliers] = useState<VerifiedSupplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
-  // Demo admin stats
-  const stats = [
-    {
-      icon: <Users className="w-6 h-6" />,
-      label: 'Total Suppliers',
-      value: '147',
-      change: '+12 this month',
-      changeType: 'positive'
-    },
-    {
-      icon: <Clock className="w-6 h-6" />,
-      label: 'Pending Applications',
-      value: '23',
-      change: '8 urgent',
-      changeType: 'warning'
-    },
-    {
-      icon: <Package className="w-6 h-6" />,
-      label: 'Active Requests',
-      value: '156',
-      change: '+45 today',
-      changeType: 'positive'
-    },
-    {
-      icon: <DollarSign className="w-6 h-6" />,
-      label: 'Monthly Revenue',
-      value: 'J$285K',
-      change: '+18% vs last month',
-      changeType: 'positive'
+  // Get token from localStorage or your auth context
+  const getToken = () => {
+    return localStorage.getItem('token'); // Adjust based on your auth setup
+  };
+
+  // Fetch data based on active tab
+  useEffect(() => {
+    fetchData();
+  }, [activeTab, searchQuery, filterStatus]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const token = getToken();
+
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      if (activeTab === 'overview') {
+        const [statsRes] = await Promise.all([
+          fetch('/api/admin/stats', { headers })
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData.data);
+        }
+      }
+
+      if (activeTab === 'applications') {
+        const params = new URLSearchParams();
+        if (filterStatus !== 'all') params.append('status', filterStatus);
+        if (searchQuery) params.append('search', searchQuery);
+
+        const applicationsRes = await fetch(`/api/admin/applications?${params}`, { headers });
+        
+        if (applicationsRes.ok) {
+          const applicationsData = await applicationsRes.json();
+          setApplications(applicationsData.data);
+        }
+      }
+
+      if (activeTab === 'suppliers') {
+        const suppliersRes = await fetch('/api/admin/suppliers', { headers });
+        
+        if (suppliersRes.ok) {
+          const suppliersData = await suppliersRes.json();
+          setSuppliers(suppliersData.data);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  // Demo pending applications
-  const pendingApplications = [
-    {
-      id: 'SUP-001',
-      businessName: 'Elite Auto Parts Ltd.',
-      ownerName: 'Marcus Brown',
-      email: 'marcus@eliteauto.com',
-      phone: '+876 555 0123',
-      location: 'Spanish Town, St. Catherine',
-      businessType: 'Auto Parts Shop',
-      yearsInBusiness: '5-10',
-      specializations: ['Engine Parts', 'Brake Systems', 'Electrical'],
-      membershipPlan: 'basic',
-      dateSubmitted: '2024-01-15T10:30:00Z',
-      documentsUploaded: ['business_license', 'tax_certificate'],
-      status: 'pending_review',
-      urgency: 'normal',
-      revenue: 'J$2,500/month'
-    },
-    {
-      id: 'SUP-002',
-      businessName: 'Caribbean Motors Supply',
-      ownerName: 'Sarah Johnson',
-      email: 'sarah@caribbeanmotors.com',
-      phone: '+876 555 0456',
-      location: 'Mandeville, Manchester',
-      businessType: 'Parts Distributor',
-      yearsInBusiness: '10+',
-      specializations: ['Transmission', 'Suspension', 'Body Parts'],
-      membershipPlan: 'premium',
-      dateSubmitted: '2024-01-14T14:20:00Z',
-      documentsUploaded: ['business_license', 'tax_certificate', 'insurance'],
-      status: 'documents_review',
-      urgency: 'urgent',
-      revenue: 'J$5,000/month'
-    },
-    {
-      id: 'SUP-003',
-      businessName: 'Island Wide Auto',
-      ownerName: 'David Williams',
-      email: 'david@islandwide.com',
-      phone: '+876 555 0789',
-      location: 'Ocho Rios, St. Ann',
-      businessType: 'Mechanic Shop',
-      yearsInBusiness: '3-5',
-      specializations: ['Japanese Cars', 'European Cars', 'Filters'],
-      membershipPlan: 'basic',
-      dateSubmitted: '2024-01-13T09:15:00Z',
-      documentsUploaded: ['business_license'],
-      status: 'pending_documents',
-      urgency: 'normal',
-      revenue: 'J$2,500/month'
+  const handleApproveApplication = async (applicationId: string) => {
+    try {
+      setProcessingAction(applicationId);
+      const token = getToken();
+
+      const response = await fetch('/api/admin/approve-supplier', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          applicationId,
+          action: 'approve'
+        })
+      });
+
+      if (response.ok) {
+        alert('✅ Application approved! Supplier will be notified via email.');
+        fetchData(); // Refresh data
+      } else {
+        const errorData = await response.json();
+        alert(`❌ Error: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error approving application:', error);
+      alert('❌ Error approving application. Please try again.');
+    } finally {
+      setProcessingAction(null);
     }
-  ];
+  };
 
-  // Demo verified suppliers
-  const verifiedSuppliers = [
-    {
-      id: 'SUP-V001',
-      businessName: 'Kingston Auto Parts',
-      ownerName: 'Robert Thompson',
-      email: 'robert@kingstonauto.com',
-      location: 'Kingston',
-      membershipPlan: 'premium',
-      dateJoined: '2023-06-15',
-      rating: 4.8,
-      reviews: 127,
-      revenue: 'J$5,000/month',
-      status: 'active',
-      lastActive: '2 hours ago'
-    },
-    {
-      id: 'SUP-V002',
-      businessName: 'Spanish Town Motors',
-      ownerName: 'Michael Davis',
-      email: 'michael@spanishtown.com',
-      location: 'Spanish Town',
-      membershipPlan: 'basic',
-      dateJoined: '2023-08-22',
-      rating: 4.9,
-      reviews: 89,
-      revenue: 'J$2,500/month',
-      status: 'active',
-      lastActive: '1 day ago'
+  const handleRejectApplication = async (applicationId: string) => {
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    try {
+      setProcessingAction(applicationId);
+      const token = getToken();
+
+      const response = await fetch('/api/admin/approve-supplier', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          applicationId,
+          action: 'reject',
+          reason
+        })
+      });
+
+      if (response.ok) {
+        alert('❌ Application rejected. Supplier will be notified via email.');
+        fetchData(); // Refresh data
+      } else {
+        const errorData = await response.json();
+        alert(`❌ Error: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting application:', error);
+      alert('❌ Error rejecting application. Please try again.');
+    } finally {
+      setProcessingAction(null);
     }
-  ];
+  };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending_review':
         return 'bg-yellow-100 text-yellow-800';
@@ -168,78 +230,50 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const getUrgencyColor = (urgency) => {
+  const getUrgencyColor = (urgency: string) => {
     return urgency === 'urgent' ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-blue-500';
   };
 
-  const handleApproveApplication = async (applicationId: string) => {
-    try {
-      console.log('Approving application:', applicationId);
-
-      // Call API to approve application
-      const response = await fetch('/api/admin/approve-supplier', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          applicationId,
-          action: 'approve'
-        })
-      });
-
-      if (response.ok) {
-        alert('✅ Application approved! Supplier will be notified via email and can now access their dashboard.');
-        // Refresh the page to update the applications list
-        window.location.reload();
-      } else {
-        alert('❌ Error approving application. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error approving application:', error);
-      alert('❌ Error approving application. Please try again.');
-    }
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-JM', {
+      style: 'currency',
+      currency: 'JMD',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
-  const handleRejectApplication = async (applicationId: string) => {
-    const reason = prompt('Please provide a reason for rejection:');
-    if (!reason) return;
-
-    try {
-      console.log('Rejecting application:', applicationId, 'Reason:', reason);
-
-      // Call API to reject application
-      const response = await fetch('/api/admin/approve-supplier', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          applicationId,
-          action: 'reject',
-          reason
-        })
-      });
-
-      if (response.ok) {
-        alert('❌ Application rejected. Supplier will be notified via email with the reason provided.');
-        // Refresh the page to update the applications list
-        window.location.reload();
-      } else {
-        alert('❌ Error rejecting application. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error rejecting application:', error);
-      alert('❌ Error rejecting application. Please try again.');
+  // Stats data derived from real API
+  const statsData = stats ? [
+    {
+      icon: <Users className="w-6 h-6" />,
+      label: 'Total Suppliers',
+      value: stats.totalSuppliers.toString(),
+      change: `+${stats.newSuppliersThisMonth} this month`,
+      changeType: 'positive' as const
+    },
+    {
+      icon: <Clock className="w-6 h-6" />,
+      label: 'Pending Applications',
+      value: stats.pendingApplications.toString(),
+      change: `${stats.urgentApplications} urgent`,
+      changeType: stats.urgentApplications > 0 ? 'warning' : 'positive' as const
+    },
+    {
+      icon: <Package className="w-6 h-6" />,
+      label: 'Active Requests',
+      value: stats.activeRequests.toString(),
+      change: 'Live count',
+      changeType: 'positive' as const
+    },
+    {
+      icon: <DollarSign className="w-6 h-6" />,
+      label: 'Monthly Revenue',
+      value: formatCurrency(stats.monthlyRevenue),
+      change: 'Real-time tracking',
+      changeType: 'positive' as const
     }
-  };
-
-  const filteredApplications = pendingApplications.filter(app => {
-    const matchesSearch = app.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         app.ownerName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || app.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
+  ] : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -266,32 +300,47 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Grid */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-full ${
-                  stat.changeType === 'positive' ? 'bg-green-100' :
-                  stat.changeType === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
-                }`}>
-                  <div className={`${
-                    stat.changeType === 'positive' ? 'text-green-600' :
-                    stat.changeType === 'warning' ? 'text-yellow-600' : 'text-blue-600'
-                  }`}>
-                    {stat.icon}
-                  </div>
+          {loading && !stats ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-lg p-6 animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-full bg-gray-200"></div>
+                  <div className="w-4 h-4 bg-gray-200 rounded"></div>
                 </div>
-                <BarChart3 className="w-4 h-4 text-gray-400" />
+                <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded"></div>
               </div>
-              <div className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-600 mb-2">{stat.label}</div>
-              <div className={`text-xs font-medium ${
-                stat.changeType === 'positive' ? 'text-green-600' :
-                stat.changeType === 'warning' ? 'text-yellow-600' : 'text-blue-600'
-              }`}>
-                {stat.change}
+            ))
+          ) : (
+            statsData.map((stat, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-full ${
+                    stat.changeType === 'positive' ? 'bg-green-100' :
+                    stat.changeType === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
+                  }`}>
+                    <div className={`${
+                      stat.changeType === 'positive' ? 'text-green-600' :
+                      stat.changeType === 'warning' ? 'text-yellow-600' : 'text-blue-600'
+                    }`}>
+                      {stat.icon}
+                    </div>
+                  </div>
+                  <BarChart3 className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</div>
+                <div className="text-sm text-gray-600 mb-2">{stat.label}</div>
+                <div className={`text-xs font-medium ${
+                  stat.changeType === 'positive' ? 'text-green-600' :
+                  stat.changeType === 'warning' ? 'text-yellow-600' : 'text-blue-600'
+                }`}>
+                  {stat.change}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Navigation Tabs */}
@@ -335,11 +384,14 @@ export default function AdminDashboardPage() {
                       <h4 className="font-semibold text-yellow-800">Urgent Actions Required</h4>
                     </div>
                     <ul className="space-y-2 text-sm text-yellow-700">
-                      <li>• 8 applications require urgent review</li>
+                      <li>• {stats?.urgentApplications || 0} applications require urgent review</li>
                       <li>• 3 suppliers have incomplete documentation</li>
                       <li>• 12 customer complaints need response</li>
                     </ul>
-                    <button className="mt-4 text-yellow-800 font-medium text-sm hover:text-yellow-900">
+                    <button 
+                      onClick={() => setActiveTab('applications')}
+                      className="mt-4 text-yellow-800 font-medium text-sm hover:text-yellow-900"
+                    >
                       View All →
                     </button>
                   </div>
@@ -350,9 +402,9 @@ export default function AdminDashboardPage() {
                       <h4 className="font-semibold text-green-800">Recent Growth</h4>
                     </div>
                     <ul className="space-y-2 text-sm text-green-700">
-                      <li>• 12 new suppliers this month</li>
-                      <li>• 156 active part requests</li>
-                      <li>• 18% revenue increase</li>
+                      <li>• {stats?.newSuppliersThisMonth || 0} new suppliers this month</li>
+                      <li>• {stats?.activeRequests || 0} active part requests</li>
+                      <li>• Real-time revenue tracking</li>
                     </ul>
                     <button className="mt-4 text-green-800 font-medium text-sm hover:text-green-900">
                       View Details →
@@ -365,11 +417,14 @@ export default function AdminDashboardPage() {
                       <h4 className="font-semibold text-blue-800">Platform Activity</h4>
                     </div>
                     <ul className="space-y-2 text-sm text-blue-700">
-                      <li>• 89 active users today</li>
-                      <li>• 234 messages sent</li>
-                      <li>• 45 quotes submitted</li>
+                      <li>• {stats?.totalSuppliers || 0} verified suppliers</li>
+                      <li>• {stats?.pendingApplications || 0} pending applications</li>
+                      <li>• Real-time analytics</li>
                     </ul>
-                    <button className="mt-4 text-blue-800 font-medium text-sm hover:text-blue-900">
+                    <button 
+                      onClick={() => setActiveTab('analytics')}
+                      className="mt-4 text-blue-800 font-medium text-sm hover:text-blue-900"
+                    >
                       View Analytics →
                     </button>
                   </div>
@@ -407,127 +462,162 @@ export default function AdminDashboardPage() {
 
                 {/* Applications List */}
                 <div className="space-y-4">
-                  {filteredApplications.map((app) => (
-                    <div key={app.id} className={`bg-white border rounded-lg p-6 ${getUrgencyColor(app.urgency)}`}>
-                      <div className="grid lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-2">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h4 className="text-lg font-bold text-gray-800">{app.businessName}</h4>
-                              <p className="text-gray-600">{app.ownerName}</p>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                                <span className="flex items-center gap-1">
-                                  <Mail className="w-3 h-3" />
-                                  {app.email}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Phone className="w-3 h-3" />
-                                  {app.phone}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}>
-                                {app.status.replace('_', ' ')}
-                              </span>
-                              {app.urgency === 'urgent' && (
-                                <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">
-                                  Urgent
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500">Location</p>
-                              <p className="font-medium flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {app.location}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Business Type</p>
-                              <p className="font-medium">{app.businessType}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Experience</p>
-                              <p className="font-medium">{app.yearsInBusiness} years</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Membership Plan</p>
-                              <p className="font-medium capitalize">{app.membershipPlan} - {app.revenue}</p>
-                            </div>
-                          </div>
-
-                          <div className="mt-4">
-                            <p className="text-gray-500 text-sm mb-2">Specializations</p>
-                            <div className="flex flex-wrap gap-2">
-                              {app.specializations.map((spec, index) => (
-                                <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                                  {spec}
-                                </span>
+                  {loading ? (
+                    // Loading skeleton for applications
+                    Array(3).fill(0).map((_, index) => (
+                      <div key={index} className="bg-white border rounded-lg p-6 animate-pulse">
+                        <div className="grid lg:grid-cols-4 gap-6">
+                          <div className="lg:col-span-2 space-y-4">
+                            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              {Array(4).fill(0).map((_, i) => (
+                                <div key={i} className="space-y-2">
+                                  <div className="h-3 bg-gray-200 rounded"></div>
+                                  <div className="h-4 bg-gray-200 rounded"></div>
+                                </div>
                               ))}
                             </div>
                           </div>
                         </div>
-
-                        <div>
-                          <p className="text-gray-500 text-sm mb-2">Documents</p>
-                          <div className="space-y-1">
-                            {['business_license', 'tax_certificate', 'insurance'].map((doc) => (
-                              <div key={doc} className="flex items-center justify-between">
-                                <span className="text-sm">{doc.replace('_', ' ')}</span>
-                                {app.documentsUploaded.includes(doc) ? (
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 text-red-500" />
+                      </div>
+                    ))
+                  ) : applications.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-800 mb-2">No Applications Found</h4>
+                      <p className="text-gray-600">There are no supplier applications matching your criteria.</p>
+                    </div>
+                  ) : (
+                    applications.map((app) => (
+                      <div key={app.id} className={`bg-white border rounded-lg p-6 ${getUrgencyColor(app.urgency)}`}>
+                        <div className="grid lg:grid-cols-4 gap-6">
+                          <div className="lg:col-span-2">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h4 className="text-lg font-bold text-gray-800">{app.businessName}</h4>
+                                <p className="text-gray-600">{app.ownerName}</p>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                                  <span className="flex items-center gap-1">
+                                    <Mail className="w-3 h-3" />
+                                    {app.email}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3" />
+                                    {app.phone}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}>
+                                  {app.status.replace('_', ' ')}
+                                </span>
+                                {app.urgency === 'urgent' && (
+                                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">
+                                    Urgent
+                                  </span>
                                 )}
                               </div>
-                            ))}
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Location</p>
+                                <p className="font-medium flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {app.location}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Business Type</p>
+                                <p className="font-medium">{app.businessType}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Experience</p>
+                                <p className="font-medium">{app.yearsInBusiness} years</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Membership Plan</p>
+                                <p className="font-medium capitalize">{app.membershipPlan} - {app.revenue}</p>
+                              </div>
+                            </div>
+
+                            {app.specializations && app.specializations.length > 0 && (
+                              <div className="mt-4">
+                                <p className="text-gray-500 text-sm mb-2">Specializations</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {app.specializations.map((spec, index) => (
+                                    <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                      {spec}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          <div className="mt-4 text-sm">
-                            <p className="text-gray-500">Submitted</p>
-                            <p className="font-medium">{new Date(app.dateSubmitted).toLocaleDateString()}</p>
+                          <div>
+                            <p className="text-gray-500 text-sm mb-2">Documents</p>
+                            <div className="space-y-1">
+                              {['business_license', 'tax_certificate', 'insurance'].map((doc) => (
+                                <div key={doc} className="flex items-center justify-between">
+                                  <span className="text-sm">{doc.replace('_', ' ')}</span>
+                                  {app.documentsUploaded.includes(doc) ? (
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="mt-4 text-sm">
+                              <p className="text-gray-500">Submitted</p>
+                              <p className="font-medium">{new Date(app.dateSubmitted).toLocaleDateString()}</p>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex flex-col gap-2">
-                          <button
-                            onClick={() => alert(`Viewing application details for ${app.businessName}`)}
-                            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Details
-                          </button>
-
-                          <button
-                            onClick={() => alert(`Downloading documents for ${app.businessName}`)}
-                            className="flex items-center justify-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            Documents
-                          </button>
-
-                          <div className="flex gap-2 mt-2">
+                          <div className="flex flex-col gap-2">
                             <button
-                              onClick={() => handleApproveApplication(app.id)}
-                              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs font-semibold transition-colors"
+                              onClick={() => alert(`Viewing application details for ${app.businessName}`)}
+                              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                             >
-                              Approve
+                              <Eye className="w-4 h-4" />
+                              View Details
                             </button>
+
                             <button
-                              onClick={() => handleRejectApplication(app.id)}
-                              className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-xs font-semibold transition-colors"
+                              onClick={() => alert(`Downloading documents for ${app.businessName}`)}
+                              className="flex items-center justify-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                             >
-                              Reject
+                              <Download className="w-4 h-4" />
+                              Documents
                             </button>
+
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => handleApproveApplication(app.id)}
+                                disabled={processingAction === app.id}
+                                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-3 py-2 rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+                              >
+                                {processingAction === app.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : null}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectApplication(app.id)}
+                                disabled={processingAction === app.id}
+                                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-3 py-2 rounded text-xs font-semibold transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -537,62 +627,90 @@ export default function AdminDashboardPage() {
                 <h3 className="text-xl font-bold text-gray-800">Verified Suppliers</h3>
 
                 <div className="space-y-4">
-                  {verifiedSuppliers.map((supplier) => (
-                    <div key={supplier.id} className="bg-white border rounded-lg p-6">
-                      <div className="grid lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-2">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <h4 className="text-lg font-bold text-gray-800">{supplier.businessName}</h4>
-                              <p className="text-gray-600">{supplier.ownerName}</p>
-                              <p className="text-sm text-gray-500">{supplier.email}</p>
+                  {loading ? (
+                    // Loading skeleton for suppliers
+                    Array(2).fill(0).map((_, index) => (
+                      <div key={index} className="bg-white border rounded-lg p-6 animate-pulse">
+                        <div className="grid lg:grid-cols-4 gap-6">
+                          <div className="lg:col-span-2 space-y-4">
+                            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              {Array(4).fill(0).map((_, i) => (
+                                <div key={i} className="space-y-2">
+                                  <div className="h-3 bg-gray-200 rounded"></div>
+                                  <div className="h-4 bg-gray-200 rounded"></div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(supplier.status)}`}>
-                                {supplier.status}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                                <span className="text-sm font-medium">{supplier.rating}</span>
-                                <span className="text-xs text-gray-500">({supplier.reviews} reviews)</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : suppliers.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-gray-800 mb-2">No Verified Suppliers</h4>
+                      <p className="text-gray-600">There are no verified suppliers in the system yet.</p>
+                    </div>
+                  ) : (
+                    suppliers.map((supplier) => (
+                      <div key={supplier.id} className="bg-white border rounded-lg p-6">
+                        <div className="grid lg:grid-cols-4 gap-6">
+                          <div className="lg:col-span-2">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h4 className="text-lg font-bold text-gray-800">{supplier.businessName}</h4>
+                                <p className="text-gray-600">{supplier.ownerName}</p>
+                                <p className="text-sm text-gray-500">{supplier.email}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(supplier.status)}`}>
+                                  {supplier.status}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                  <span className="text-sm font-medium">{supplier.rating}</span>
+                                  <span className="text-xs text-gray-500">({supplier.reviews} reviews)</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Location</p>
+                                <p className="font-medium">{supplier.location}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Member Since</p>
+                                <p className="font-medium">{new Date(supplier.dateJoined).toLocaleDateString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Membership</p>
+                                <p className="font-medium capitalize">{supplier.membershipPlan} - {supplier.revenue}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Quotes Submitted</p>
+                                <p className="font-medium">{supplier.totalQuotes}</p>
                               </div>
                             </div>
                           </div>
 
-                          <div className="grid md:grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500">Location</p>
-                              <p className="font-medium">{supplier.location}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Member Since</p>
-                              <p className="font-medium">{new Date(supplier.dateJoined).toLocaleDateString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Membership</p>
-                              <p className="font-medium capitalize">{supplier.membershipPlan} - {supplier.revenue}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Last Active</p>
-                              <p className="font-medium">{supplier.lastActive}</p>
-                            </div>
+                          <div className="lg:col-span-2 flex items-center justify-end gap-2">
+                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                              View Profile
+                            </button>
+                            <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                              Send Message
+                            </button>
+                            <button className="border border-red-300 hover:bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                              Suspend
+                            </button>
                           </div>
                         </div>
-
-                        <div className="lg:col-span-2 flex items-center justify-end gap-2">
-                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                            View Profile
-                          </button>
-                          <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                            Send Message
-                          </button>
-                          <button className="border border-red-300 hover:bg-red-50 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                            Suspend
-                          </button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
