@@ -25,24 +25,24 @@ export async function GET(request: NextRequest) {
     }
 
     const suppliersResult = await query(`
-      SELECT 
+   SELECT 
         u.id,
         u.business_name,
         u.name as owner_name,
         u.email,
-        u.location,
+        u.address as location,
         u.membership_plan,
         u.created_at as date_joined,
-        u.estimated_revenue,
-        u.last_active,
+        0 as estimated_revenue,
+        now() as last_active,
         COUNT(DISTINCT rq.id) as total_quotes,
         AVG(pr.rating) as avg_rating,
         COUNT(pr.id) as total_reviews
       FROM users u
       LEFT JOIN request_quotes rq ON u.id = rq.seller_id
-      LEFT JOIN seller_reviews pr ON u.id = pr.seller_id
-      WHERE u.role = 'seller' AND u.verified_seller = true
-      GROUP BY u.id, u.business_name, u.name, u.email, u.location, u.membership_plan, u.created_at, u.estimated_revenue, u.last_active
+      LEFT JOIN reviews pr ON u.id = pr.reviewed_user_id
+      WHERE u.role = 'seller' AND u.email_verified = true
+      GROUP BY u.id, u.business_name, u.name, u.email, u.address, u.membership_plan, u.created_at
       ORDER BY u.created_at DESC
     `);
 
