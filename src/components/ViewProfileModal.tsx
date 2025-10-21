@@ -1,8 +1,8 @@
-// components/ViewProfileModal.tsx
+// components/ViewProfileModal.tsx (Updated)
 'use client';
 
 import { useState } from 'react';
-import { X, Mail, Phone, MapPin, Calendar, Star, Download, CheckCircle, XCircle } from 'lucide-react';
+import { X, Mail, Phone, MapPin, Calendar, Star, Download, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
 
 interface SupplierProfile {
   id: string;
@@ -36,9 +36,10 @@ interface ViewProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   supplier: SupplierProfile | null;
+  onSendMessage?: (supplier: SupplierProfile) => void;
 }
 
-export default function ViewProfileModal({ isOpen, onClose, supplier }: ViewProfileModalProps) {
+export default function ViewProfileModal({ isOpen, onClose, supplier, onSendMessage }: ViewProfileModalProps) {
   const [loading, setLoading] = useState(false);
 
   if (!isOpen || !supplier) return null;
@@ -65,7 +66,6 @@ export default function ViewProfileModal({ isOpen, onClose, supplier }: ViewProf
 
     try {
       setLoading(true);
-      // Download logic here
       window.open(documentUrl, '_blank');
     } catch (error) {
       console.error('Error downloading document:', error);
@@ -75,50 +75,9 @@ export default function ViewProfileModal({ isOpen, onClose, supplier }: ViewProf
     }
   };
 
-  const handleStartConversation = async () => {
-    try {
-      // Get auth data
-      const getAuthData = () => {
-        if (typeof window === 'undefined') return null;
-        try {
-          const authData = localStorage.getItem('authData');
-          return authData ? JSON.parse(authData) : null;
-        } catch (error) {
-          return null;
-        }
-      };
-
-      const authData = getAuthData();
-      if (!authData?.token) {
-        alert('Authentication required');
-        return;
-      }
-
-      // Create conversation with supplier
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({
-          sellerId: supplier.id,
-          partRequestId: null,
-          messageText: "Hello, I'm contacting you from PartsFinda Admin"
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Redirect to messages page
-        window.open(`/admin/messages?conversation=${result.conversationId}`, '_blank');
-        onClose();
-      } else {
-        alert('Failed to start conversation');
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-      alert('Error starting conversation');
+  const handleSendMessage = () => {
+    if (onSendMessage) {
+      onSendMessage(supplier);
     }
   };
 
@@ -311,9 +270,10 @@ export default function ViewProfileModal({ isOpen, onClose, supplier }: ViewProf
             Close
           </button>
           <button
-            onClick={handleStartConversation}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={handleSendMessage}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
+            <MessageCircle className="w-4 h-4" />
             Send Message
           </button>
         </div>

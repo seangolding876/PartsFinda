@@ -28,6 +28,7 @@ import {
   User
 } from 'lucide-react';
 import ViewProfileModal from '@/components/ViewProfileModal';
+import MessageModal from '@/components/MessageModal';
 
 interface AdminStats {
   totalSuppliers: number;
@@ -136,8 +137,11 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
-    const [selectedSupplier, setSelectedSupplier] = useState<SupplierProfile | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierProfile | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedSupplierForMessage, setSelectedSupplierForMessage] = useState<any>(null);
+
 
   // Check authentication on component mount - SIMPLE CHECK JAISA SELLER DASHBOARD MEIN HAI
   useEffect(() => {
@@ -373,48 +377,44 @@ const statsData = stats ? [
     );
   }
 
-    const handleViewProfile = (supplier: VerifiedSupplier) => {
-    setSelectedSupplier({
+    // View Profile handler
+  const handleViewProfile = (supplier: VerifiedSupplier) => {
+    const supplierProfile: SupplierProfile = {
       ...supplier,
       documents: {
         businessLicense: !!supplier.businessLicense,
         taxCertificate: !!supplier.taxCertificate,
         insurance: !!supplier.insuranceCertificate
       }
-    });
+    };
+    setSelectedSupplier(supplierProfile);
     setShowProfileModal(true);
   };
-   // Start Conversation handler
-  const handleStartConversation = async (supplierId: string) => {
-    try {
-      const authData = getAuthData();
-      if (!authData?.token) return;
 
-      // Create conversation with supplier
-      const response = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({
-          sellerId: supplierId,
-          partRequestId: null, // Admin conversation
-          messageText: "Hello, I'm contacting you from PartsFinda Admin"
-        })
+  // Direct Send Message handler (from suppliers list)
+  const handleStartConversation = (supplierId: string) => {
+    const supplier = suppliers.find(s => s.id === supplierId);
+    if (supplier) {
+      setSelectedSupplierForMessage({
+        id: supplier.id,
+        businessName: supplier.businessName,
+        email: supplier.email,
+        ownerName: supplier.ownerName
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Redirect to messages page or open chat
-        window.open(`/admin/messages?conversation=${result.conversationId}`, '_blank');
-      } else {
-        alert('Failed to start conversation');
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-      alert('Error starting conversation');
+      setShowMessageModal(true);
     }
+  };
+
+  // Send Message from View Profile Modal
+  const handleSendMessageFromProfile = (supplier: SupplierProfile) => {
+    setSelectedSupplierForMessage({
+      id: supplier.id,
+      businessName: supplier.businessName,
+      email: supplier.email,
+      ownerName: supplier.ownerName
+    });
+    setShowProfileModal(false); // Close profile modal
+    setShowMessageModal(true); // Open message modal
   };
 
   // Suspend User handler
@@ -805,6 +805,7 @@ const statsData = stats ? [
             )}
 
       {/* Suppliers Tab */}
+       {/* Suppliers Tab */}
       {activeTab === 'suppliers' && (
         <div className="space-y-6">
           <h3 className="text-xl font-bold text-gray-800">Verified Suppliers</h3>
@@ -938,6 +939,17 @@ const statsData = stats ? [
         }}
         supplier={selectedSupplier}
       />
+
+         {/* Message Modal */}
+      <MessageModal
+        isOpen={showMessageModal}
+        onClose={() => {
+          setShowMessageModal(false);
+          setSelectedSupplierForMessage(null);
+        }}
+        supplier={selectedSupplierForMessage}
+      />
+
     </div>
   );
 }

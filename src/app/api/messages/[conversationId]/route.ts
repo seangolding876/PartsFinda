@@ -1,3 +1,4 @@
+// app/api/messages/[conversationId]/route.ts (Final Version)
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -18,11 +19,9 @@ export async function GET(
     const userInfo = verifyToken(token);
     const conversationId = params.conversationId;
 
-    console.log('🔍 Fetching messages for conversation:', conversationId, 'User:', userInfo.userId);
-
-    // ✅ Verify user has access to this conversation
+    // Verify user has access to this conversation
     const accessCheck = await query(
-      `SELECT id, buyer_id, seller_id 
+      `SELECT id, buyer_id, seller_id, part_request_id 
        FROM conversations 
        WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)`,
       [conversationId, userInfo.userId]
@@ -39,15 +38,16 @@ export async function GET(
     const isBuyer = conversation.buyer_id === userInfo.userId;
     const otherUserId = isBuyer ? conversation.seller_id : conversation.buyer_id;
 
-    // ✅ Get other user's name
+    // Get other user's name
     const userInfoResult = await query(
-      `SELECT COALESCE(business_name, name) as name FROM users WHERE id = $1`,
+      `SELECT COALESCE(business_name, name) as name, email FROM users WHERE id = $1`,
       [otherUserId]
     );
 
     const otherUserName = userInfoResult.rows[0]?.name || 'User';
+    const otherUserEmail = userInfoResult.rows[0]?.email;
 
-    // ✅ Get messages
+    // Get messages
     const messagesResult = await query(
       `SELECT 
         m.id,
@@ -61,7 +61,14 @@ export async function GET(
       [conversationId]
     );
 
-    // ✅ Format messages with correct sender names
+    // Mark messages as read
+    await query(
+      `UPDATE messages SET is_read = true 
+       WHERE conversation_id = $1 AND receiver_id = $2 AND is_read = false`,
+      [conversationId, userInfo.userId]
+    );
+
+    // Format messages with correct sender names
     const formattedMessages = messagesResult.rows.map(msg => {
       const isCurrentUser = msg.sender_id === userInfo.userId;
       
@@ -83,13 +90,18 @@ export async function GET(
         participant: {
           id: otherUserId,
           name: otherUserName,
+          email: otherUserEmail,
           role: isBuyer ? 'seller' : 'buyer'
+        },
+        conversation: {
+          id: conversationId,
+          partRequestId: conversation.part_request_id
         }
       }
     });
 
   } catch (error: any) {
-    console.error('❌ Error fetching messages:', error);
+    console.error('Error fetching messages:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch messages' },
       { status: 500 }
@@ -119,7 +131,7 @@ export async function POST(
       );
     }
 
-    // ✅ Get conversation and receiver info
+    // Get conversation and receiver info
     const convInfo = await query(
       `SELECT 
         buyer_id,
@@ -141,9 +153,8 @@ export async function POST(
     }
 
     const receiverId = convInfo.rows[0].receiver_id;
-    const isBuyer = convInfo.rows[0].buyer_id === userInfo.userId;
 
-    // ✅ Insert message
+    // Insert message
     const messageResult = await query(
       `INSERT INTO messages 
        (conversation_id, sender_id, receiver_id, message_text) 
@@ -152,7 +163,7 @@ export async function POST(
       [conversationId, userInfo.userId, receiverId, messageText.trim()]
     );
 
-    // ✅ Update conversation last message
+    // Update conversation last message
     await query(
       'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
       [conversationId]
@@ -160,15 +171,12 @@ export async function POST(
 
     const newMessage = messageResult.rows[0];
 
-    // ✅ Emit socket event for real-time update
-    // This will be handled by your socket server
-
     return NextResponse.json({
       success: true,
       data: {
         id: newMessage.id.toString(),
         text: newMessage.message_text,
-        sender: isBuyer ? 'buyer' : 'seller',
+        sender: 'buyer', // For admin, always show as buyer
         senderName: 'You',
         senderId: userInfo.userId,
         timestamp: newMessage.created_at,
@@ -177,7 +185,7 @@ export async function POST(
     });
 
   } catch (error: any) {
-    console.error('❌ Error sending message:', error);
+    console.error('Error sending message:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to send message' },
       { status: 500 }
