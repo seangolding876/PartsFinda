@@ -247,41 +247,37 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
       
       <div class="message-box">
         <p style="margin: 0; font-size: 16px; line-height: 1.6;">
-          <strong>Congratulations! 🎊</strong> Aap ka account successfully verify kar diya gaya hai! 
-          Agar aap ne email verification bhi approve kar li hai to aap ab hamari website par 
-          fully authorized seller ki tarah enter ho sakte hain.
+          <strong>Congratulations! 🎊</strong> Your account has been successfully verified! 
+          If you have also completed email verification, you can now access our website 
+          as a fully authorized seller and start growing your business.
         </p>
       </div>
 
-      <p>Ab aap in features ka full access le sakte hain:</p>
+      <p>You now have full access to these features:</p>
       
       <div class="features">
         <div class="feature">
-          <strong>🛍️ Products List Karein</strong>
-          <p>Apne products add karein aur manage karein</p>
+          <strong>👥 Reach Customers</strong>
+          <p>Connect with thousands of potential buyers</p>
         </div>
         <div class="feature">
-          <strong>👥 Customers Ko Reach Karein</strong>
-          <p>Thousands of potential customers tak pahunchein</p>
+          <strong>💰 Increase Sales</strong>
+          <p>Grow your earnings with our platform</p>
         </div>
         <div class="feature">
-          <strong>💰 Sales Badhayein</strong>
-          <p>Apni earning ko grow karein</p>
-        </div>
-        <div class="feature">
-          <strong>🏆 Trust Build Karein</strong>
-          <p>Verified seller badge se trust badhayein</p>
+          <strong>🏆 Build Trust</strong>
+          <p>Gain customer trust with verified seller badge</p>
         </div>
       </div>
 
       <center>
-        <a href="${process.env.NEXTAUTH_URL}/seller/dashboard" class="button">
+        <a href="${process.env.NEXTAUTH_URL}/seller/dashboard" class="button" style="text-align: center; color: white; font-size: 14px;">
           🚀 Start Selling Now
         </a>
       </center>
 
       <p style="text-align: center; color: #6b7280; font-size: 14px;">
-        Agar aap ko koi help chahiye to hamari support team har waqt ready hai!
+        If you need any help, our support team is always ready to assist you!
       </p>
     </div>
 
@@ -306,7 +302,6 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
     // Don't throw error - email failure shouldn't break the main flow
   }
 }
-
 // ✅ Rejection Email Template
 async function sendRejectionEmail(userEmail: string, userName: string, rejectionReason: string) {
   const emailHtml = `
@@ -427,33 +422,33 @@ async function sendRejectionEmail(userEmail: string, userName: string, rejection
       
       <div class="message-box">
         <p style="margin: 0; font-size: 16px; line-height: 1.6;">
-          Aap ka seller application <strong>reject ho gaya hai</strong>. 
-          Iske kuch reasons ho sakte hain, jinki details niche di gayi hain.
+          Your seller application has been <strong>rejected</strong>. 
+          There could be several reasons for this, and we've provided details below.
         </p>
       </div>
 
       <div class="reason-box">
-        <strong>📋 Possible Reasons:</strong>
+        <strong>📋 Reason for Rejection:</strong>
         <p style="margin: 10px 0 0; color: #64748b;">
           ${rejectionReason || 'Application requirements not fully met. Please contact support for detailed information.'}
         </p>
       </div>
 
-      <p>Koi bhi confusion ya additional information ke liye, aap hamesha hamari support team se contact kar sakte hain:</p>
+      <p>If you have any questions or need additional information, you can always contact our support team:</p>
 
       <div class="contact-info">
         <h3 style="margin-top: 0;">📞 Contact Our Support Team</h3>
         <p style="margin: 10px 0;">
           <strong>Email:</strong> 
           <a href="mailto:contact@partsfinda.com" style="color: #2563eb;">
-            contact@partsfinda.com
+            support@partsfinda.com
           </a>
         </p>
         <p style="margin: 10px 0;">
           <strong>Response Time:</strong> Within 24 hours
         </p>
         <p style="margin: 10px 0;">
-          Hamari team aap ka matter resolve karne mein poori help karegi.
+          Our team will provide complete assistance in resolving your matter.
         </p>
       </div>
 
@@ -464,7 +459,7 @@ async function sendRejectionEmail(userEmail: string, userName: string, rejection
       </center>
 
       <p style="text-align: center; color: #6b7280; font-size: 14px;">
-        Aap phir se apply kar sakte hain jab aap requirements complete kar lein.
+        You can apply again once you complete all the requirements.
       </p>
     </div>
 
