@@ -296,21 +296,21 @@ const statsData = stats ? [
   {
     icon: <Users className="w-6 h-6" />,
     label: 'Total Suppliers',
-    value: stats.totalSuppliers.toString(),
+    value: stats.totalSuppliers,
     change: `+${stats.newSuppliersThisMonth} this month`,
     changeType: 'positive' as const
   },
   {
     icon: <Clock className="w-6 h-6" />,
     label: 'Pending Applications',
-    value: stats.pendingApplications.toString(), // Ab ye pending verification count hoga
+    value: stats.pendingApplications, // Ab ye pending verification count hoga
     change: `${stats.urgentApplications} urgent`, // Ab ye urgent verification count hoga
     changeType: stats.urgentApplications > 0 ? 'warning' : 'positive' as const
   },
   {
     icon: <Package className="w-6 h-6" />,
     label: 'Active Requests',
-    value: stats.activeRequests.toString(),
+    value: stats.activeRequests,
     change: 'Live count',
     changeType: 'positive' as const
   },
