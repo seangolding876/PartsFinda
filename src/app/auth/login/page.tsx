@@ -19,6 +19,8 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
+        showAlert('Login failed!', 'error', 5000);
+
     // Client-side validation
     if (!formData.email || !formData.password) {
       setError('Please enter both email and password');
@@ -90,7 +92,7 @@ export default function LoginPage() {
 
         // Show success alert
         // alert(welcomeMessage);
-              showAlert(welcomeMessage, 'success');
+        showAlert(welcomeMessage, 'success');
 
         // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
