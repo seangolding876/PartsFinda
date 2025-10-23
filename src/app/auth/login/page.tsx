@@ -2,11 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAlert } from '@/context/AlertContext';
 
 export default function LoginPage() {
   const router = useRouter();
-    const { showAlert } = useAlert();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,8 +16,6 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-        showAlert('Login failed!', 'error', 5000);
 
     // Client-side validation
     if (!formData.email || !formData.password) {
@@ -91,8 +87,7 @@ export default function LoginPage() {
           : `Welcome back to PartsFinda, ${result.user.name}!`;
 
         // Show success alert
-        // alert(welcomeMessage);
-        showAlert(welcomeMessage, 'success');
+        alert(welcomeMessage);
 
         // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
