@@ -2,10 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAlert } from '@/hooks/useAlert';
-
-
- const alert = useAlert();
 
 // Auth utility functions
 const getAuthData = () => {
@@ -14,8 +10,7 @@ const getAuthData = () => {
     const authData = localStorage.getItem('authData');
     return authData ? JSON.parse(authData) : null;
   } catch (error) {
-    // console.error('❌ Error getting auth data:', error);
-    alert.error('❌ Error getting auth data:', error);
+    console.error('❌ Error getting auth data:', error);
     return null;
   }
 };
@@ -110,7 +105,7 @@ function RequestPartForm() {
     const checkAuth = () => {
       if (!isAuthenticated()) {
         console.log('🚫 User not authenticated, redirecting to login');
-        alert.error('Please login to submit a part request');
+        alert('Please login to submit a part request');
         router.push('/auth/login');
       } else {
         console.log('✅ User authenticated');
@@ -243,7 +238,7 @@ function RequestPartForm() {
     e.preventDefault();
     
     if (!isAuthenticated()) {
-      alert.error('Please login to submit a part request');
+      alert('Please login to submit a part request');
       router.push('/auth/login');
       return;
     }
@@ -292,7 +287,7 @@ function RequestPartForm() {
 
       if (result.success) {
         console.log('✅ Request submitted successfully:', result.data);
-        alert.success('✅ Request submitted successfully! Sellers will contact you soon.');
+        alert('✅ Request submitted successfully! Sellers will contact you soon.');
         
         // Reset form
         setFormData({
@@ -328,7 +323,7 @@ function RequestPartForm() {
       }
       
       setError(errorMessage);
-      alert.error(`❌ ${errorMessage}`);
+      alert(`❌ ${errorMessage}`);
     } finally {
       setLoading(false);
     }
