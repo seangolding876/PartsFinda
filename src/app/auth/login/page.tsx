@@ -55,10 +55,10 @@ export default function LoginPage() {
         }),
       });
 
-      console.log('📨 Login response status:', response.status);
+      // console.log('📨 Login response status:', response.status);
 
       const result = await response.json();
-      console.log('📊 Login result:', result);
+      // console.log('📊 Login result:', result);
 
       if (!response.ok) {
         // Server se specific error message mil raha hai
@@ -69,7 +69,7 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-        console.log('✅ Login successful, saving to localStorage...');
+        // console.log('✅ Login successful, saving to localStorage...');
 
         // ✅ Auth data localStorage mein save karein
         const authData = {
@@ -81,7 +81,7 @@ export default function LoginPage() {
         };
 
         localStorage.setItem('authData', JSON.stringify(authData));
-        console.log('💾 Auth data saved to localStorage:', authData);
+        // console.log('💾 Auth data saved to localStorage:', authData);
 
         // Success message based on role
         const welcomeMessage = result.user.role === 'seller' 
@@ -89,19 +89,21 @@ export default function LoginPage() {
           : `Welcome back to PartsFinda, ${result.user.name}!`;
 
         // Show success alert
-        alert(welcomeMessage);
+        // alert(welcomeMessage);
 
-        successmsg(welcomeMessage);
+
 
 
         // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
                          result.user.role === 'admin' ? '/admin/dashboard' : '/my-requests';
 
-        console.log('🔄 Redirecting to:', redirectTo);
+        // console.log('🔄 Redirecting to:', redirectTo);
 
         // Use window.location for immediate redirect
         window.location.href = redirectTo;
+
+        successmsg(welcomeMessage);
 
       } else {
         // API success: false case
