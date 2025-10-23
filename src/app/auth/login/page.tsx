@@ -103,7 +103,7 @@ export default function LoginPage() {
         // Use window.location for immediate redirect
         window.location.href = redirectTo;
 
-        successmsg(welcomeMessage);
+        // successmsg(welcomeMessage);
 
       } else {
         // API success: false case

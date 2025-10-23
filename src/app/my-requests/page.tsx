@@ -83,7 +83,7 @@ function BuyerDashboard() {
       const authData = getAuthData();
       
       if (authData?.role === 'buyer' && !hasShownWelcome) {
-        const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
+        const welcomeMessage = `Welcome back to PartsFinda, ${authData.name}!`;
         successmsg(welcomeMessage);
         setHasShownWelcome(true);
       }

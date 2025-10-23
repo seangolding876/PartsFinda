@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
     const authData = getAuthData();
     
     if (authData?.role === 'admin' && !hasShownWelcome) {
-      const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
+      const welcomeMessage = `Welcome back, ${authData.name || 'Admin'}! Manage your platform effectively.`;
       successmsg(welcomeMessage);
       setHasShownWelcome(true);
     }
@@ -383,15 +383,15 @@ const statsData = stats ? [
       });
 
       if (response.ok) {
-        alert('User suspended successfully');
+        successmsg('User suspended successfully');
         fetchData(); // Refresh data
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error}`);
+        errormsg(`Error user: ${errorData.error}`);
       }
     } catch (error) {
-      console.error('Error suspending user:', error);
-      alert('Error suspending user');
+      // console.error('Error suspending user:', error);
+      errormsg(`Error suspending user: ${error}`);
     }
   };
 
@@ -409,7 +409,7 @@ const handleDownloadAllDocuments = async (application: any) => {
   ].filter(doc => doc.url);
 
   if (documents.length === 0) {
-    alert('No documents available for download');
+    infomsg('No documents available for download');
     return;
   }
 
@@ -423,8 +423,8 @@ const handleDownloadAllDocuments = async (application: any) => {
       }
     }
   } catch (error) {
-    console.error('Error downloading documents:', error);
-    alert('Failed to download some documents');
+    // console.error('Error downloading documents:', error);
+    errormsg('Failed to download some documents');
   }
 };
 
@@ -434,7 +434,7 @@ const handleApproveApplication = async (applicationId: string) => {
     const authData = getAuthData();
 
     if (!authData?.token) {
-      alert('Authentication required');
+      infomsg('Authentication required');
       return;
     }
 
@@ -451,15 +451,15 @@ const handleApproveApplication = async (applicationId: string) => {
     });
 
     if (response.ok) {
-      alert('✅ Application approved! Supplier account has been activated.');
+      successmsg('Application approved! Supplier account has been activated.');
       fetchData(); // Refresh data
     } else {
       const errorData = await response.json();
-      alert(`❌ Error: ${errorData.error}`);
+      errormsg(`Error: ${errorData.error}`);
     }
   } catch (error) {
     console.error('Error approving application:', error);
-    alert('❌ Error approving application. Please try again.');
+    errormsg(`Error: Error approving application. Please try again.`);
   } finally {
     setProcessingAction(null);
   }
@@ -474,7 +474,7 @@ const handleRejectApplication = async (applicationId: string) => {
     const authData = getAuthData();
 
     if (!authData?.token) {
-      alert('Authentication required');
+      infomsg('Authentication required');
       return;
     }
 
@@ -492,15 +492,15 @@ const handleRejectApplication = async (applicationId: string) => {
     });
 
     if (response.ok) {
-      alert('❌ Application rejected. Supplier has been notified.');
+      errormsg('Application rejected. Supplier has been notified.');
       fetchData(); // Refresh data
     } else {
       const errorData = await response.json();
-      alert(`❌ Error: ${errorData.error}`);
+      errormsg(`Error: ${errorData.error}`);
     }
   } catch (error) {
     console.error('Error rejecting application:', error);
-    alert('❌ Error rejecting application. Please try again.');
+    errormsg(`Error: Error rejecting application. Please try again.`);
   } finally {
     setProcessingAction(null);
   }
