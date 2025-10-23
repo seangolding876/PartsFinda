@@ -1,103 +1,196 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { verifyEmailToken, markTokenAsUsed } from '@/lib/email-verification';
-import { sendEmail } from '@/lib/email';
-
-// Dynamic rendering force karein
-export const dynamic = 'force-dynamic';
+import { sendMail } from '@/lib/mailService';
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get('token');
+  const email = searchParams.get('email');
+
+  if (!token || !email) {
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/verification-error?error=invalid_token`);
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
-
-    if (!token) {
-      // Return JSON response instead of redirect for API route
-      return NextResponse.json(
-        { success: false, error: 'Verification token is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify the token
-    const tokenData = await verifyEmailToken(token);
-    
-    // Update user email verification status
-    await query(
-      'UPDATE users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [tokenData.user_id]
-    );
-
-    // Mark token as used
-    await markTokenAsUsed(token);
-
-    // Get user details for confirmation email
+    // Find user with this verification token
     const userResult = await query(
-      `SELECT u.email, u.name, u.business_name, u.membership_plan 
-       FROM users u WHERE u.id = $1`,
-      [tokenData.user_id]
+      `SELECT * FROM users 
+       WHERE email = $1 
+       AND verification_token = $2 
+       AND verification_token_expires > $3`,
+      [email, token, new Date()]
     );
 
     const user = userResult.rows[0];
 
-    // Send confirmation email
-    await sendEmail({
-      to: user.email,
-      subject: 'Email Verified Successfully - PartFinda Jamaica',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; text-align: center; color: white;">
-            <h1 style="margin: 0; font-size: 28px;">✅ Email Verified Successfully!</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">PartFinda Jamaica</p>
-          </div>
-          
-          <div style="padding: 30px; background: #ffffff;">
-            <h2 style="color: #1f2937; margin-bottom: 20px;">Welcome to PartFinda Jamaica!</h2>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              Hello <strong>${user.name}</strong>,
-            </p>
-            
-            <p style="color: #4b5563; line-height: 1.6;">
-              Your email has been successfully verified! Your seller application is now under review.
-            </p>
-            
-            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 8px; margin: 25px 0;">
-              <h3 style="color: #065f46; margin-bottom: 15px;">What's Next?</h3>
-              <ul style="color: #065f46; padding-left: 20px;">
-                <li>Our team will review your application</li>
-                <li>You'll receive approval within 2-3 business days</li>
-                <li>Once approved, you can start listing parts</li>
-                <li>Check your email for further updates</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/login" 
-                 style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                Go to Login
-              </a>
-            </div>
-          </div>
-          
-          <div style="background: #f8fafc; padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
-            <p>&copy; 2024 PartFinda Jamaica. All rights reserved.</p>
-          </div>
+    if (!user) {
+      return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/verification-error?error=invalid_or_expired`);
+    }
+
+    // Update user as verified
+    await query(
+      `UPDATE users 
+       SET email_verified = true, 
+           verification_token = NULL, 
+           verification_token_expires = NULL,
+           updated_at = $1
+       WHERE email = $2`,
+      [new Date(), email]
+    );
+
+    // Send welcome email
+    await sendWelcomeEmail(email, user.name || user.owner_name);
+
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/verification-success?email=${encodeURIComponent(email)}`);
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/auth/verification-error?error=server_error`);
+  }
+}
+
+// Welcome Email Template
+async function sendWelcomeEmail(userEmail: string, userName: string) {
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: white; 
+      border-radius: 15px; 
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    .header { 
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+      color: white; 
+      padding: 40px 30px; 
+      text-align: center; 
+    }
+    .header h1 { 
+      margin: 0; 
+      font-size: 28px; 
+      font-weight: 700;
+    }
+    .content { 
+      padding: 40px 30px; 
+      color: #374151;
+    }
+    .welcome-badge { 
+      background: #f0f9ff; 
+      border: 2px solid #7c3aed;
+      color: #7c3aed;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: 600;
+    }
+    .features { 
+      display: grid; 
+      grid-template-columns: 1fr; 
+      gap: 12px; 
+      margin: 25px 0; 
+    }
+    .feature { 
+      background: #f8fafc; 
+      padding: 15px; 
+      border-radius: 8px; 
+      border-left: 4px solid #7c3aed;
+    }
+    .button { 
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); 
+      color: white; 
+      padding: 15px 40px; 
+      text-decoration: none; 
+      border-radius: 8px; 
+      display: inline-block; 
+      margin: 20px 0; 
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .footer { 
+      text-align: center; 
+      color: #6b7280; 
+      font-size: 14px; 
+      margin-top: 30px; 
+      padding-top: 20px; 
+      border-top: 1px solid #e5e7eb; 
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Welcome to PartsFinda!</h1>
+      <p>Your Email Has Been Successfully Verified</p>
+    </div>
+
+    <div class="content">
+      <div class="welcome-badge">
+        ✅ Email Verified Successfully
+      </div>
+
+      <p>Hello <strong>${userName}</strong>,</p>
+      
+      <p>Great news! Your email address has been successfully verified. You're one step closer to becoming a verified seller on PartsFinda.</p>
+
+      <p><strong>What happens next?</strong></p>
+      
+      <div class="features">
+        <div class="feature">
+          <strong>📧 Email Verified</strong>
+          <p>Your email address is now confirmed and secure</p>
         </div>
-      `
+        <div class="feature">
+          <strong>⏳ Account Review</strong>
+          <p>Our team is reviewing your seller application</p>
+        </div>
+        <div class="feature">
+          <strong>✅ Final Approval</strong>
+          <p>Once approved, you'll receive buyer requests and can start selling</p>
+        </div>
+      </div>
+
+      <p><strong>Important:</strong> You can only login after your seller account is fully approved by our management team. We'll notify you once the verification process is complete.</p>
+
+      <center>
+        <a href="${process.env.NEXTAUTH_URL}" class="button">
+          Visit Our Website
+        </a>
+      </center>
+
+      <p style="text-align: center; color: #6b7280; font-size: 14px;">
+        Thank you for choosing PartsFinda - Jamaica's premier auto parts marketplace!
+      </p>
+    </div>
+
+    <div class="footer">
+      <p><strong>Ready to revolutionize auto parts shopping in Jamaica! 🚗</strong></p>
+      <p>© 2025 PartsFinda Inc. | Auto Parts Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    await sendMail({
+      to: userEmail,
+      subject: '🎉 Welcome to PartsFinda - Email Verified Successfully!',
+      html: emailHtml,
     });
-
-    // Redirect to success page using 302 redirect
-    return NextResponse.redirect(
-      new URL('/auth/email-verified-success', request.url)
-    );
-
-  } catch (error: any) {
-    console.error('❌ Email verification error:', error);
-    
-    // Redirect to error page
-    return NextResponse.redirect(
-      new URL(`/auth/verification-error?error=${encodeURIComponent(error.message)}`, request.url)
-    );
+    console.log(`✅ Welcome email sent to ${userEmail}`);
+  } catch (error) {
+    console.error('❌ Failed to send welcome email:', error);
   }
 }

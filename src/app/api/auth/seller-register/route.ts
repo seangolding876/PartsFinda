@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+import { sendMail } from '@/lib/mailService';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +105,10 @@ export async function POST(request: NextRequest) {
     
     const yearsInBusinessInt = yearsInBusinessMap[body.yearsInBusiness] || 1;
 
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     try {
       // Use actual file URLs from file upload
       const businessLicenseValue = body.businessLicense || null;
@@ -117,9 +123,11 @@ export async function POST(request: NextRequest) {
           address, parish, city, postal_code, business_phone, business_email,
           website, specializations, vehicle_brands, part_categories,
           business_license, tax_certificate, insurance_certificate,
-          membership_plan, agree_to_terms, agree_to_verification, email_verified
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
-        RETURNING id, business_name, email, membership_plan`,
+          membership_plan, agree_to_terms, agree_to_verification, 
+          email_verified, verification_token, verification_token_expires, status,
+          created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+        RETURNING id, business_name, email, membership_plan, owner_name`,
         [
           body.email,                    // $1 - email
           hashedPassword,                // $2 - password
@@ -139,16 +147,21 @@ export async function POST(request: NextRequest) {
           body.businessPhone,            // $16 - business_phone
           body.businessEmail || null,    // $17 - business_email
           body.website || null,          // $18 - website
-          body.specializations || [],    // $19 - specializations
-          body.vehicleBrands || [],      // $20 - vehicle_brands
-          body.partCategories || [],     // $21 - part_categories
+          JSON.stringify(body.specializations || []),    // $19 - specializations
+          JSON.stringify(body.vehicleBrands || []),      // $20 - vehicle_brands
+          JSON.stringify(body.partCategories || []),     // $21 - part_categories
           businessLicenseValue,          // $22 - business_license (ACTUAL FILE URL)
           taxCertificateValue,           // $23 - tax_certificate (ACTUAL FILE URL)
           insuranceCertificateValue,     // $24 - insurance_certificate (ACTUAL FILE URL)
           body.membershipPlan,           // $25 - membership_plan
           body.agreeToTerms,             // $26 - agree_to_terms
           body.agreeToVerification,      // $27 - agree_to_verification
-          false                          // $28 - email_verified
+          false,                         // $28 - email_verified
+          verificationToken,             // $29 - verification_token
+          verificationTokenExpires,      // $30 - verification_token_expires
+          'pending_verification',        // $31 - status
+          new Date(),                    // $32 - created_at
+          new Date()                     // $33 - updated_at
         ]
       );
 
@@ -162,6 +175,13 @@ export async function POST(request: NextRequest) {
         insuranceCertificate: insuranceCertificateValue
       });
 
+      // Send verification email
+      await sendVerificationEmail(
+        newUser.email, 
+        newUser.owner_name, 
+        verificationToken
+      );
+
       return NextResponse.json({
         success: true,
         message: 'Seller application submitted successfully.',
@@ -170,8 +190,8 @@ export async function POST(request: NextRequest) {
           businessName: newUser.business_name,
           email: newUser.email,
           membershipPlan: newUser.membership_plan,
-          status: 'pending_review',
-          nextSteps: 'Our team will review your application within 2-3 business days.'
+          status: 'pending_verification',
+          nextSteps: 'Please check your email to verify your account. Our team will review your application within 2-3 business days.'
         }
       });
 
@@ -207,5 +227,164 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+function generateVerificationToken() {
+  return uuidv4() + Date.now();
+}
+
+// Verification Email Template
+async function sendVerificationEmail(userEmail: string, userName: string, token: string) {
+  const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: #f3f4f6;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: white; 
+      border-radius: 10px; 
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header { 
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); 
+      color: white; 
+      padding: 30px; 
+      text-align: center; 
+    }
+    .header h1 { 
+      margin: 0; 
+      font-size: 24px; 
+      font-weight: 700;
+    }
+    .content { 
+      padding: 30px; 
+      color: #374151;
+    }
+    .verification-box { 
+      background: #f0f9ff; 
+      border: 2px dashed #7c3aed;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .button { 
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); 
+      color: white; 
+      padding: 12px 30px; 
+      text-decoration: none; 
+      border-radius: 6px; 
+      display: inline-block; 
+      margin: 15px 0; 
+      font-weight: 600;
+    }
+    .footer { 
+      text-align: center; 
+      color: #6b7280; 
+      font-size: 12px; 
+      margin-top: 20px; 
+      padding-top: 20px; 
+      border-top: 1px solid #e5e7eb; 
+    }
+    .steps {
+      margin: 20px 0;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 6px;
+    }
+    .step-number {
+      background: #7c3aed;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Verify Your Email Address</h1>
+      <p>Complete your PartsFinda seller registration</p>
+    </div>
+
+    <div class="content">
+      <p>Hello <strong>${userName}</strong>,</p>
+      
+      <p>Thank you for registering as a seller on PartsFinda! To complete your registration, please verify your email address by clicking the button below:</p>
+
+      <div class="verification-box">
+        <p><strong>Action Required:</strong> Verify your email within 24 hours</p>
+        <a href="${verificationUrl}" class="button">
+          ✅ Verify Email Address
+        </a>
+      </div>
+
+      <div class="steps">
+        <p><strong>Next Steps:</strong></p>
+        <div class="step">
+          <div class="step-number">1</div>
+          <div>Verify your email (click button above)</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div>Wait for management approval (1-2 business days)</div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div>Start receiving buyer requests once approved</div>
+        </div>
+      </div>
+
+      <p><strong>Important:</strong> You will only be able to login after both email verification and management approval are complete.</p>
+
+      <p style="font-size: 12px; color: #6b7280;">
+        If the button doesn't work, copy and paste this link in your browser:<br>
+        <a href="${verificationUrl}">${verificationUrl}</a>
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>This verification link will expire in 24 hours.</p>
+      <p>© 2025 PartsFinda Inc. | Auto Parts Marketplace</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    await sendMail({
+      to: userEmail,
+      subject: 'Verify Your Email - PartsFinda Seller Registration',
+      html: emailHtml,
+    });
+    console.log(`✅ Verification email sent to ${userEmail}`);
+  } catch (error) {
+    console.error('❌ Failed to send verification email:', error);
+    throw new Error('Failed to send verification email');
   }
 }

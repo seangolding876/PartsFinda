@@ -21,6 +21,18 @@ export const query = async <T = any>(text: string, params?: any[]): Promise<{ ro
   }
 };
 
+// Connect to database function
+export const connectToDatabase = async () => {
+  try {
+    const client = await pool.connect();
+    console.log('✅ Connected to PostgreSQL database');
+    return { client, pool };
+  } catch (error) {
+    console.error('❌ Database connection error:', error);
+    throw error;
+  }
+};
+
 // Specific type queries ke liye helper functions
 export const queryWithTypes = {
   async queueItems<T = QueueItem>(text: string, params?: any[]): Promise<{ rows: T[] }> {

@@ -332,8 +332,13 @@ export default function SellerSignupPage() {
 
       if (result.success) {
         console.log('✅ Application submitted successfully:', result);
-        const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
-        router.push(successUrl);
+
+
+      // Success page pe redirect with important info
+      const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
+      router.push(successUrl);
+
+
       } else {
         throw new Error(result.error || 'Application submission failed');
       }
