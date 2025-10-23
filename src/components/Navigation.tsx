@@ -168,6 +168,9 @@ export default function Navigation() {
           ) : user ? (
             <div className="flex items-center gap-4">
               {/* Notifications + Messages */}
+               <div className="flex items-center gap-4">
+                <NotificationBell />
+                </div>
               {/* <div className="flex items-center gap-4">
                 <NotificationBell />
                 <Link
@@ -268,6 +271,9 @@ export default function Navigation() {
 
             {user && (
               <>
+              <div className="flex items-center gap-3 mt-4">
+                  <NotificationBell />
+              </div>
                 {/* Notifications + Messages */}
                 {/* <div className="flex items-center gap-3 mt-4">
                   <NotificationBell />
