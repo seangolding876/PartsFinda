@@ -75,7 +75,6 @@ function BuyerDashboard() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showQuotesModal, setShowQuotesModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
   const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
     const [hasShownWelcome, setHasShownWelcome] = useState(false);
   
@@ -83,7 +82,7 @@ function BuyerDashboard() {
     useEffect(() => {
       const authData = getAuthData();
       
-      if (authData?.role === 'seller' && !hasShownWelcome) {
+      if (authData?.role === 'buyer' && !hasShownWelcome) {
         const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
         successmsg(welcomeMessage);
         setHasShownWelcome(true);

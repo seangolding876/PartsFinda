@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const authData = getAuthData();
     
-    if (authData?.role === 'seller' && !hasShownWelcome) {
+    if (authData?.role === 'admin' && !hasShownWelcome) {
       const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
       successmsg(welcomeMessage);
       setHasShownWelcome(true);
