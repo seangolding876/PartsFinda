@@ -1,11 +1,23 @@
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge';
+
 'use client';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function VerificationError() {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+
+  useEffect(() => {
+    if (searchParams) {
+      setError(searchParams.get('error'));
+      setIsLoading(false);
+    }
+  }, [searchParams]);
 
   const getErrorMessage = () => {
     switch (error) {
@@ -19,6 +31,20 @@ export default function VerificationError() {
         return 'An error occurred during email verification. Please try again.';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="animate-pulse">
+            <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+            <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12">
