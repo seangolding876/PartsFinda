@@ -33,6 +33,11 @@ export default function Navigation() {
     window.open('/seller/subscription', '_blank');
   };
 
+  // ✅ Condition: Request Part tabhi show karega jab:
+  // 1. User logged out ho (token na ho) - YA
+  // 2. User logged in ho aur buyer role ka ho
+  const shouldShowRequestPart = !user || user?.role === 'buyer';
+
   return (
     <nav className="bg-white border-b sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -51,9 +56,14 @@ export default function Navigation() {
           <Link href="/" className="hover:text-blue-600 transition-colors">
             Home
           </Link>
-          <Link href="/request-part" className="hover:text-blue-600 transition-colors">
-            Request Part
-          </Link>
+          
+          {/* ✅ Request Part Condition */}
+          {shouldShowRequestPart && (
+            <Link href="/request-part" className="hover:text-blue-600 transition-colors">
+              Request Part
+            </Link>
+          )}
+          
           {/* <Link href="/vin-decoder" className="hover:text-blue-600 transition-colors">
             VIN Decoder
           </Link> */}
@@ -241,9 +251,14 @@ export default function Navigation() {
             <Link href="/" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
               Home
             </Link>
-            <Link href="/request-part" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
-              Request Part
-            </Link>
+            
+            {/* ✅ Request Part Condition (Mobile) */}
+            {shouldShowRequestPart && (
+              <Link href="/request-part" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                Request Part
+              </Link>
+            )}
+            
             {/* <Link href="/vin-decoder" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
               VIN Decoder
             </Link> */}
@@ -362,5 +377,3 @@ export default function Navigation() {
     </nav>
   );
 }
-
-/* ✅ Extra Animations */
