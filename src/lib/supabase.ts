@@ -12,7 +12,7 @@ const FALLBACK_CONFIG = {
 
 // Create Supabase client with proper error handling
 let supabase: any;
-
+///Adnan
 try {
   if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your-supabase-url' && supabaseAnonKey !== 'your-anon-key') {
     // Production configuration with real Supabase
