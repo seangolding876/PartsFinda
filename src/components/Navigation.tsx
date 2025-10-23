@@ -206,14 +206,14 @@ export default function Navigation() {
                 href="/auth/login"
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded transition-colors font-medium"
               >
-                Sign In
+                Login
               </Link>
               <div className="flex gap-2">
                 <Link
                   href="/auth/register"
                   className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors"
                 >
-                  Sign Up
+                  Sign Up As a Buyer
                 </Link>
                 <Link
                   href="/auth/seller-register"
@@ -367,10 +367,10 @@ export default function Navigation() {
             {!user && (
               <div className="mt-4 space-y-2">
                 <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
-                  Sign In
+                  Login
                 </Link>
                 <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
-                  Sign Up
+                  Sign Up As a Buyer
                 </Link>
                 <Link href="/auth/seller-register" onClick={() => setMobileMenuOpen(false)} className="block text-green-600 hover:text-green-700 font-semibold">
                   Become Supplier
