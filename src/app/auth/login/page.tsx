@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/useToast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
+  const { successmsg, errormsg, infomsg } = useToast();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -55,10 +55,8 @@ export default function LoginPage() {
         }),
       });
 
-      // console.log('📨 Login response status:', response.status);
-
       const result = await response.json();
-      // console.log('📊 Login result:', result);
+      console.log('📊 Login result:', result);
 
       if (!response.ok) {
         // Server se specific error message mil raha hai
@@ -69,7 +67,7 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-        // console.log('✅ Login successful, saving to localStorage...');
+        console.log('✅ Login successful, saving to localStorage...');
 
         // ✅ Auth data localStorage mein save karein
         const authData = {
@@ -77,33 +75,34 @@ export default function LoginPage() {
           role: result.user.role,
           name: result.user.name,
           email: result.user.email,
-          userId: result.user.id
+          userId: result.user.id,
+          email_verified: result.user.email_verified,
+          verified_status: result.user.verified_status
         };
 
         localStorage.setItem('authData', JSON.stringify(authData));
-        // console.log('💾 Auth data saved to localStorage:', authData);
+        console.log('💾 Auth data saved to localStorage:', authData);
 
         // Success message based on role
         const welcomeMessage = result.user.role === 'seller' 
           ? `Welcome back, ${result.user.name}! Ready to manage your parts listings?`
+          : result.user.role === 'admin'
+          ? `Welcome back, Admin ${result.user.name}!`
           : `Welcome back to PartsFinda, ${result.user.name}!`;
 
-        // Show success alert
-        // alert(welcomeMessage);
-
-
-
+        // Show success toast
+        successmsg(welcomeMessage);
 
         // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
                          result.user.role === 'admin' ? '/admin/dashboard' : '/my-requests';
 
-        // console.log('🔄 Redirecting to:', redirectTo);
+        console.log('🔄 Redirecting to:', redirectTo);
 
-        // Use window.location for immediate redirect
-        window.location.href = redirectTo;
-
-        // successmsg(welcomeMessage);
+        // Small delay for toast to show
+        setTimeout(() => {
+          window.location.href = redirectTo;
+        }, 1000);
 
       } else {
         // API success: false case
@@ -113,7 +112,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('❌ Login error:', err);
       
-      // Specific error messages based on error type
+      // ✅ UPDATED ERROR HANDLING - New API responses ke according
       if (err.message.includes('Network') || err.message.includes('fetch')) {
         setError('🌐 Network error: Please check your internet connection and try again.');
       } 
@@ -129,11 +128,26 @@ export default function LoginPage() {
       else if (err.message.includes('Password must be at least 6 characters')) {
         setError('🔒 Password must be at least 6 characters long.');
       }
+      
+      // ✅ NEW: Seller specific errors
       else if (err.message.includes('Please verify your email first')) {
         setError('📨 Please verify your email address before logging in. Check your inbox for verification link.');
       }
+      else if (err.message.includes('Your account is under review')) {
+        setError('⏳ Your seller account is under review. You will receive an approval email within 1-2 business days. Thank you for your patience!');
+      }
+      
+      // ✅ NEW: Buyer specific errors
+      else if (err.message.includes('verify your email first')) {
+        setError('📧 Please verify your email address to continue. Check your inbox for verification link.');
+      }
+      
+      // ✅ HTTP Status based errors
       else if (err.message.includes('HTTP 401')) {
         setError('❌ Invalid email or password. Please try again.');
+      }
+      else if (err.message.includes('HTTP 403')) {
+        setError('🚫 Access denied. Please complete the verification process or contact support.');
       }
       else if (err.message.includes('HTTP 500')) {
         setError('⚡ Server error: Please try again in a few moments.');
@@ -141,8 +155,8 @@ export default function LoginPage() {
       else if (err.message.includes('HTTP 400')) {
         setError('❌ Invalid request. Please check your input and try again.');
       }
-      else if (err.message.includes('Login failed')) {
-        setError('❌ Login failed. Please try again.');
+      else if (err.message.includes('Invalid user role')) {
+        setError('🔐 Account configuration error. Please contact support.');
       }
       else {
         setError('❌ Unable to sign in. Please try again.');
@@ -161,10 +175,11 @@ export default function LoginPage() {
     if (error) setError('');
   };
 
-  const handleDemoLogin = (role: 'buyer' | 'seller') => {
+  const handleDemoLogin = (role: 'buyer' | 'seller' | 'admin') => {
     const demoAccounts = {
       buyer: { email: 'buyer@demo.com', password: 'demo123' },
-      seller: { email: 'seller@demo.com', password: 'demo123' }
+      seller: { email: 'seller@demo.com', password: 'demo123' },
+      admin: { email: 'admin@demo.com', password: 'demo123' }
     };
     
     setFormData(demoAccounts[role]);
@@ -197,36 +212,44 @@ export default function LoginPage() {
         </div>
 
         {/* Info Box */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-semibold text-green-800 mb-2">New to PartsFinda?</h3>
-          <p className="text-sm text-green-700 mb-2">
-            Create an account to start <strong>buying</strong> or <strong>selling</strong> auto parts in Jamaica.
-          </p>
-          <p className="text-sm text-green-700">
-            For suppliers: Apply as a <strong>verified seller</strong> to list your products and reach buyers faster.
-          </p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">Account Verification Info</h3>
+          <ul className="text-sm text-blue-700 space-y-1">
+            <li>• <strong>Buyers:</strong> Email verification required</li>
+            <li>• <strong>Sellers:</strong> Email + Management approval required</li>
+            <li>• <strong>Admins:</strong> Direct access</li>
+          </ul>
         </div>
 
-        {/* Demo Accounts (Optional) */}
-        {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-semibold text-blue-800 mb-2">Demo Accounts</h3>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('buyer')}
-              className="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm hover:bg-blue-200 transition-colors"
-            >
-              Use Buyer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('seller')}
-              className="flex-1 bg-green-100 text-green-700 px-3 py-2 rounded text-sm hover:bg-green-200 transition-colors"
-            >
-              Use Seller Demo
-            </button>
+        {/* Demo Accounts (Development Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Demo Accounts (Development)</h3>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('buyer')}
+                className="flex-1 bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-sm hover:bg-yellow-200 transition-colors"
+              >
+                Buyer Demo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('seller')}
+                className="flex-1 bg-green-100 text-green-700 px-3 py-2 rounded text-sm hover:bg-green-200 transition-colors"
+              >
+                Seller Demo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDemoLogin('admin')}
+                className="flex-1 bg-red-100 text-red-700 px-3 py-2 rounded text-sm hover:bg-red-200 transition-colors"
+              >
+                Admin Demo
+              </button>
+            </div>
           </div>
-        </div> */}
+        )}
 
         {/* Login Form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -275,7 +298,7 @@ export default function LoginPage() {
 
           {/* Error Display */}
           {error && (
-            <div className="rounded-md bg-red-50 p-4 border border-red-200 animate-pulse">
+            <div className="rounded-md bg-red-50 p-4 border border-red-200">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -315,9 +338,9 @@ export default function LoginPage() {
           {/* Seller Registration Link */}
           <div className="text-center pt-4 border-t border-gray-200">
             <span className="text-sm text-gray-600">
-              Are you a seller?{' '}
+              Want to sell auto parts?{' '}
               <Link href="/auth/seller-signup" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Register as a seller here
+                Register as a seller
               </Link>
             </span>
           </div>
