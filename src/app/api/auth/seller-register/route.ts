@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
           website, specializations, vehicle_brands, part_categories,
           business_license, tax_certificate, insurance_certificate,
           membership_plan, agree_to_terms, agree_to_verification, email_verified,  verification_token, verification_token_expires, verified_status 
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
         RETURNING id, business_name, email, membership_plan`,
         [
           body.email,                    // $1 - email
