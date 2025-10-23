@@ -32,6 +32,7 @@ import MessageModal from '@/components/MessageModal';
 import ApplicationDetailsModal from '@/components/ApplicationDetailsModal';
 import { useToast } from '@/hooks/useToast'; 
 import AlertManager from '@/components/AlertManager';
+import { useWelcomeMessage } from '@/hooks/useWelcomeMessage';
 
 interface AdminStats {
   totalSuppliers: number;
@@ -146,25 +147,10 @@ export default function AdminDashboardPage() {
   const [selectedSupplierForMessage, setSelectedSupplierForMessage] = useState<any>(null);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
-
-
   const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
-  const [hasShownWelcome, setHasShownWelcome] = useState(false);
 
-  // ✅ Check if this is first time visit and show welcome message
-  useEffect(() => {
-    const authData = getAuthData();
-    
-    if (authData?.role === 'admin' && !hasShownWelcome) {
-      const welcomeMessage = `Welcome back, ${authData.name || 'Admin'}! Manage your platform effectively.`;
-      successmsg(welcomeMessage);
-      setHasShownWelcome(true);
-    }
-  }, [successmsg, hasShownWelcome]);
-  
-
-
-
+    //Welcome Messge First Time
+      useWelcomeMessage(); 
 
   // Check authentication on component mount 
   useEffect(() => {
