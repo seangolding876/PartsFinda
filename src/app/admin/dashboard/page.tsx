@@ -30,6 +30,7 @@ import {
 import ViewProfileModal from '@/components/ViewProfileModal';
 import MessageModal from '@/components/MessageModal';
 import ApplicationDetailsModal from '@/components/ApplicationDetailsModal';
+import { useToast } from '@/hooks/useToast'; 
 
 interface AdminStats {
   totalSuppliers: number;
@@ -144,6 +145,23 @@ export default function AdminDashboardPage() {
   const [selectedSupplierForMessage, setSelectedSupplierForMessage] = useState<any>(null);
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
+
+
+  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
+
+  // ✅ Check if this is first time visit and show welcome message
+  useEffect(() => {
+    const authData = getAuthData();
+    
+    if (authData?.role === 'seller' && !hasShownWelcome) {
+      const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
+      successmsg(welcomeMessage);
+      setHasShownWelcome(true);
+    }
+  }, [successmsg, hasShownWelcome]);
+  
+
 
 
 

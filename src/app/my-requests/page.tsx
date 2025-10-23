@@ -8,6 +8,7 @@ import QuotesTab from '@/components/dashboard/QuotesTab';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import RequestQuotesModal from '@/components/RequestQuotesModal';
 import EnhancedRequestQuotesModal from '@/components/EnhancedRequestQuotesModal';
+import { useToast } from '@/hooks/useToast'; 
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -74,6 +75,22 @@ function BuyerDashboard() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showQuotesModal, setShowQuotesModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
+    const [hasShownWelcome, setHasShownWelcome] = useState(false);
+  
+    // ✅ Check if this is first time visit and show welcome message
+    useEffect(() => {
+      const authData = getAuthData();
+      
+      if (authData?.role === 'seller' && !hasShownWelcome) {
+        const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
+        successmsg(welcomeMessage);
+        setHasShownWelcome(true);
+      }
+    }, [successmsg, hasShownWelcome]);
+    
+  
 
   // Fetch user's part requests
   const fetchUserRequests = async () => {
