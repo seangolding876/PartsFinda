@@ -26,29 +26,45 @@ interface SellerRegistrationData {
   specializations: string[];
   vehicleBrands: string[];
   partCategories: string[];
-  businessLicense?: string; // File URL
-  taxCertificate?: string;  // File URL
-  insuranceCertificate?: string; // File URL
+  businessLicense?: string;
+  taxCertificate?: string;
+  insuranceCertificate?: string;
   membershipPlan: string;
   agreeToTerms: boolean;
   agreeToVerification: boolean;
 }
 
 export async function POST(request: NextRequest) {
+  let step = 'initializing';
+  
   try {
+    step = 'parsing request';
+    console.log('🔵 STEP: Parsing request body...');
+    
     const body: SellerRegistrationData = await request.json();
     
     console.log('📝 Seller registration request received');
-    console.log('Received data:', {
+    console.log('📊 Received data summary:', {
       email: body.email,
       businessName: body.businessName,
       ownerName: body.ownerName,
-      businessLicense: body.businessLicense ? 'File URL provided' : 'No file',
-      taxCertificate: body.taxCertificate ? 'File URL provided' : 'No file',
-      insuranceCertificate: body.insuranceCertificate ? 'File URL provided' : 'No file'
+      businessType: body.businessType,
+      hasFiles: {
+        businessLicense: !!body.businessLicense,
+        taxCertificate: !!body.taxCertificate,
+        insuranceCertificate: !!body.insuranceCertificate
+      },
+      arrays: {
+        specializations: body.specializations?.length || 0,
+        vehicleBrands: body.vehicleBrands?.length || 0,
+        partCategories: body.partCategories?.length || 0
+      }
     });
 
     // Validate required fields
+    step = 'validating fields';
+    console.log('🔵 STEP: Validating required fields...');
+    
     const requiredFields = [
       'ownerName', 'email', 'phone', 'password',
       'businessName', 'businessType', 'yearsInBusiness',
@@ -56,45 +72,118 @@ export async function POST(request: NextRequest) {
       'membershipPlan', 'agreeToTerms', 'agreeToVerification'
     ];
 
-    for (const field of requiredFields) {
-      if (!body[field as keyof SellerRegistrationData]) {
-        return NextResponse.json(
-          { success: false, error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
-      }
+    const missingFields = requiredFields.filter(field => {
+      const value = body[field as keyof SellerRegistrationData];
+      return value === undefined || value === null || value === '';
+    });
+
+    if (missingFields.length > 0) {
+      console.log('❌ Missing required fields:', missingFields);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Missing required fields: ${missingFields.join(', ')}`,
+          step: 'validation',
+          missingFields: missingFields
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid email format',
+          step: 'validation'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate password length
+    if (body.password.length < 6) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Password must be at least 6 characters long',
+          step: 'validation'
+        },
+        { status: 400 }
+      );
     }
 
     // Check if email already exists
-    const existingUser = await query(
-      'SELECT id FROM users WHERE email = $1',
-      [body.email]
-    );
-
-    if (existingUser.rows.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'Email already registered' },
-        { status: 400 }
+    step = 'checking existing email';
+    console.log('🔵 STEP: Checking if email already exists...');
+    
+    try {
+      const existingUser = await query(
+        'SELECT id FROM users WHERE email = $1',
+        [body.email]
       );
+
+      if (existingUser.rows.length > 0) {
+        console.log('❌ Email already exists:', body.email);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Email already registered. Please use a different email address.',
+            step: 'email_check'
+          },
+          { status: 400 }
+        );
+      }
+    } catch (dbError: any) {
+      console.error('❌ Database error during email check:', dbError);
+      throw new Error(`Database connection failed during email check: ${dbError.message}`);
     }
 
     // Check if business name already exists
-    const existingBusiness = await query(
-      'SELECT id FROM users WHERE business_name = $1',
-      [body.businessName]
-    );
-
-    if (existingBusiness.rows.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'Business name already registered' },
-        { status: 400 }
+    step = 'checking existing business';
+    console.log('🔵 STEP: Checking if business name already exists...');
+    
+    try {
+      const existingBusiness = await query(
+        'SELECT id FROM users WHERE business_name = $1',
+        [body.businessName]
       );
+
+      if (existingBusiness.rows.length > 0) {
+        console.log('❌ Business name already exists:', body.businessName);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Business name already registered. Please use a different business name.',
+            step: 'business_check'
+          },
+          { status: 400 }
+        );
+      }
+    } catch (dbError: any) {
+      console.error('❌ Database error during business check:', dbError);
+      throw new Error(`Database connection failed during business check: ${dbError.message}`);
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(body.password, 12);
+    step = 'hashing password';
+    console.log('🔵 STEP: Hashing password...');
+    
+    let hashedPassword;
+    try {
+      hashedPassword = await bcrypt.hash(body.password, 12);
+      console.log('✅ Password hashed successfully');
+    } catch (hashError: any) {
+      console.error('❌ Password hashing error:', hashError);
+      throw new Error(`Password hashing failed: ${hashError.message}`);
+    }
 
     // Convert yearsInBusiness to integer
+    step = 'processing business data';
+    console.log('🔵 STEP: Processing business data...');
+    
     const yearsInBusinessMap: { [key: string]: number } = {
       '0-1': 1,
       '1-3': 2,
@@ -104,18 +193,31 @@ export async function POST(request: NextRequest) {
     };
     
     const yearsInBusinessInt = yearsInBusinessMap[body.yearsInBusiness] || 1;
+    console.log('✅ Years in business converted:', body.yearsInBusiness, '→', yearsInBusinessInt);
 
     // Generate verification token
     const verificationToken = generateVerificationToken();
-    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    // Prepare data for database insertion
+    step = 'preparing database data';
+    console.log('🔵 STEP: Preparing data for database insertion...');
+    
+    const businessLicenseValue = body.businessLicense || null;
+    const taxCertificateValue = body.taxCertificate || null;
+    const insuranceCertificateValue = body.insuranceCertificate || null;
+
+    console.log('📁 File URLs to be saved:', {
+      businessLicense: businessLicenseValue,
+      taxCertificate: taxCertificateValue,
+      insuranceCertificate: insuranceCertificateValue
+    });
+
+    // Database insertion
+    step = 'database insertion';
+    console.log('🔵 STEP: Inserting into database...');
+    
     try {
-      // Use actual file URLs from file upload
-      const businessLicenseValue = body.businessLicense || null;
-      const taxCertificateValue = body.taxCertificate || null;
-      const insuranceCertificateValue = body.insuranceCertificate || null;
-
-      // Create user account with seller role and all business details
       const userResult = await query(
         `INSERT INTO users (
           email, password, name, phone, role, owner_name, business_name, 
@@ -129,59 +231,65 @@ export async function POST(request: NextRequest) {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
         RETURNING id, business_name, email, membership_plan, owner_name`,
         [
-          body.email,                    // $1 - email
-          hashedPassword,                // $2 - password
-          body.ownerName,                // $3 - name (required field)
-          body.phone,                    // $4 - phone
-          'seller',                      // $5 - role (set to 'seller')
-          body.ownerName,                // $6 - owner_name
-          body.businessName,             // $7 - business_name
-          body.businessType,             // $8 - business_type
-          body.businessRegistrationNumber || null, // $9 - business_registration_number
-          body.taxId || null,            // $10 - tax_id
-          yearsInBusinessInt,            // $11 - years_in_business
-          body.address,                  // $12 - address
-          body.parish,                   // $13 - parish
-          body.city,                     // $14 - city
-          body.postalCode || null,       // $15 - postal_code
-          body.businessPhone,            // $16 - business_phone
-          body.businessEmail || null,    // $17 - business_email
-          body.website || null,          // $18 - website
-          JSON.stringify(body.specializations || []),    // $19 - specializations
-          JSON.stringify(body.vehicleBrands || []),      // $20 - vehicle_brands
-          JSON.stringify(body.partCategories || []),     // $21 - part_categories
-          businessLicenseValue,          // $22 - business_license (ACTUAL FILE URL)
-          taxCertificateValue,           // $23 - tax_certificate (ACTUAL FILE URL)
-          insuranceCertificateValue,     // $24 - insurance_certificate (ACTUAL FILE URL)
-          body.membershipPlan,           // $25 - membership_plan
-          body.agreeToTerms,             // $26 - agree_to_terms
-          body.agreeToVerification,      // $27 - agree_to_verification
-          false,                         // $28 - email_verified
-          verificationToken,             // $29 - verification_token
-          verificationTokenExpires,      // $30 - verification_token_expires
-          'pending_verification',        // $31 - status
-          new Date(),                    // $32 - created_at
-          new Date()                     // $33 - updated_at
+          body.email,
+          hashedPassword,
+          body.ownerName,
+          body.phone,
+          'seller',
+          body.ownerName,
+          body.businessName,
+          body.businessType,
+          body.businessRegistrationNumber || null,
+          body.taxId || null,
+          yearsInBusinessInt,
+          body.address,
+          body.parish,
+          body.city,
+          body.postalCode || null,
+          body.businessPhone,
+          body.businessEmail || null,
+          body.website || null,
+          JSON.stringify(body.specializations || []),
+          JSON.stringify(body.vehicleBrands || []),
+          JSON.stringify(body.partCategories || []),
+          businessLicenseValue,
+          taxCertificateValue,
+          insuranceCertificateValue,
+          body.membershipPlan,
+          body.agreeToTerms,
+          body.agreeToVerification,
+          false,
+          verificationToken,
+          verificationTokenExpires,
+          'pending_verification',
+          new Date(),
+          new Date()
         ]
       );
 
       const newUser = userResult.rows[0];
-
-      console.log('✅ Seller registration completed successfully');
-      console.log('New user ID:', newUser.id);
-      console.log('File URLs saved:', {
-        businessLicense: businessLicenseValue,
-        taxCertificate: taxCertificateValue,
-        insuranceCertificate: insuranceCertificateValue
-      });
+      console.log('✅ Database insertion successful. New user ID:', newUser.id);
 
       // Send verification email
-      await sendVerificationEmail(
-        newUser.email, 
-        newUser.owner_name, 
-        verificationToken
-      );
+      step = 'sending verification email';
+      console.log('🔵 STEP: Sending verification email...');
+      
+      try {
+        await sendVerificationEmail(
+          newUser.email, 
+          newUser.owner_name, 
+          verificationToken
+        );
+        console.log('✅ Verification email sent successfully');
+      } catch (emailError: any) {
+        console.error('❌ Email sending failed:', emailError);
+        // Don't throw error - email failure shouldn't break registration
+        // Just log it and continue
+      }
 
+      // Success response
+      console.log('🎉 Seller registration completed successfully!');
+      
       return NextResponse.json({
         success: true,
         message: 'Seller application submitted successfully.',
@@ -192,38 +300,78 @@ export async function POST(request: NextRequest) {
           membershipPlan: newUser.membership_plan,
           status: 'pending_verification',
           nextSteps: 'Please check your email to verify your account. Our team will review your application within 2-3 business days.'
+        },
+        debug: {
+          step: 'completed',
+          userId: newUser.id,
+          emailSent: true
         }
       });
 
-    } catch (error: any) {
-      console.error('❌ Database insertion error:', error);
+    } catch (dbError: any) {
+      console.error('❌ Database insertion error:', dbError);
       
-      // More specific error messages
-      if (error.message.includes('unique constraint')) {
+      // Specific database error handling
+      if (dbError.message.includes('unique constraint')) {
         return NextResponse.json(
-          { success: false, error: 'Email or business name already exists' },
+          { 
+            success: false, 
+            error: 'Email or business name already exists in our system.',
+            step: 'database_insertion',
+            details: 'Duplicate entry found'
+          },
           { status: 400 }
         );
       }
       
-      if (error.message.includes('null value in column "name"')) {
+      if (dbError.message.includes('null value in column')) {
+        const columnMatch = dbError.message.match(/null value in column "([^"]+)"/);
+        const columnName = columnMatch ? columnMatch[1] : 'unknown';
         return NextResponse.json(
-          { success: false, error: 'Name field is required' },
+          { 
+            success: false, 
+            error: `Required field '${columnName}' is missing.`,
+            step: 'database_insertion',
+            details: `Missing column: ${columnName}`
+          },
           { status: 400 }
         );
       }
       
-      throw error;
+      if (dbError.message.includes('connection') || dbError.message.includes('timeout')) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Database connection failed. Please try again.',
+            step: 'database_connection',
+            details: 'Database timeout or connection issue'
+          },
+          { status: 500 }
+        );
+      }
+      
+      throw new Error(`Database insertion failed: ${dbError.message}`);
     }
 
   } catch (error: any) {
-    console.error('❌ Seller registration error:', error);
-    
+    console.error('❌ CRITICAL ERROR in seller registration:');
+    console.error('Error step:', step);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error object:', error);
+
+    // Generic error response with detailed information
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to process seller registration',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Registration failed. Please try again or contact support.',
+        step: step,
+        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+        debugInfo: process.env.NODE_ENV === 'development' ? {
+          step: step,
+          message: error.message,
+          stack: error.stack
+        } : undefined
       },
       { status: 500 }
     );
@@ -234,7 +382,7 @@ function generateVerificationToken() {
   return uuidv4() + Date.now();
 }
 
-// Verification Email Template
+// Verification Email Template (same as before)
 async function sendVerificationEmail(userEmail: string, userName: string, token: string) {
   const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
 
