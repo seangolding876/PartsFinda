@@ -168,7 +168,7 @@ export default function Navigation() {
           ) : user ? (
             <div className="flex items-center gap-4">
               {/* Notifications + Messages */}
-              <div className="flex items-center gap-4">
+              {/* <div className="flex items-center gap-4">
                 <NotificationBell />
                 <Link
                   href="/messages"
@@ -177,7 +177,7 @@ export default function Navigation() {
                   <MessageSquare className="w-4 h-4" />
                   Messages
                 </Link>
-              </div>
+              </div> */}
 
               {/* User Info */}
               <div className="text-right">
@@ -269,7 +269,7 @@ export default function Navigation() {
             {user && (
               <>
                 {/* Notifications + Messages */}
-                <div className="flex items-center gap-3 mt-4">
+                {/* <div className="flex items-center gap-3 mt-4">
                   <NotificationBell />
                   <Link
                     href="/messages"
@@ -279,7 +279,7 @@ export default function Navigation() {
                     <MessageSquare className="w-4 h-4" />
                     Messages
                   </Link>
-                </div>
+                </div> */}
 
                 {/* Role Specific */}
                 {user.role === 'buyer' && (
