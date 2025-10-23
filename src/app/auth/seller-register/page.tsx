@@ -332,50 +332,18 @@ export default function SellerSignupPage() {
 
       if (result.success) {
         console.log('✅ Application submitted successfully:', result);
-
-
-      // Success page pe redirect with important info
-      const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
-      router.push(successUrl);
-
-
+        const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
+        router.push(successUrl);
       } else {
         throw new Error(result.error || 'Application submission failed');
       }
 
-   } catch (err: any) {
-  console.error('❌ Application submission error:', err);
-  
-  // Detailed error parsing
-  let errorMessage = 'Failed to submit application. Please try again.';
-  let errorDetails = '';
-  
-  if (err.message) {
-    // Try to parse JSON error message
-    try {
-      const errorData = JSON.parse(err.message);
-      errorMessage = errorData.error || errorMessage;
-      errorDetails = errorData.details || '';
-    } catch {
-      // If not JSON, use the message directly
-      errorMessage = err.message;
+    } catch (err: any) {
+      console.error('❌ Application submission error:', err);
+      setError(err.message || 'Failed to submit application. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }
-  
-  if (err.message.includes('Network') || err.message.includes('Failed to fetch')) {
-    errorMessage = 'Network error. Please check your internet connection.';
-  } else if (err.message.includes('500')) {
-    errorMessage = 'Server error. Please try again later.';
-  } else if (err.message.includes('Email already')) {
-    errorMessage = 'This email is already registered.';
-  } else if (err.message.includes('Business name already')) {
-    errorMessage = 'This business name is already registered.';
-  } else if (err.message.includes('Missing required fields')) {
-    errorMessage = 'Please fill all required fields.';
-  }
-  
-  setError(`${errorMessage} ${errorDetails ? `(Details: ${errorDetails})` : ''}`);
-}
   };
 
   const renderStepContent = () => {
