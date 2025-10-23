@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, 
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
-
+import { useToast } from '@/hooks/useToast'; 
 
 
 // Auth utility
@@ -67,6 +67,20 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
+
+  // ✅ Check if this is first time visit and show welcome message
+  useEffect(() => {
+    const authData = getAuthData();
+    
+    if (authData?.role === 'seller' && !hasShownWelcome) {
+      const welcomeMessage = `Welcome back, ${authData.name}! Ready to manage your parts listings?`;
+      successmsg(welcomeMessage);
+      setHasShownWelcome(true);
+    }
+  }, [successmsg, hasShownWelcome]);
+  
 
   // Fetch data based on active tab
   useEffect(() => {
