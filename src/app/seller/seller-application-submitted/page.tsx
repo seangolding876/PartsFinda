@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const runtime = 'edge'; // optional, for better performance
+
 'use client';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
