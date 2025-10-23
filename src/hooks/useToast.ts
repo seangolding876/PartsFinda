@@ -6,29 +6,34 @@ import { useCallback } from 'react';
 type AlertType = 'successmsg' | 'errormsg' | 'warningmsg' | 'infomsg';
 
 export const useToast = () => {
-  const showToast = useCallback((message: string, type: AlertType = 'infomsg') => {
+  const showToast = useCallback((message: string, type: AlertType = 'infomsg', duration = 10000) => {
     if (typeof window !== 'undefined' && (window as any).showAlert) {
-      (window as any).showAlert(message, type);
+      (window as any).showAlert(message, type, duration);
     } else {
       console.log('Custom alert function not available');
       // Fallback to native alert
-      if (type === 'errormsg') {
-        alert(`❌ ${message}`);
-      } else if (type === 'warningmsg') {
-        alert(`⚠️ ${message}`);
-      } else if (type === 'successmsg') {
-        alert(`✅ ${message}`);
-      } else {
-        alert(`ℹ️ ${message}`);
-      }
+      const icons = {
+        successmsg: '✅',
+        errormsg: '❌', 
+        warningmsg: '⚠️',
+        infomsg: 'ℹ️'
+      };
+      alert(`${icons[type]} ${message}`);
     }
   }, []);
 
-  // Convenience methods
-  const successmsg = useCallback((message: string) => showToast(message, 'successmsg'), [showToast]);
-  const errormsg = useCallback((message: string) => showToast(message, 'errormsg'), [showToast]);
-  const warningmsg = useCallback((message: string) => showToast(message, 'warningmsg'), [showToast]);
-  const infomsg = useCallback((message: string) => showToast(message, 'infomsg'), [showToast]);
+  // Convenience methods with 10s default
+  const successmsg = useCallback((message: string, duration = 10000) => 
+    showToast(message, 'successmsg', duration), [showToast]);
+  
+  const errormsg = useCallback((message: string, duration = 10000) => 
+    showToast(message, 'errormsg', duration), [showToast]);
+  
+  const warningmsg = useCallback((message: string, duration = 10000) => 
+    showToast(message, 'warningmsg', duration), [showToast]);
+  
+  const infomsg = useCallback((message: string, duration = 10000) => 
+    showToast(message, 'infomsg', duration), [showToast]);
 
   return {
     showToast,
