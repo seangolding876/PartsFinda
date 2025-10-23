@@ -3,8 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from '@/components/Navigation';
 import { AuthProvider } from '@/context/AuthContext';
-import { AlertProvider } from '@/context/AlertContext';
-import AlertContainer from '@/components/AlertContainer';
+import AlertManager from "@/components/AlertManager";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,14 +22,13 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         {/* ✅ Navigation ko AuthProvider ke ANDAR rakhein */}
-        <AlertProvider>
         <AuthProvider>
           <Navigation />
           <main className="min-h-screen">
             {children}
+             <AlertManager />
           </main>
         </AuthProvider>
-        </AlertProvider>
 
         {/* Footer AuthProvider ke bahar bhi ho sakta hai */}
         <footer className="bg-gray-900 text-white py-12 mt-20">
