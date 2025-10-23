@@ -2,9 +2,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/hooks/useToast'; 
 
 export default function LoginPage() {
   const router = useRouter();
+  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -88,6 +90,9 @@ export default function LoginPage() {
 
         // Show success alert
         alert(welcomeMessage);
+
+        successmsg(welcomeMessage);
+
 
         // Redirect based on role
         const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :

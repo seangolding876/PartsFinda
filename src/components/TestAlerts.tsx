@@ -19,8 +19,7 @@ export default function TestAlerts() {
       <div className="space-x-2">
         <button 
           onClick={() => testAlert('success')}
-          className="bg-green-500 text-white px-4 py-2 rounded"
-        >
+          className="bg-green-500 text-white px-4 py-2 rounded">
           Success Alert
         </button>
         
