@@ -54,9 +54,9 @@ export default function Navigation() {
           <Link href="/request-part" className="hover:text-blue-600 transition-colors">
             Request Part
           </Link>
-          <Link href="/vin-decoder" className="hover:text-blue-600 transition-colors">
+          {/* <Link href="/vin-decoder" className="hover:text-blue-600 transition-colors">
             VIN Decoder
-          </Link>
+          </Link> */}
           <Link href="/contact" className="hover:text-blue-600 transition-colors">
             Contact
           </Link>
@@ -244,9 +244,9 @@ export default function Navigation() {
             <Link href="/request-part" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
               Request Part
             </Link>
-            <Link href="/vin-decoder" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+            {/* <Link href="/vin-decoder" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
               VIN Decoder
-            </Link>
+            </Link> */}
             <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
               Contact
             </Link>

@@ -1,615 +1,379 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import {
+  Menu,
+  X,
+  MessageSquare,
+  Settings,
+  Users,
+  Car,
+  Crown,
+  Bell,
+  BarChart3,
+  ClipboardList,
+  ChevronDown,
+} from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
+import { Dialog } from '@headlessui/react';
 
-// Auth utility functions
-const getAuthData = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const authData = localStorage.getItem('authData');
-    return authData ? JSON.parse(authData) : null;
-  } catch (error) {
-    console.error('❌ Error getting auth data:', error);
-    return null;
-  }
-};
+export default function Navigation() {
+  const { user, logout, isLoading } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
-//Send Email Demo
-// useEffect(() => {
-//   const sendNotificationEmail = async () => {
-//     try {
-//       const response = await fetch('/api/send-mail', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({
-//           to: 'adnan.shafi91@gmail.com',
-//           subject: 'PartsFinda Page Opened',
-//           html: `
-//             <div style="font-family: Arial; padding: 16px;">
-//               <h2>🚀 Page Opened</h2>
-//               <p>This email was automatically triggered when someone opened the Part Requests page.</p>
-//               <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
-//             </div>
-//           `,
-//         }),
-//       });
-
-//       const result = await response.json();
-//       console.log('📧 Mail result:', result);
-//     } catch (error) {
-//       console.error('❌ Failed to send email:', error);
-//     }
-//   };
-
-//   sendNotificationEmail();
-// }, []);
-
-const isAuthenticated = () => {
-  const authData = getAuthData();
-  if (!authData?.token) {
-    console.log('❌ No authentication token found');
-    return false;
-  }
-  return true;
-};
-
-interface Make {
-  id: string;
-  name: string;
-}
-
-interface Model {
-  id: string;
-  name: string;
-}
-
-interface FormData {
-  partName: string;
-  partNumber: string;
-  vehicleYear: string;
-  makeId: string;
-  modelId: string;
-  description: string;
-  condition: 'new' | 'used' | 'refurbished' | 'any';
-  budget: string;
-  parish: string;
-  urgency: 'low' | 'medium' | 'high';
-}
-
-function RequestPartForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [makes, setMakes] = useState<Make[]>([]);
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [error, setError] = useState<string>('');
-  
-  const [formData, setFormData] = useState<FormData>({
-    partName: '',
-    partNumber: '',
-    vehicleYear: '',
-    makeId: '',
-    modelId: '',
-    description: '',
-    condition: 'any',
-    budget: '',
-    parish: '',
-    urgency: 'medium',
-  });
-
-  // Check authentication on component mount
-  useEffect(() => {
-    const checkAuth = () => {
-      if (!isAuthenticated()) {
-        console.log('🚫 User not authenticated, redirecting to login');
-        alert('Please login to submit a part request');
-        router.push('/auth/login');
-      } else {
-        console.log('✅ User authenticated');
-        setAuthChecked(true);
-        fetchMakes();
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  // Fetch models when make is selected
-  useEffect(() => {
-    if (formData.makeId) {
-      console.log(`🔄 Make selected: ${formData.makeId}, fetching models...`);
-      fetchModels(formData.makeId);
-    } else {
-      setModels([]);
-      setFormData(prev => ({ ...prev, modelId: '' }));
-    }
-  }, [formData.makeId]);
-
-  const fetchMakes = async () => {
-    try {
-      setFetchLoading(true);
-      setError('');
-      console.log('🔄 Fetching makes...');
-      
-      const response = await fetch('/api/part-requests?action=getMakes');
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log(`✅ Loaded ${result.data.length} makes`);
-        setMakes(result.data);
-      } else {
-        console.error('❌ Failed to fetch makes:', result.error);
-        setError('Failed to load vehicle makes');
-      }
-    } catch (error) {
-      console.error('❌ Error fetching makes:', error);
-      setError('Failed to load vehicle makes. Please refresh the page.');
-    } finally {
-      setFetchLoading(false);
-    }
+  const handleLogout = () => {
+    logout();
+    setMobileMenuOpen(false);
   };
 
-  const fetchModels = async (makeId: string) => {
-    try {
-      setFetchLoading(true);
-      setError('');
-      console.log(`🔄 Fetching models for make: ${makeId}`);
-      
-      const response = await fetch(`/api/part-requests?action=getModels&makeId=${makeId}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log(`✅ Loaded ${result.data.length} models`);
-        setModels(result.data);
-      } else {
-        console.error('❌ Failed to fetch models:', result.error);
-        setModels([]);
-        setError('Failed to load vehicle models');
-      }
-    } catch (error) {
-      console.error('❌ Error fetching models:', error);
-      setModels([]);
-      setError('Failed to load vehicle models');
-    } finally {
-      setFetchLoading(false);
-    }
+  const handleUpgradeToPro = () => {
+    window.open('/seller/subscription', '_blank');
   };
 
-  const jamaicaParishes = [
-    'Kingston', 'St. Andrew', 'St. Thomas', 'Portland', 'St. Mary',
-    'St. Ann', 'Trelawny', 'St. James', 'Hanover', 'Westmoreland',
-    'St. Elizabeth', 'Manchester', 'Clarendon', 'St. Catherine'
-  ];
-
-  const validateForm = (): boolean => {
-    const requiredFields: (keyof FormData)[] = [
-      'partName', 'vehicleYear', 'makeId', 'modelId', 'description', 'parish'
-    ];
-
-    const missingFields = requiredFields.filter(field => !formData[field]);
-    
-    if (missingFields.length > 0) {
-      const fieldNames = {
-        partName: 'Part Name',
-        vehicleYear: 'Vehicle Year',
-        makeId: 'Make',
-        modelId: 'Model',
-        description: 'Description',
-        parish: 'Parish'
-      };
-      
-      const missingFieldNames = missingFields.map(field => fieldNames[field]);
-      setError(`Please fill in all required fields: ${missingFieldNames.join(', ')}`);
-      return false;
-    }
-
-    if (formData.vehicleYear) {
-      const year = parseInt(formData.vehicleYear);
-      const currentYear = new Date().getFullYear();
-      if (year < 1900 || year > currentYear + 1) {
-        setError('Please select a valid vehicle year');
-        return false;
-      }
-    }
-
-    if (formData.budget && parseFloat(formData.budget) < 0) {
-      setError('Budget cannot be negative');
-      return false;
-    }
-
-    setError('');
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isAuthenticated()) {
-      alert('Please login to submit a part request');
-      router.push('/auth/login');
-      return;
-    }
-
-    // Validate form
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    
-    try {
-      const authData = getAuthData();
-      
-      if (!authData?.token) {
-        throw new Error('No authentication token found');
-      }
-
-      console.log('🔄 Submitting part request...', formData);
-
-      // Prepare request data
-      const requestData = {
-        ...formData,
-        vehicleYear: parseInt(formData.vehicleYear),
-        budget: formData.budget ? parseFloat(formData.budget) : undefined,
-      };
-
-      console.log('📦 Sending request data:', requestData);
-
-      const response = await fetch('/api/part-requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const result = await response.json();
-      console.log('📨 API Response:', result);
-
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}`);
-      }
-
-      if (result.success) {
-        console.log('✅ Request submitted successfully:', result.data);
-        alert('✅ Request submitted successfully! Sellers will contact you soon.');
-        
-        // Reset form
-        setFormData({
-          partName: '',
-          partNumber: '',
-          vehicleYear: '',
-          makeId: '',
-          modelId: '',
-          description: '',
-          condition: 'any',
-          budget: '',
-          parish: '',
-          urgency: 'medium',
-        });
-        
-        // Redirect to requests page
-        router.push('/my-requests');
-      } else {
-        throw new Error(result.error || 'Failed to submit request');
-      }
-    } catch (error: any) {
-      console.error('❌ Error submitting request:', error);
-      
-      let errorMessage = 'Failed to submit request. Please try again.';
-      
-      if (error.message.includes('Authentication')) {
-        errorMessage = 'Authentication failed. Please login again.';
-        router.push('/auth/login');
-      } else if (error.message.includes('Invalid make') || error.message.includes('Invalid model')) {
-        errorMessage = 'Invalid vehicle selection. Please check your vehicle details.';
-      } else if (error.message.includes('Missing required')) {
-        errorMessage = 'Please fill in all required fields.';
-      }
-      
-      setError(errorMessage);
-      alert(`❌ ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (error) {
-      setError('');
-    }
-  };
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
+  // ✅ Condition: Request Part tabhi show karega jab:
+  // 1. User logged out ho (token na ho) - YA
+  // 2. User logged in ho aur buyer role ka ho
+  const shouldShowRequestPart = !user || user?.role === 'buyer';
 
   return (
-
-    
-    <div className="min-h-screen bg-gray-50 py-8">
-
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Request Auto Parts</h1>
-            <p className="text-gray-600">
-              Tell us what you need and get competitive quotes from verified sellers
-            </p>
+    <nav className="bg-white border-b sticky top-0 z-50">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2">
+          <div className="bg-blue-600 text-white px-3 py-1 rounded font-bold text-xl">
+            PartsFinda
           </div>
+          <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs font-semibold">
+            Jamaica
+          </div>
+        </Link>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/" className="hover:text-blue-600 transition-colors">
+            Home
+          </Link>
+          
+          {/* ✅ Request Part Condition */}
+          {shouldShowRequestPart && (
+            <Link href="/request-part" className="hover:text-blue-600 transition-colors">
+              Request Part
+            </Link>
+          )}
+          
+          {/* <Link href="/vin-decoder" className="hover:text-blue-600 transition-colors">
+            VIN Decoder
+          </Link> */}
+          <Link href="/contact" className="hover:text-blue-600 transition-colors">
+            Contact
+          </Link>
+
+          {user && (
+            <>
+              {/* Common for all users */}
+              <Link
+                href="/messages"
+                className="hover:text-blue-600 flex items-center gap-1 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Messages
+              </Link>
+
+              {/* Buyer */}
+              {user.role === 'buyer' && (
+                <Link href="/my-requests" className="hover:text-blue-600 transition-colors">
+                  My Requests
+                </Link>
+              )}
+
+              {/* Seller */}
+              {user.role === 'seller' && (
+                <>
+                  <Link href="/seller/dashboard" className="hover:text-blue-600 transition-colors">
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleUpgradeToPro}
+                    className="hover:text-blue-600 flex items-center gap-1 transition-colors bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    <Crown className="w-4 h-4" />
+                    Upgrade to Pro
+                  </button>
+                </>
+              )}
+
+              {/* Admin Dropdown */}
+              {user.role === 'admin' && (
+                <div className="relative">
+                  <button
+                    onClick={() => setAdminOpen(!adminOpen)}
+                    className="flex items-center gap-1 hover:text-blue-600 transition-colors font-medium"
+                  >
+                    <Users className="w-4 h-4" />
+                    Admin
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${
+                        adminOpen ? 'rotate-180' : 'rotate-0'
+                      }`}
+                    />
+                  </button>
+
+                  {adminOpen && (
+                    <div className="absolute left-0 mt-2 w-52 bg-white border shadow-lg rounded-lg py-2 animate-fadeIn z-50">
+                      <Link
+                        href="/admin/dashboard"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <BarChart3 className="w-4 h-4" /> Dashboard
+                      </Link>
+                      <Link
+                        href="/admin/cars"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Car className="w-4 h-4" /> Manage Cars
+                      </Link>
+                      <Link
+                        href="/queue-monitor"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Users className="w-4 h-4" /> Queue Monitoring
+                      </Link>
+                      <Link
+                        href="/admin/reports"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <ClipboardList className="w-4 h-4" /> Reports
+                      </Link>
+                      <Link
+                        href="/admin/settings"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-sm"
+                      >
+                        <Settings className="w-4 h-4" /> Settings
+                      </Link>
+                    </div>
+                  )}
                 </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    {error}
-                  </h3>
-                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Right Side (Desktop) */}
+        <div className="hidden md:flex items-center gap-4">
+          {isLoading ? (
+            <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
+          ) : user ? (
+            <div className="flex items-center gap-4">
+              {/* Notifications + Messages */}
+              <div className="flex items-center gap-4">
+                <NotificationBell />
+                <Link
+                  href="/messages"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Messages
+                </Link>
+              </div>
+
+              {/* User Info */}
+              <div className="text-right">
+                <span className="text-sm text-gray-600">
+                  Welcome, <span className="font-semibold">{user.name}</span>
+                </span>
+                <span className="block text-xs text-blue-600 capitalize">
+                  ({user.role})
+                </span>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/auth/login"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded transition-colors font-medium"
+              >
+                Sign In
+              </Link>
+              <div className="flex gap-2">
+                <Link
+                  href="/auth/register"
+                  className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  Sign Up
+                </Link>
+                <Link
+                  href="/auth/seller-register"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                >
+                  Become Supplier
+                </Link>
               </div>
             </div>
           )}
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Part Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-4 text-gray-800">Part Information</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Part Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="partName"
-                    value={formData.partName}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="e.g., Brake Pads, Alternator, Headlights"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Part Number (if known)</label>
-                  <input
-                    type="text"
-                    name="partNumber"
-                    value={formData.partNumber}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="OEM or aftermarket number"
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Mobile Menu Button */}
+        <button
+          className="md:hidden p-2 text-gray-600 hover:text-blue-600"
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </div>
 
-            {/* Vehicle Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-4 text-gray-800">Vehicle Information</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Year <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="vehicleYear"
-                    value={formData.vehicleYear}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="">Select Year</option>
-                    {Array.from({ length: 30 }, (_, i) => 2024 - i).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Make <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="makeId"
-                    value={formData.makeId}
-                    onChange={handleChange}
-                    required
-                    disabled={fetchLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">{fetchLoading ? 'Loading makes...' : 'Select Make'}</option>
-                    {makes.map(make => (
-                      <option key={make.id} value={make.id}>{make.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Model <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="modelId"
-                    value={formData.modelId}
-                    onChange={handleChange}
-                    required
-                    disabled={!formData.makeId || fetchLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {!formData.makeId ? 'Select make first' : fetchLoading ? 'Loading models...' : 'Select Model'}
-                    </option>
-                    {models.map(model => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium mb-2">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                required
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Please provide detailed information about the part you need, including any specific requirements, symptoms, or additional context that might help sellers understand your request better..."
-              />
-            </div>
-
-            {/* Additional Details */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-lg mb-4 text-gray-800">Additional Details</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Condition Preference</label>
-                  <select
-                    name="condition"
-                    value={formData.condition}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="any">Any Condition</option>
-                    <option value="new">New</option>
-                    <option value="used">Used</option>
-                    <option value="refurbished">Refurbished</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Budget (JMD)</label>
-                  <input
-                    type="number"
-                    name="budget"
-                    value={formData.budget}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    placeholder="e.g., 5000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Parish <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="parish"
-                    value={formData.parish}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="">Select Parish</option>
-                    {jamaicaParishes.map(parish => (
-                      <option key={parish} value={parish}>{parish}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              {/* Urgency Field */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-2">Urgency</label>
-                <div className="flex space-x-4">
-                  {(['low', 'medium', 'high'] as const).map(level => (
-                    <label key={level} className="flex items-center">
-                      <input
-                        type="radio"
-                        name="urgency"
-                        value={level}
-                        checked={formData.urgency === level}
-                        onChange={handleChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="ml-2 text-sm text-gray-700 capitalize">{level}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting Request...
-                </span>
-              ) : (
-                'Submit Request'
-              )}
+      {/* 📱 Mobile Drawer Menu */}
+      <Dialog
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
+        <Dialog.Panel className="fixed inset-y-0 left-0 w-80 bg-white p-6 overflow-y-auto shadow-xl">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-bold text-blue-600">PartsFinda Menu</h2>
+            <button onClick={() => setMobileMenuOpen(false)}>
+              <X className="w-6 h-6 text-gray-600" />
             </button>
+          </div>
 
-            {/* Required Fields Note */}
-            <div className="text-center">
-              <p className="text-sm text-gray-500">
-                Fields marked with <span className="text-red-500">*</span> are required
-              </p>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
+          <div className="space-y-4">
+            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+              Home
+            </Link>
+            
+            {/* ✅ Request Part Condition (Mobile) */}
+            {shouldShowRequestPart && (
+              <Link href="/request-part" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                Request Part
+              </Link>
+            )}
+            
+            {/* <Link href="/vin-decoder" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+              VIN Decoder
+            </Link> */}
+            <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+              Contact
+            </Link>
 
-export default function RequestPartPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading Request Form...</p>
-        </div>
-      </div>
-    }>
-      <RequestPartForm />
-    </Suspense>
+            {user && (
+              <>
+                {/* Notifications + Messages */}
+                <div className="flex items-center gap-3 mt-4">
+                  <NotificationBell />
+                  <Link
+                    href="/messages"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Messages
+                  </Link>
+                </div>
+
+                {/* Role Specific */}
+                {user.role === 'buyer' && (
+                  <Link href="/my-requests" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                    My Requests
+                  </Link>
+                )}
+
+                {user.role === 'seller' && (
+                  <>
+                    <Link href="/seller/dashboard" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={handleUpgradeToPro}
+                      className="w-full text-left mt-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-3 py-2 rounded-full text-sm font-medium"
+                    >
+                      <Crown className="inline w-4 h-4 mr-1" />
+                      Upgrade to Pro
+                    </button>
+                  </>
+                )}
+
+                {/* 🧭 Admin Context Dropdown */}
+                {user.role === 'admin' && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setAdminOpen(!adminOpen)}
+                      className="w-full flex justify-between items-center text-left font-medium hover:text-blue-600"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Admin Panel
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${
+                          adminOpen ? 'rotate-180' : 'rotate-0'
+                        }`}
+                      />
+                    </button>
+
+                    {adminOpen && (
+                      <div className="mt-2 ml-4 border-l pl-3 space-y-2 animate-slideDown">
+                        <Link href="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <BarChart3 className="w-4 h-4" /> Dashboard
+                        </Link>
+                        <Link href="/admin/cars" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Car className="w-4 h-4" /> Manage Cars
+                        </Link>
+                        <Link href="/queue-monitor" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Users className="w-4 h-4" /> Queue Monitoring
+                        </Link>
+                        <Link href="/admin/reports" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <ClipboardList className="w-4 h-4" /> Reports
+                        </Link>
+                        <Link href="/admin/settings" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 hover:text-blue-600">
+                          <Settings className="w-4 h-4" /> Settings
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* User Info */}
+                <div className="mt-6 text-sm text-gray-600">
+                  <div>Welcome, <span className="font-semibold">{user.name}</span></div>
+                  <div className="capitalize">({user.role})</div>
+                </div>
+
+                {/* Logout */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+
+            {!user && (
+              <div className="mt-4 space-y-2">
+                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                  Sign In
+                </Link>
+                <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)} className="block hover:text-blue-600">
+                  Sign Up
+                </Link>
+                <Link href="/auth/seller-register" onClick={() => setMobileMenuOpen(false)} className="block text-green-600 hover:text-green-700 font-semibold">
+                  Become Supplier
+                </Link>
+              </div>
+            )}
+          </div>
+        </Dialog.Panel>
+      </Dialog>
+    </nav>
   );
 }
