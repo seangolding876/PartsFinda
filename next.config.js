@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    output: 'export',
   reactStrictMode: true,
-  trailingSlash: true, // ✅ Change to true for better compatibility
+  trailingSlash: false,
 
   experimental: {
     serverComponentsExternalPackages: ['nodemailer', 'pg'],
   },
 
   images: {
-    unoptimized: true, // ✅ ADD THIS for static export
     remotePatterns: [
       {
         protocol: 'https',
@@ -21,28 +21,32 @@ const nextConfig = {
     ],
   },
 
-  // ✅ REMOVE env object - Next.js automatically handles env variables
-  // ✅ KEEP ESLint and TypeScript settings
+  // Environment variable validation
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  },
+
+  // ✅ IMPORTANT: Skip ESLint during production builds
   eslint: {
     ignoreDuringBuilds: true,
   },
 
+  // ✅ IMPORTANT: Skip TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // ✅ Choose ONE output option:
+  // ✅ IMPORTANT: Disable static generation for dynamic APIs
+  output: 'standalone',
 
-  // OPTION A: For static hosting (Recommended for now)
-  output: 'export',
-
-  // OR
-
-  // OPTION B: For Node.js server
-  // output: 'standalone',
-
+  // Disable x-powered-by header for security
   poweredByHeader: false,
 
+  // ✅ Add this to handle API routes properly
   async headers() {
     return [
       {
