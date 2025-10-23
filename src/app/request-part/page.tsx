@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/hooks/useToast';
 
 // Auth utility functions
 const getAuthData = () => {
@@ -86,6 +87,7 @@ function RequestPartForm() {
   const [fetchLoading, setFetchLoading] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [error, setError] = useState<string>('');
+  const { successmsg, infomsg, errormsg } = useToast();
   
   const [formData, setFormData] = useState<FormData>({
     partName: '',
@@ -104,11 +106,12 @@ function RequestPartForm() {
   useEffect(() => {
     const checkAuth = () => {
       if (!isAuthenticated()) {
-        console.log('🚫 User not authenticated, redirecting to login');
-        alert('Please login to submit a part request');
+        // console.log('🚫 User not authenticated, redirecting to login');
+        // alert('Please login to submit a part request');
+        errormsg('Please login to submit a part request');
         router.push('/auth/login');
       } else {
-        console.log('✅ User authenticated');
+        // console.log('✅ User authenticated');
         setAuthChecked(true);
         fetchMakes();
       }
@@ -120,7 +123,7 @@ function RequestPartForm() {
   // Fetch models when make is selected
   useEffect(() => {
     if (formData.makeId) {
-      console.log(`🔄 Make selected: ${formData.makeId}, fetching models...`);
+      // console.log(`🔄 Make selected: ${formData.makeId}, fetching models...`);
       fetchModels(formData.makeId);
     } else {
       setModels([]);
@@ -132,7 +135,7 @@ function RequestPartForm() {
     try {
       setFetchLoading(true);
       setError('');
-      console.log('🔄 Fetching makes...');
+      // console.log('🔄 Fetching makes...');
       
       const response = await fetch('/api/part-requests?action=getMakes');
       
@@ -143,14 +146,14 @@ function RequestPartForm() {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`✅ Loaded ${result.data.length} makes`);
+        // console.log(`✅ Loaded ${result.data.length} makes`);
         setMakes(result.data);
       } else {
         console.error('❌ Failed to fetch makes:', result.error);
         setError('Failed to load vehicle makes');
       }
     } catch (error) {
-      console.error('❌ Error fetching makes:', error);
+      // console.error('❌ Error fetching makes:', error);
       setError('Failed to load vehicle makes. Please refresh the page.');
     } finally {
       setFetchLoading(false);
@@ -161,7 +164,7 @@ function RequestPartForm() {
     try {
       setFetchLoading(true);
       setError('');
-      console.log(`🔄 Fetching models for make: ${makeId}`);
+      // console.log(`🔄 Fetching models for make: ${makeId}`);
       
       const response = await fetch(`/api/part-requests?action=getModels&makeId=${makeId}`);
       
@@ -172,15 +175,16 @@ function RequestPartForm() {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`✅ Loaded ${result.data.length} models`);
+        // console.log(`✅ Loaded ${result.data.length} models`);
         setModels(result.data);
       } else {
-        console.error('❌ Failed to fetch models:', result.error);
+        // console.error('❌ Failed to fetch models:', result.error);
+        errormsg('Failed to load vehicle models', result.error);
         setModels([]);
         setError('Failed to load vehicle models');
       }
     } catch (error) {
-      console.error('❌ Error fetching models:', error);
+       errormsg('Failed to load vehicle models', error);
       setModels([]);
       setError('Failed to load vehicle models');
     } finally {
@@ -238,7 +242,7 @@ function RequestPartForm() {
     e.preventDefault();
     
     if (!isAuthenticated()) {
-      alert('Please login to submit a part request');
+      errormsg('Please login to submit a part request');
       router.push('/auth/login');
       return;
     }
@@ -258,7 +262,7 @@ function RequestPartForm() {
         throw new Error('No authentication token found');
       }
 
-      console.log('🔄 Submitting part request...', formData);
+      // console.log('🔄 Submitting part request...', formData);
 
       // Prepare request data
       const requestData = {
@@ -267,7 +271,7 @@ function RequestPartForm() {
         budget: formData.budget ? parseFloat(formData.budget) : undefined,
       };
 
-      console.log('📦 Sending request data:', requestData);
+      // console.log('📦 Sending request data:', requestData);
 
       const response = await fetch('/api/part-requests', {
         method: 'POST',
@@ -279,15 +283,16 @@ function RequestPartForm() {
       });
 
       const result = await response.json();
-      console.log('📨 API Response:', result);
+      // console.log('📨 API Response:', result);
 
       if (!response.ok) {
         throw new Error(result.error || `HTTP ${response.status}`);
       }
 
       if (result.success) {
-        console.log('✅ Request submitted successfully:', result.data);
-        alert('✅ Request submitted successfully! Sellers will contact you soon.');
+        // console.log('✅ Request submitted successfully:', result.data);
+        // alert('✅ Request submitted successfully! Sellers will contact you soon.');
+        successmsg('Request submitted successfully! Sellers will contact you soon.');
         
         // Reset form
         setFormData({
@@ -309,7 +314,8 @@ function RequestPartForm() {
         throw new Error(result.error || 'Failed to submit request');
       }
     } catch (error: any) {
-      console.error('❌ Error submitting request:', error);
+      // console.error('❌ Error submitting request:', error);
+      errormsg('Failed to submit request', error);
       
       let errorMessage = 'Failed to submit request. Please try again.';
       
@@ -323,7 +329,8 @@ function RequestPartForm() {
       }
       
       setError(errorMessage);
-      alert(`❌ ${errorMessage}`);
+      // alert(`❌ ${errorMessage}`);
+      errormsg(`Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

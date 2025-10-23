@@ -31,6 +31,7 @@ import ViewProfileModal from '@/components/ViewProfileModal';
 import MessageModal from '@/components/MessageModal';
 import ApplicationDetailsModal from '@/components/ApplicationDetailsModal';
 import { useToast } from '@/hooks/useToast'; 
+import AlertManager from '@/components/AlertManager';
 
 interface AdminStats {
   totalSuppliers: number;
@@ -165,7 +166,7 @@ export default function AdminDashboardPage() {
 
 
 
-  // Check authentication on component mount - SIMPLE CHECK JAISA SELLER DASHBOARD MEIN HAI
+  // Check authentication on component mount 
   useEffect(() => {
     const authData = getAuthData();
     
@@ -1017,6 +1018,8 @@ const handleRejectApplication = async (applicationId: string) => {
   }}
   application={selectedApplication}
 />
+
+      <AlertManager />
     </div>
   );
 }
