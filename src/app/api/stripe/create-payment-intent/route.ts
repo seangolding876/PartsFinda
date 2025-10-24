@@ -51,15 +51,16 @@ export async function POST(request: NextRequest) {
     // Save payment record in database
     await query(
       `INSERT INTO payments (
-        user_id, stripe_payment_id, amount, currency, status, description
-      ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        user_id, stripe_payment_id, amount, currency, status, description, subscription_plan_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         userInfo.userId,
         paymentIntent.id,
         plan.price,
         'USD',
         'pending',
-        `Subscription: ${plan.plan_name}`
+        `Subscription: ${plan.plan_name}`,
+        planId
       ]
     );
 
