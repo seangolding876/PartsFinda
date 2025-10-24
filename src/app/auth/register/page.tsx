@@ -71,6 +71,10 @@ export default function RegisterPage() {
         // Success! Show message and redirect
         alert('Account created successfully! Welcome to PartsFinda.');
 
+
+        const successUrl = `/auth/buyer-welcome?email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(result.user.name)}`;
+        router.push(successUrl);
+
         // Small delay to ensure cookies are set
         setTimeout(() => {
           // Redirect to My Requests for buyers, or seller dashboard for sellers

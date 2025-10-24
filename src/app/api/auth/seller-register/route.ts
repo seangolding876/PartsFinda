@@ -230,10 +230,6 @@ try {
     );
   }
 }
-// ✅ YEH FUNCTIONS CODE KE END MEIN ADD KAREIN
-function generateVerificationToken() {
-  return uuidv4() + Date.now();
-}
 
 async function sendVerificationEmail(userEmail: string, userName: string, token: string) {
   const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
