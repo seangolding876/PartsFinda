@@ -45,13 +45,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch plan details
-    const planResult = await query('SELECT * FROM subscription_plans WHERE plan_id = $1', [planId]);
-    if (planResult.rows.length === 0) {
-      return NextResponse.json({ success: false, error: 'Invalid plan ID' }, { status: 400 });
-    }
+// Fetch plan details - make sure plan_name matches the constraint
+const planResult = await query('SELECT * FROM subscription_plans WHERE plan_id = $1', [planId]);
+if (planResult.rows.length === 0) {
+  return NextResponse.json({ success: false, error: 'Invalid plan ID' }, { status: 400 });
+}
 
-    const plan = planResult.rows[0];
+const plan = planResult.rows[0];
+
+// ✅ Validate plan name against allowed values
+const allowedPlans = ['Basic', 'Standard', 'Premium', 'Gold', 'Pro'];
+if (!allowedPlans.includes(plan.plan_name)) {
+  console.error('Invalid plan name:', plan.plan_name);
+  return NextResponse.json(
+    { success: false, error: 'Invalid subscription plan' },
+    { status: 400 }
+  );
+}
+
     console.log('Activating plan:', plan.plan_name);
 
     // Get user details for email
