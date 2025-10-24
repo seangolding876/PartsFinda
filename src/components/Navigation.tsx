@@ -94,46 +94,30 @@ export default function Navigation() {
   // Get plan icon and color
   const getPlanDetails = (planName) => {
     const plans = {
-      'Basic': { 
-        icon: Star, 
-        color: 'text-gray-600', 
-        bgColor: 'bg-gray-100', 
-        borderColor: 'border-gray-300',
-        gradient: 'from-gray-100 to-gray-200',
-        badgeColor: 'bg-gray-500'
-      },
-      'Standard': { 
-        icon: Zap, 
-        color: 'text-blue-600', 
-        bgColor: 'bg-blue-50', 
-        borderColor: 'border-blue-300',
-        gradient: 'from-blue-50 to-blue-100',
-        badgeColor: 'bg-blue-500'
-      },
-      'Premium': { 
-        icon: Crown, 
-        color: 'text-purple-600', 
-        bgColor: 'bg-purple-50', 
-        borderColor: 'border-purple-300',
-        gradient: 'from-purple-50 to-purple-100',
-        badgeColor: 'bg-purple-500'
-      },
-      'Gold': { 
-        icon: Award, 
-        color: 'text-yellow-600', 
-        bgColor: 'bg-yellow-50', 
-        borderColor: 'border-yellow-300',
-        gradient: 'from-yellow-50 to-yellow-100',
-        badgeColor: 'bg-yellow-500'
-      },
-      'Pro': { 
-        icon: Gem, 
-        color: 'text-red-600', 
-        bgColor: 'bg-red-50', 
-        borderColor: 'border-red-300',
-        gradient: 'from-red-50 to-red-100',
-        badgeColor: 'bg-red-500'
-      }
+     'Basic': { 
+    icon: Star, 
+    color: 'text-slate-500', 
+    bgColor: 'bg-slate-50', 
+    borderColor: 'border-slate-200',
+    gradient: 'from-slate-50 to-slate-100',
+    badgeColor: 'bg-slate-400'
+  },
+  'Premium': { 
+    icon: Crown, 
+    color: 'text-indigo-400', 
+    bgColor: 'bg-indigo-25', 
+    borderColor: 'border-indigo-200',
+    gradient: 'from-indigo-25 to-indigo-50',
+    badgeColor: 'bg-indigo-400'
+  },
+  'Enterprise': { 
+    icon: Gem, 
+    color: 'text-rose-400', 
+    bgColor: 'bg-rose-25', 
+    borderColor: 'border-rose-200',
+    gradient: 'from-rose-25 to-rose-50',
+    badgeColor: 'bg-rose-400'
+  }
     };
     
     return plans[planName] || plans['Basic'];
