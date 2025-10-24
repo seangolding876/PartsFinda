@@ -212,13 +212,14 @@ export default function LoginPage() {
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-semibold text-blue-800 mb-2">Account Verification Info</h3>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• <strong>Buyers:</strong> Email verification required</li>
-            <li>• <strong>Sellers:</strong> Email + Management approval required</li>
-            <li>• <strong>Admins:</strong> Direct access</li>
-          </ul>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-green-800 mb-2">New to PartsFinda?</h3>
+          <p className="text-sm text-green-700 mb-2">
+            Create an account to start <strong>buying</strong> or <strong>selling</strong> auto parts in Jamaica.
+          </p>
+          <p className="text-sm text-green-700">
+            For suppliers: Apply as a <strong>verified seller</strong> to list your products and reach buyers faster.
+          </p>
         </div>
 
         {/* Demo Accounts (Development Only) */}
