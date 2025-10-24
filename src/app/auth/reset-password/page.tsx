@@ -136,7 +136,7 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8">
           <Link href="/" className="flex items-center justify-center gap-2 mb-6">
             <div className="bg-purple-600 text-white px-3 py-1 rounded font-bold text-xl">
-              PartFinda
+              PartsFinda
             </div>
             <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs font-semibold">
               Jamaica
