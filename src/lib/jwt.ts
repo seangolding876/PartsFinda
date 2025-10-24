@@ -17,26 +17,26 @@ export interface JwtPayload {
 
 // Generate JWT token (server-side only)
 export function generateToken(payload: JwtPayload): string {
-  console.log('🔐 Generating token with payload:', payload);
+  // console.log('🔐 Generating token with payload:', payload);
 
   const options: jwt.SignOptions = {
-    expiresIn: '7d',
+    expiresIn: '3d',
     issuer: 'partsfinda-api',
     algorithm: 'HS256',
   };
 
   const token = jwt.sign(payload, JWT_SECRET, options);
-  console.log('✅ Token generated:', token);
+  // console.log('✅ Token generated:', token);
   return token;
 }
 
 // Verify JWT token (server-side only)
 export function verifyToken(token: string): JwtPayload {
   try {
-    console.log('🔍 Verifying token:', token);
+    // console.log('🔍 Verifying token:', token);
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    console.log('✅ Token verified successfully:', decoded);
+    // console.log('✅ Token verified successfully:', decoded);
 
     return decoded;
   } catch (error: any) {
