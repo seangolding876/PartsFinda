@@ -49,7 +49,7 @@ export default function RootLayout({
                 <ul className="space-y-2 text-gray-400">
                   <li><a href="/request-part" className="hover:text-white">Request a Part</a></li>
                   <li><a href="/my-requests" className="hover:text-white">My Requests</a></li>
-                  <li><a href="/vin-decoder" className="hover:text-white">VIN Decoder</a></li>
+                  {/* <li><a href="/vin-decoder" className="hover:text-white">VIN Decoder</a></li> */}
                   <li><a href="/contact" className="hover:text-white">Contact Us</a></li>
                   <li><a href="/about" className="hover:text-white">About Us</a></li>
                   <li><a href="/faq" className="hover:text-white">FAQ</a></li>

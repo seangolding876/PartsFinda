@@ -338,11 +338,11 @@ export default function Navigation() {
                           Manage Parts
                         </Link>
                         <Link
-                          href="/admin/orders"
+                          href="/admin/payments"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
                         >
                           <ShoppingBag className="w-4 h-4 text-orange-600" />
-                          Order Management
+                          Payments
                         </Link>
                         <Link
                           href="/admin/settings"
