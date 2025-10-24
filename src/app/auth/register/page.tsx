@@ -48,6 +48,7 @@ export default function RegisterPage() {
           password: formData.password,
           name: formData.name,
           phone: formData.phone,
+          role: 'buyer'
         }),
       });
 
