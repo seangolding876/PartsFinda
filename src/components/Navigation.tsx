@@ -162,76 +162,75 @@ export default function Navigation() {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       {/* 🎯 SELLER MEMBERSHIP PLAN BANNER - Professional Header */}
-      {user?.role === 'seller' && (
-        <div className={`bg-gradient-to-r ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).gradient : 'from-gray-100 to-gray-200'} border-b ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).borderColor : 'border-gray-300'}`}>
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {planLoading ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                    <div className="space-y-2">
-                      <div className="w-32 h-4 bg-gray-200 rounded animate-pulse"></div>
-                      <div className="w-24 h-3 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className={`p-3 rounded-xl ${getPlanDetails(membershipPlan?.plan_name || 'Basic').bgColor} shadow-sm`}>
-                      {(() => {
-                        const IconComponent = getPlanDetails(membershipPlan?.plan_name || 'Basic').icon;
-                        return <IconComponent className={`w-6 h-6 ${getPlanDetails(membershipPlan?.plan_name || 'Basic').color}`} />;
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-gray-800">
-                            Current Membership: 
-                          </p>
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${getPlanDetails(membershipPlan?.plan_name || 'Basic').badgeColor} text-white`}>
-                            {membershipPlan?.plan_name || 'Basic'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {membershipPlan?.end_date ? (
-                            <span className={isPlanExpired(membershipPlan) ? 'text-red-600 font-semibold' : ''}>
-                              {isPlanExpired(membershipPlan) ? '⚠️ EXPIRED - ' : ''}
-                              Valid until: {formatDate(membershipPlan.end_date)}
-                            </span>
-                          ) : (
-                            'Lifetime access ✅'
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {(membershipPlan?.plan_name === 'Basic' || isPlanExpired(membershipPlan)) && (
-                  <button
-                    onClick={handleUpgradeToPro}
-                    className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-                  >
-                    <Crown className="w-4 h-4" />
-                    {isPlanExpired(membershipPlan) ? 'Renew Plan' : 'Upgrade to Pro'}
-                    <TrendingUp className="w-4 h-4" />
-                  </button>
-                )}
-                
-                {membershipPlan && !isPlanExpired(membershipPlan) && membershipPlan.plan_name !== 'Basic' && (
-                  <div className="text-right">
-                    <p className="text-xs text-gray-600">Plan Active</p>
-                    <p className="text-sm font-semibold text-green-600">✅ All Features Unlocked</p>
-                  </div>
-                )}
+{user?.role === 'seller' && (
+  <div className={`bg-gradient-to-r ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).gradient : 'from-gray-100 to-gray-200'} border-b ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).borderColor : 'border-gray-300'}`}>
+    <div className="container mx-auto px-4 py-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {planLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="space-y-1">
+                <div className="w-32 h-3 bg-gray-200 rounded animate-pulse"></div>
+                <div className="w-24 h-2 bg-gray-200 rounded animate-pulse"></div>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className={`p-2 rounded-lg ${getPlanDetails(membershipPlan?.plan_name || 'Basic').bgColor} shadow-sm`}>
+                {(() => {
+                  const IconComponent = getPlanDetails(membershipPlan?.plan_name || 'Basic').icon;
+                  return <IconComponent className={`w-5 h-5 ${getPlanDetails(membershipPlan?.plan_name || 'Basic').color}`} />;
+                })()}
+              </div>
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-800">
+                      Current Membership: 
+                    </p>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${getPlanDetails(membershipPlan?.plan_name || 'Basic').badgeColor} text-white`}>
+                      {membershipPlan?.plan_name || 'Basic'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {membershipPlan?.end_date ? (
+                      <span className={isPlanExpired(membershipPlan) ? 'text-red-600 font-semibold' : ''}>
+                        {isPlanExpired(membershipPlan) ? '⚠️ EXPIRED - ' : ''}
+                        Valid until: {formatDate(membershipPlan.end_date)}
+                      </span>
+                    ) : (
+                      'Lifetime access ✅'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+        
+        <div className="flex items-center gap-3">
+          {(membershipPlan?.plan_name === 'Basic' || isPlanExpired(membershipPlan)) && (
+            <button
+              onClick={handleUpgradeToPro}
+              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+            >
+              <Crown className="w-4 h-4" />
+              {isPlanExpired(membershipPlan) ? 'Renew Plan' : 'Upgrade to Pro'}
+            </button>
+          )}
+          
+          {membershipPlan && !isPlanExpired(membershipPlan) && membershipPlan.plan_name !== 'Basic' && (
+            <div className="text-right">
+              <p className="text-xs text-gray-600">Plan Active</p>
+              <p className="text-xs font-semibold text-green-600">✅ All Features Unlocked</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Main Navigation Bar */}
       <div className="container mx-auto px-4 py-3">
@@ -265,12 +264,12 @@ export default function Navigation() {
               </Link>
             )}
             
-            <Link 
+            {/* <Link 
               href="/parts" 
               className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium text-sm uppercase tracking-wide"
             >
               Browse Parts
-            </Link>
+            </Link> */}
 
             <Link 
               href="/contact" 
@@ -310,20 +309,20 @@ export default function Navigation() {
                       <BarChart3 className="w-4 h-4" />
                       Dashboard
                     </Link>
-                    <Link 
+                    {/* <Link 
                       href="/seller/parts" 
                       className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
                     >
                       <Package className="w-4 h-4" />
                       My Parts
-                    </Link>
-                    <Link 
+                    </Link> */}
+                    {/* <Link 
                       href="/seller/orders" 
                       className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
                     >
                       <ShoppingBag className="w-4 h-4" />
                       Orders
-                    </Link>
+                    </Link> */}
                   </>
                 )}
 
@@ -558,7 +557,7 @@ export default function Navigation() {
               </Link>
             )}
 
-            <Link 
+            {/* <Link 
               href="/parts" 
               onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-3 p-4 hover:bg-blue-50 rounded-xl transition-colors text-gray-700 font-medium"
@@ -567,7 +566,7 @@ export default function Navigation() {
                 <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
               </div>
               Browse Parts
-            </Link>
+            </Link> */}
 
             {user && (
               <>
@@ -603,14 +602,14 @@ export default function Navigation() {
                       <BarChart3 className="w-6 h-6 text-green-600" />
                       Seller Dashboard
                     </Link>
-                    <Link
+                    {/* <Link
                       href="/seller/parts"
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-3 p-4 hover:bg-blue-50 rounded-xl transition-colors text-gray-700 font-medium"
                     >
                       <Package className="w-6 h-6 text-purple-600" />
                       My Parts
-                    </Link>
+                    </Link> */}
                     <Link
                       href="/seller/subscription"
                       onClick={() => setMobileMenuOpen(false)}
