@@ -41,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       );
     }
 
-    // Check if user exists in database - ALL USERS (without email_verified check)
+    // Check if user exists in database
     console.log('🔍 Checking database for user...');
     const userResult = await query(
       `SELECT 
@@ -52,7 +52,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       [email.toLowerCase()]
     );
 
-    // ✅ IMPORTANT: Agar user nahi mila toh error return karein
     if (userResult.rows.length === 0) {
       console.log('❌ User not found');
       return NextResponse.json(
@@ -62,6 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
     }
 
     const dbUser = userResult.rows[0];
+    console.log('✅ User found with ID:', dbUser.id); // ID yahan available hai
     
     // Verify password for existing user
     console.log('✅ User found, verifying password...');
@@ -76,14 +76,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
     }
 
     // 🔐 ROLE-BASED ACCESS CONTROL
+    let subscriptionMessage = null;
 
     // 1. ADMIN - No restrictions
     if (dbUser.role === 'admin') {
       console.log('👑 Admin login attempt');
-      // Admin ke liye koi check nahi - direct access
     }
 
-    // 2. SELLER - Strict verification required
+    // 2. SELLER - Strict verification required + Subscription check
     else if (dbUser.role === 'seller') {
       console.log('🏪 Seller login attempt - Checking verification status...');
       
@@ -111,9 +111,31 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
         );
       }
 
-      // Case 3: Fully verified and approved seller
+      // Case 3: Fully verified and approved seller - Check subscription
       if (dbUser.email_verified && dbUser.verified_status === 'approved') {
-        console.log('✅ Seller fully verified and approved');
+        console.log('✅ Seller fully verified and approved - Checking subscription...');
+        
+        // ✅ Yahan dbUser.id use kar rahe hain
+        const subscriptionResult = await query(
+          `SELECT plan_name, end_date 
+           FROM supplier_subscription 
+           WHERE user_id = $1 AND end_date IS NOT NULL
+           ORDER BY created_at DESC 
+           LIMIT 1`,
+          [dbUser.id] // ✅ dbUser.id yahan use ho raha hai
+        );
+
+        if (subscriptionResult.rows.length > 0) {
+          const subscription = subscriptionResult.rows[0];
+          const endDate = new Date(subscription.end_date);
+          const now = new Date();
+
+          // Check if subscription has expired
+          if (endDate < now) {
+            subscriptionMessage = `Your ${subscription.plan_name} subscription has expired. You have been downgraded to Basic plan. Please update your subscription.`;
+            console.log('📢 Subscription expired message:', subscriptionMessage);
+          }
+        }
       }
     }
 
@@ -164,13 +186,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
 
     console.log('✅ Login successful for:', user.email, 'Role:', user.role);
 
-    // Create response
-    const response: NextResponse<AuthResponse> = NextResponse.json({
+    // Create response with subscription message
+    const responseData: AuthResponse = {
       success: true,
       message: 'Login successful',
       authToken,
       user
-    });
+    };
+
+    // Add subscription message if exists
+    if (subscriptionMessage) {
+      responseData.subscriptionMessage = subscriptionMessage;
+    }
+
+    const response: NextResponse<AuthResponse> = NextResponse.json(responseData);
 
     return response;
 

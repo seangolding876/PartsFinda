@@ -35,6 +35,7 @@ export interface AuthResponse {
   error?: string;
   authToken?: string;
   user?: UserResponse;
+  subscriptionMessage?: string;
 }
 
 export interface JwtPayload {

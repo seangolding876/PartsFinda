@@ -6,7 +6,7 @@ import { useToast } from './useToast';
 import { getAuthData } from '@/lib/auth';
 
 export const useWelcomeMessage = () => {
-  const { successmsg } = useToast();
+  const { successmsg, warningmsg } = useToast();
 
   useEffect(() => {
     const authData = getAuthData();
@@ -35,6 +35,32 @@ export const useWelcomeMessage = () => {
         successmsg(welcomeMessage);
         sessionStorage.setItem(welcomeKey, 'true');
       }
+
+      // ✅ Seller subscription expiry check
+      if (authData.role === 'seller') {
+        checkSellerSubscription(authData.userId);
+      }
     }
-  }, [successmsg]);
+  }, [successmsg, warningmsg]);
+
+  // Seller subscription expiry check function
+  const checkSellerSubscription = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/seller/subscription/status?userId=${userId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.expired) {
+          // ✅ Subscription expiry message
+          warningmsg(
+            `Your ${data.planName} subscription has expired. You've been downgraded to Basic plan. Please update your subscription to access premium features.`,
+            8000 // 8 seconds display
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check subscription status:', error);
+    }
+  };
 };
