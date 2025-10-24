@@ -151,8 +151,12 @@ export default function Navigation() {
 
   // Check if plan is expired
   const isPlanExpired = (plan) => {
-    if (!plan.end_date) return false;
-    return new Date(plan.end_date) < new Date();
+    if (!plan || !plan.end_date) return false;
+    try {
+      return new Date(plan.end_date) < new Date();
+    } catch (error) {
+      return false;
+    }
   };
 
   return (
