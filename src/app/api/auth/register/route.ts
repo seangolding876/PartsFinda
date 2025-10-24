@@ -57,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
     const result = await query(
       `INSERT INTO users (email, password, name, phone, role, verification_token, verification_token_expires, email_verified) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-       RETURNING id, email, name, phone, role, is_verified`,
+       RETURNING id, email, name, phone, role, email_verified`,
       [email.toLowerCase(), hashedPassword, name, phone, role, verificationToken, verificationTokenExpires, false]
     );
 
