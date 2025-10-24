@@ -164,66 +164,58 @@ export default function Navigation() {
       {/* 🎯 SELLER MEMBERSHIP PLAN BANNER - Professional Header */}
 {user?.role === 'seller' && (
   <div className={`bg-gradient-to-r ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).gradient : 'from-gray-100 to-gray-200'} border-b ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).borderColor : 'border-gray-300'}`}>
-    <div className="container mx-auto px-4 py-2">
+    <div className="container mx-auto px-3 py-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {planLoading ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-              <div className="space-y-1">
-                <div className="w-32 h-3 bg-gray-200 rounded animate-pulse"></div>
-                <div className="w-24 h-2 bg-gray-200 rounded animate-pulse"></div>
-              </div>
+              <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-20 h-3 bg-gray-200 rounded animate-pulse"></div>
             </div>
           ) : (
             <>
-              <div className={`p-2 rounded-lg ${getPlanDetails(membershipPlan?.plan_name || 'Basic').bgColor} shadow-sm`}>
+              <div className={`p-1.5 rounded-md ${getPlanDetails(membershipPlan?.plan_name || 'Basic').bgColor}`}>
                 {(() => {
                   const IconComponent = getPlanDetails(membershipPlan?.plan_name || 'Basic').icon;
-                  return <IconComponent className={`w-5 h-5 ${getPlanDetails(membershipPlan?.plan_name || 'Basic').color}`} />;
+                  return <IconComponent className={`w-4 h-4 ${getPlanDetails(membershipPlan?.plan_name || 'Basic').color}`} />;
                 })()}
               </div>
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-800">
-                      Current Membership: 
-                    </p>
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${getPlanDetails(membershipPlan?.plan_name || 'Basic').badgeColor} text-white`}>
-                      {membershipPlan?.plan_name || 'Basic'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {membershipPlan?.end_date ? (
-                      <span className={isPlanExpired(membershipPlan) ? 'text-red-600 font-semibold' : ''}>
-                        {isPlanExpired(membershipPlan) ? '⚠️ EXPIRED - ' : ''}
-                        Valid until: {formatDate(membershipPlan.end_date)}
-                      </span>
-                    ) : (
-                      'Lifetime access ✅'
-                    )}
-                  </p>
-                </div>
+              
+              <div className="flex items-center gap-2">
+                <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${getPlanDetails(membershipPlan?.plan_name || 'Basic').badgeColor} text-white`}>
+                  {membershipPlan?.plan_name || 'Basic'}
+                </span>
+                
+                {membershipPlan?.end_date ? (
+                  <span className={`text-xs ${isPlanExpired(membershipPlan) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                    {isPlanExpired(membershipPlan) ? '⚠️ ' : ''}
+                    {formatDate(membershipPlan.end_date)}
+                  </span>
+                ) : (
+                  <span className="text-xs text-green-600">✅ Active</span>
+                )}
               </div>
             </>
           )}
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {(membershipPlan?.plan_name === 'Basic' || isPlanExpired(membershipPlan)) && (
             <button
               onClick={handleUpgradeToPro}
-              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg"
+              className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white px-3 py-1 rounded text-xs font-semibold transition-all flex items-center gap-1 shadow-sm hover:shadow"
             >
-              <Crown className="w-4 h-4" />
-              {isPlanExpired(membershipPlan) ? 'Renew Plan' : 'Upgrade to Pro'}
+              <Crown className="w-3 h-3" />
+              {isPlanExpired(membershipPlan) ? 'Renew' : 'Upgrade'}
             </button>
           )}
           
           {membershipPlan && !isPlanExpired(membershipPlan) && membershipPlan.plan_name !== 'Basic' && (
             <div className="text-right">
-              <p className="text-xs text-gray-600">Plan Active</p>
-              <p className="text-xs font-semibold text-green-600">✅ All Features Unlocked</p>
+              <p className="text-xs font-medium text-green-600 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Active
+              </p>
             </div>
           )}
         </div>
@@ -233,7 +225,7 @@ export default function Navigation() {
 )}
 
       {/* Main Navigation Bar */}
-      <div className="container mx-auto px-4 py-3">
+      <div className="container mx-auto px-2 py-2">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
