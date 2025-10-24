@@ -39,7 +39,7 @@ export async function GET(req: Request) {
         u.part_categories, u.membership_plan,
         u.avg_rating, u.total_ratings, u.verified_status,
         u.profile_completion_percentage, u.bio,
-        u.avatar_url, u.cover_image_url,
+         'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA'as avatar_url , u.cover_image_url,
         u.notification_settings, u.preferences,
         u.social_links, u.language_preference, u.timezone,
         u.created_at, u.last_login,
