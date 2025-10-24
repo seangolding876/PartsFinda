@@ -1,349 +1,341 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useToast } from '@/hooks/useToast'; 
+import { useToast } from '@/hooks/useToast';
 
-export default function LoginPage() {
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  business_name?: string;
+  business_phone?: string;
+  address?: string;
+  parish?: string;
+  city?: string;
+  website?: string;
+  bio?: string;
+  profile_completion_percentage: number;
+  avatar_url?: string;
+  cover_image_url?: string;
+}
+
+export default function ProfilePage() {
   const router = useRouter();
-  const { successmsg, errormsg, infomsg } = useToast();
+  const { successmsg, errormsg } = useToast();
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    name: '',
+    phone: '',
+    business_name: '',
+    business_phone: '',
+    address: '',
+    parish: '',
+    city: '',
+    website: '',
+    bio: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
-    // Client-side validation
-    if (!formData.email || !formData.password) {
-      setError('Please enter both email and password');
-      setLoading(false);
-      return;
-    }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
-      setLoading(false);
-      return;
-    }
-
-    // Password length validation
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
+  const fetchProfile = async () => {
     try {
-      console.log('🔐 Attempting login...', { email: formData.email });
+      const authData = localStorage.getItem('authData');
+      if (!authData) {
+        router.push('/auth/login');
+        return;
+      }
 
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const { token } = JSON.parse(authData);
+      
+      const response = await fetch('/api/profile', {
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      const result = await response.json();
-      console.log('📊 Login result:', result);
-
-      if (!response.ok) {
-        // Server se specific error message mil raha hai
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      if (result.success) {
-        console.log('✅ Login successful, saving to localStorage...');
-
-        // ✅ Auth data localStorage mein save karein
-        const authData = {
-          token: result.authToken,
-          role: result.user.role,
-          name: result.user.name,
-          email: result.user.email,
-          userId: result.user.id,
-          email_verified: result.user.email_verified,
-          verified_status: result.user.verified_status
-        };
-
-        localStorage.setItem('authData', JSON.stringify(authData));
-        console.log('💾 Auth data saved to localStorage:', authData);
-
-        // Success message based on role
-        const welcomeMessage = result.user.role === 'seller' 
-          ? `Welcome back, ${result.user.name}! Ready to manage your parts listings?`
-          : result.user.role === 'admin'
-          ? `Welcome back, Admin ${result.user.name}!`
-          : `Welcome back to PartsFinda, ${result.user.name}!`;
-
-        // Show success toast
-        successmsg(welcomeMessage);
-
-        // Redirect based on role
-        const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' :
-                         result.user.role === 'admin' ? '/admin/dashboard' : '/my-requests';
-
-        console.log('🔄 Redirecting to:', redirectTo);
-
-        // Small delay for toast to show
-        setTimeout(() => {
-          window.location.href = redirectTo;
-        }, 1000);
-
+      if (response.ok) {
+        const result = await response.json();
+        setUser(result.data);
+        setFormData({
+          name: result.data.name || '',
+          phone: result.data.phone || '',
+          business_name: result.data.business_name || '',
+          business_phone: result.data.business_phone || '',
+          address: result.data.address || '',
+          parish: result.data.parish || '',
+          city: result.data.city || '',
+          website: result.data.website || '',
+          bio: result.data.bio || ''
+        });
       } else {
-        // API success: false case
-        setError(result.error || 'Login failed. Please try again.');
+        throw new Error('Failed to fetch profile');
       }
-
-    } catch (err: any) {
-      console.error('❌ Login error:', err);
-      
-      // ✅ UPDATED ERROR HANDLING - New API responses ke according
-      if (err.message.includes('Network') || err.message.includes('fetch')) {
-        setError('🌐 Network error: Please check your internet connection and try again.');
-      } 
-      else if (err.message.includes('Invalid email or password')) {
-        setError('❌ Invalid email or password. Please check your credentials and try again.');
-      }
-      else if (err.message.includes('Email and password are required')) {
-        setError('📝 Please enter both email and password.');
-      }
-      else if (err.message.includes('Invalid email format')) {
-        setError('📧 Please enter a valid email address (e.g., user@example.com).');
-      }
-      else if (err.message.includes('Password must be at least 6 characters')) {
-        setError('🔒 Password must be at least 6 characters long.');
-      }
-      
-      // ✅ NEW: Seller specific errors
-      else if (err.message.includes('Please verify your email first')) {
-        setError('📨 Please verify your email address before logging in. Check your inbox for verification link.');
-      }
-      else if (err.message.includes('Your account is under review')) {
-        setError('⏳ Your seller account is under review. You will receive an approval email within 1-2 business days. Thank you for your patience!');
-      }
-      
-      // ✅ NEW: Buyer specific errors
-      else if (err.message.includes('verify your email first')) {
-        setError('📧 Please verify your email address to continue. Check your inbox for verification link.');
-      }
-      
-      // ✅ HTTP Status based errors
-      else if (err.message.includes('HTTP 401')) {
-        setError('❌ Invalid email or password. Please try again.');
-      }
-      else if (err.message.includes('HTTP 403')) {
-        setError('🚫 Access denied. Please complete the verification process or contact support.');
-      }
-      else if (err.message.includes('HTTP 500')) {
-        setError('⚡ Server error: Please try again in a few moments.');
-      }
-      else if (err.message.includes('HTTP 400')) {
-        setError('❌ Invalid request. Please check your input and try again.');
-      }
-      else if (err.message.includes('Invalid user role')) {
-        setError('🔐 Account configuration error. Please contact support.');
-      }
-      else {
-        setError('❌ Unable to sign in. Please try again.');
-      }
+    } catch (error) {
+      errormsg('Failed to load profile');
+      console.error('Profile fetch error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const authData = localStorage.getItem('authData');
+      if (!authData) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const { token } = JSON.parse(authData);
+      
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        successmsg('Profile updated successfully');
+        if (result.profile_completion) {
+          setUser(prev => prev ? { ...prev, profile_completion_percentage: result.profile_completion } : null);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to update profile');
+      }
+    } catch (error: any) {
+      errormsg(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value
     });
-    // Clear error when user starts typing
-    if (error) setError('');
   };
 
-  const handleDemoLogin = (role: 'buyer' | 'seller' | 'admin') => {
-    const demoAccounts = {
-      buyer: { email: 'buyer@demo.com', password: 'demo123' },
-      seller: { email: 'seller@demo.com', password: 'demo123' },
-      admin: { email: 'admin@demo.com', password: 'demo123' }
-    };
-    
-    setFormData(demoAccounts[role]);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div>
-          <div className="text-center mb-6">
-            <Link href="/" className="flex items-center justify-center gap-2 mb-4">
-              <div className="bg-blue-600 text-white px-3 py-1 rounded font-bold text-xl">
-                Parts
-              </div>
-              <div className="text-blue-600 font-bold text-xl">
-                Finda
-              </div>
-            </Link>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/auth/register" className="font-medium text-blue-600 hover:text-blue-500">
-              create a new account
-            </Link>
-          </p>
-        </div>
-
-        {/* Info Box */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-semibold text-green-800 mb-2">New to PartsFinda?</h3>
-          <p className="text-sm text-green-700 mb-2">
-            Create an account to start <strong>buying</strong> or <strong>selling</strong> auto parts in Jamaica.
-          </p>
-          <p className="text-sm text-green-700">
-            For suppliers: Apply as a <strong>verified seller</strong> to list your products and reach buyers faster.
-          </p>
-        </div>
-
-        {/* Demo Accounts (Development Only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Demo Accounts (Development)</h3>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('buyer')}
-                className="flex-1 bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-sm hover:bg-yellow-200 transition-colors"
-              >
-                Buyer Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('seller')}
-                className="flex-1 bg-green-100 text-green-700 px-3 py-2 rounded text-sm hover:bg-green-200 transition-colors"
-              >
-                Seller Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin')}
-                className="flex-1 bg-red-100 text-red-700 px-3 py-2 rounded text-sm hover:bg-red-200 transition-colors"
-              >
-                Admin Demo
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Login Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-                placeholder="Enter your email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-                placeholder="Enter your password"
-              />
-            </div>
-          </div>
-
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link href="/auth/forgot-password" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Forgot your password?
-              </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+              <p className="text-gray-600 mt-1">Manage your account information</p>
+            </div>
+            {user.profile_completion_percentage < 100 && (
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Profile Completion</p>
+                <div className="w-32 bg-gray-200 rounded-full h-2 mt-1">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${user.profile_completion_percentage}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {user.profile_completion_percentage}% complete
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Form */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  required
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {user.role === 'seller' && (
+                <>
+                  <div>
+                    <label htmlFor="business_name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Business Name
+                    </label>
+                    <input
+                      type="text"
+                      id="business_name"
+                      name="business_name"
+                      value={formData.business_name}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="business_phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Business Phone
+                    </label>
+                    <input
+                      type="tel"
+                      id="business_phone"
+                      name="business_phone"
+                      value={formData.business_phone}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="md:col-span-2">
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  type="text"
+                  id="city"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="parish" className="block text-sm font-medium text-gray-700 mb-1">
+                  Parish
+                </label>
+                <select
+                  id="parish"
+                  name="parish"
+                  value={formData.parish}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Parish</option>
+                  <option value="Kingston">Kingston</option>
+                  <option value="St. Andrew">St. Andrew</option>
+                  <option value="St. Catherine">St. Catherine</option>
+                  <option value="Clarendon">Clarendon</option>
+                  <option value="Manchester">Manchester</option>
+                  <option value="St. Elizabeth">St. Elizabeth</option>
+                  <option value="Westmoreland">Westmoreland</option>
+                  <option value="Hanover">Hanover</option>
+                  <option value="St. James">St. James</option>
+                  <option value="Trelawny">Trelawny</option>
+                  <option value="St. Ann">St. Ann</option>
+                  <option value="St. Mary">St. Mary</option>
+                  <option value="Portland">Portland</option>
+                  <option value="St. Thomas">St. Thomas</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  id="website"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                  Bio
+                </label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  rows={4}
+                  value={formData.bio}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Tell us about yourself or your business..."
+                />
+              </div>
             </div>
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="rounded-md bg-red-50 p-4 border border-red-200">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    {error}
-                  </h3>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <div>
+          <div className="flex justify-end">
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              disabled={saving}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Signing in...
-                </>
-              ) : (
-                'Sign in'
-              )}
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
-          </div>
-
-          {/* Seller Registration Link */}
-          <div className="text-center pt-4 border-t border-gray-200">
-            <span className="text-sm text-gray-600">
-              Want to sell auto parts?{' '}
-              <Link href="/auth/seller-signup" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Register as a seller
-              </Link>
-            </span>
           </div>
         </form>
       </div>
