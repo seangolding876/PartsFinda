@@ -95,28 +95,19 @@ export default function Navigation() {
   const getPlanDetails = (planName) => {
     const plans = {
      'Basic': { 
-    icon: Star, 
-    color: 'text-slate-500', 
-    bgColor: 'bg-slate-50', 
-    borderColor: 'border-slate-200',
-    gradient: 'from-slate-50 to-slate-100',
-    badgeColor: 'bg-slate-400'
+    color: 'text-blue-gray-500', 
+    bgColor: 'bg-blue-gray-50', 
+    borderColor: 'border-blue-gray-200'
   },
   'Premium': { 
-    icon: Crown, 
-    color: 'text-indigo-400', 
-    bgColor: 'bg-indigo-25', 
-    borderColor: 'border-indigo-200',
-    gradient: 'from-indigo-25 to-indigo-50',
-    badgeColor: 'bg-indigo-400'
+    color: 'text-lavender-500', 
+    bgColor: 'bg-lavender-50', 
+    borderColor: 'border-lavender-200'
   },
   'Enterprise': { 
-    icon: Gem, 
-    color: 'text-rose-400', 
-    bgColor: 'bg-rose-25', 
-    borderColor: 'border-rose-200',
-    gradient: 'from-rose-25 to-rose-50',
-    badgeColor: 'bg-rose-400'
+    color: 'text-seashell-500', 
+    bgColor: 'bg-seashell-50', 
+    borderColor: 'border-seashell-300'
   }
     };
     
