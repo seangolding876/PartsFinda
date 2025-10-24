@@ -128,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
 }
 
 async function sendBuyerVerificationEmail(userEmail: string, userName: string, token: string) {
-  const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
+  const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/buyer/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
 
   const emailHtml = `
 <!DOCTYPE html>
@@ -175,13 +175,15 @@ async function sendBuyerVerificationEmail(userEmail: string, userName: string, t
     }
     .button { 
       background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-      color: white; 
+      color: white !important; 
       padding: 12px 30px; 
       text-decoration: none; 
       border-radius: 6px; 
       display: inline-block; 
       margin: 15px 0; 
       font-weight: 600;
+      border: none;
+      cursor: pointer;
     }
     .footer { 
       text-align: center; 
@@ -204,11 +206,13 @@ async function sendBuyerVerificationEmail(userEmail: string, userName: string, t
       <p>Thank you for registering as a buyer on PartsFinda! To complete your registration, please verify your email address by clicking the button below:</p>
       <div class="verification-box">
         <p><strong>Action Required:</strong> Verify your email within 24 hours</p>
-        <a href="${verificationUrl}" class="button">Verify Email Address</a>
+        <a href="${verificationUrl}" class="button" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff !important; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 15px 0; font-weight: 600; border: none; cursor: pointer; text-align: center;">
+          Verify Email Address
+        </a>
       </div>
       <p style="font-size: 12px; color: #6b7280;">
         If the button doesn't work, copy and paste this link in your browser:<br>
-        <a href="${verificationUrl}">${verificationUrl}</a>
+        <a href="${verificationUrl}" style="color: #10b981; word-break: break-all;">${verificationUrl}</a>
       </p>
     </div>
     <div class="footer">

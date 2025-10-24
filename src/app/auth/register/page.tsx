@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/hooks/useToast';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { successmsg, infomsg, errormsg } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function RegisterPage() {
     }
 
     try {
-      console.log('Attempting registration...', { email: formData.email });
+      // console.log('Attempting registration...', { email: formData.email });
 
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -52,43 +54,45 @@ export default function RegisterPage() {
         }),
       });
 
-      console.log('Response status:', response.status);
+      // console.log('Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Response error:', errorText);
+        // console.error('Response error:', errorText);
+              errormsg(`Response error: ${errorText}}`,5000);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Registration result:', result);
+      // console.log('Registration result:', result);
 
       if (result.success) {
-        console.log('Registration successful, triggering auth refresh...');
+        // console.log('Registration successful, triggering auth refresh...');
 
         // Trigger auth change event for navigation update
         window.dispatchEvent(new CustomEvent('authChange'));
 
         // Success! Show message and redirect
-        alert('Account created successfully! Welcome to PartsFinda.');
-
+        successmsg('Account created successfully! Welcome to PartsFinda.',5000)
 
         const successUrl = `/auth/buyer-welcome?email=${encodeURIComponent(result.user.email)}&name=${encodeURIComponent(result.user.name)}`;
         router.push(successUrl);
 
         // Small delay to ensure cookies are set
-        setTimeout(() => {
-          // Redirect to My Requests for buyers, or seller dashboard for sellers
-          const redirectTo = '/auth/login';
-          // const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' : '/my-requests';
-          router.push(redirectTo);
-        }, 1000);
+        // setTimeout(() => {
+        //   // Redirect to My Requests for buyers, or seller dashboard for sellers
+        //   const redirectTo = '/auth/login';
+        //   // const redirectTo = result.user.role === 'seller' ? '/seller/dashboard' : '/my-requests';
+        //   router.push(redirectTo);
+        // }, 1000);
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
 
     } catch (err: any) {
-      console.error('Registration error:', err);
+      // console.error('Registration error:', err);
+
+      errormsg(`Registration failed. Please try again. ${err}}`,5000);
 
       // More specific error messages
       if (err.message.includes('fetch')) {
