@@ -290,6 +290,10 @@ export default function SubscriptionPage() {
         return;
       }
 
+        console.log('🔍 Selected plan:', plan); // ✅ Debug log
+    console.log('🔍 Plan ID:', plan.id); // ✅ Debug log
+
+
       // Check if this is the current plan
       if (currentSubscription?.plan_name === plan.name) {
         alert('You are already on this plan');
@@ -298,34 +302,9 @@ export default function SubscriptionPage() {
 
       console.log('Processing subscription for plan:', plan.name);
 
-      // For FREE plan - direct activate
-      if (plan.price === 0) {
-        const response = await fetch('/api/subscription/activate-free', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.token}`
-          },
-          body: JSON.stringify({ planId: plan.id })
-        });
-
-        const result = await response.json();
-        console.log('Free plan activation result:', result);
-
-        if (result.success) {
-          alert('Free plan activated successfully!');
-          setCurrentSubscription(result.data);
-          fetchSubscriptionData();
-        } else {
-          throw new Error(result.error || 'Failed to activate free plan');
-        }
-        return;
-      }
-
-      // For PAID plans - Stripe payment
-      console.log('Creating Stripe payment intent for plan:', plan.name);
-
-      const paymentResponse = await fetch('/api/stripe/create-payment-intent', {
+       // For FREE plan - direct activate
+    if (plan.price === 0) {
+      const response = await fetch('/api/subscription/activate-free', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -334,25 +313,52 @@ export default function SubscriptionPage() {
         body: JSON.stringify({ planId: plan.id })
       });
 
-      const paymentResult = await paymentResponse.json();
-      console.log('Stripe payment intent result:', paymentResult);
+      const result = await response.json();
+      console.log('Free plan activation result:', result);
 
-      // Check if clientSecret properly mil raha hai
-      if (paymentResult.clientSecret) {
-        setSelectedPlan(plan);
-        setClientSecret(paymentResult.clientSecret);
-        setShowStripeCheckout(true);
+      if (result.success) {
+        alert('Free plan activated successfully!');
+        setCurrentSubscription(result.data);
+        fetchSubscriptionData();
       } else {
-        console.error('No clientSecret received:', paymentResult);
-        throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
+        throw new Error(result.error || 'Failed to activate free plan');
       }
-
-    } catch (error: any) {
-      console.error('Subscription error:', error);
-      alert(error.message || 'Failed to process subscription');
-    } finally {
-      setProcessing(false);
+      return;
     }
+
+    // For PAID plans - Stripe payment
+    console.log('Creating Stripe payment intent for plan ID:', plan.id);
+
+    const paymentResponse = await fetch('/api/stripe/create-payment-intent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({ 
+        planId: plan.id  // ✅ Make sure this is correct
+      })
+    });
+
+    const paymentResult = await paymentResponse.json();
+    console.log('Stripe payment intent result:', paymentResult);
+
+    // Check if clientSecret properly mil raha hai
+    if (paymentResult.clientSecret) {
+      setSelectedPlan(plan);
+      setClientSecret(paymentResult.clientSecret);
+      setShowStripeCheckout(true);
+    } else {
+      console.error('No clientSecret received:', paymentResult);
+      throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
+    }
+
+  } catch (error: any) {
+    console.error('Subscription error:', error);
+    alert(error.message || 'Failed to process subscription');
+  } finally {
+    setProcessing(false);
+  }
   };
 
   const handlePaymentSuccess = async () => {

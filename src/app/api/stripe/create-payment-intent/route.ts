@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
 
     const { planId } = await request.json();
 
+    console.log('🔍 Received planId:', planId); // ✅ Debug log
+
     if (!planId) {
+      console.log('❌ planId is missing or invalid');
       return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 });
     }
 
@@ -27,12 +30,22 @@ export async function POST(request: NextRequest) {
       [planId]
     );
 
+    console.log('🔍 Plan query result:', planResult.rows); // ✅ Debug log
+
     if (planResult.rows.length === 0) {
+      console.log('❌ No plan found with ID:', planId);
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
     const plan = planResult.rows[0];
     const amount = Math.round(plan.price * 100); // Convert to cents
+
+    console.log('🔍 Creating payment intent for plan:', {
+      planId: planId,
+      planName: plan.plan_name,
+      amount: amount,
+      userId: userInfo.userId
+    });
 
     // Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
@@ -48,7 +61,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Save payment record in database
+    console.log('🔍 Stripe payment intent created:', paymentIntent.id);
+
+    // ✅ CORRECTED: Save payment record with subscription_plan_id
     await query(
       `INSERT INTO payments (
         user_id, stripe_payment_id, amount, currency, status, description, subscription_plan_id
@@ -56,13 +71,15 @@ export async function POST(request: NextRequest) {
       [
         userInfo.userId,
         paymentIntent.id,
-        plan.price,
+        plan.price, // This should be the decimal amount, not the cents
         'USD',
         'pending',
         `Subscription: ${plan.plan_name}`,
-        planId
+        planId  // ✅ This should work now
       ]
     );
+
+    console.log('✅ Payment record saved successfully');
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
@@ -72,9 +89,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Stripe payment intent error:', error);
+    console.error('❌ Stripe payment intent error:', error);
     return NextResponse.json(
-      { error: 'Failed to create payment intent' },
+      { error: 'Failed to create payment intent: ' + error.message },
       { status: 500 }
     );
   }
