@@ -94,21 +94,30 @@ export default function Navigation() {
   // Get plan icon and color
   const getPlanDetails = (planName) => {
     const plans = {
-     'Basic': { 
-    color: 'text-blue-gray-500', 
-    bgColor: 'bg-blue-gray-50', 
-    borderColor: 'border-blue-gray-200'
-  },
-  'Premium': { 
-    color: 'text-lavender-500', 
-    bgColor: 'bg-lavender-50', 
-    borderColor: 'border-lavender-200'
-  },
-  'Enterprise': { 
-    color: 'text-seashell-500', 
-    bgColor: 'bg-seashell-50', 
-    borderColor: 'border-seashell-300'
-  }
+      'Basic': { 
+        icon: Star, 
+        color: 'text-gray-600', 
+        bgColor: 'bg-gray-100', 
+        borderColor: 'border-gray-300',
+        gradient: 'from-gray-100 to-gray-200',
+        badgeColor: 'bg-gray-500'
+      },
+      'Enterprise': { 
+        icon: Zap, 
+        color: 'text-blue-600', 
+        bgColor: 'bg-blue-50', 
+        borderColor: 'border-blue-300',
+        gradient: 'from-blue-50 to-blue-100',
+        badgeColor: 'bg-blue-500'
+      },
+      'Premium': { 
+        icon: Crown, 
+        color: 'text-purple-600', 
+        bgColor: 'bg-purple-50', 
+        borderColor: 'border-purple-300',
+        gradient: 'from-purple-50 to-purple-100',
+        badgeColor: 'bg-purple-500'
+      }
     };
     
     return plans[planName] || plans['Basic'];
