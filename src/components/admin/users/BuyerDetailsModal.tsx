@@ -88,8 +88,7 @@ export default function BuyerDetailsModal({ buyer, onClose }: BuyerDetailsModalP
           <nav className="-mb-px flex space-x-8 px-6">
             {[
               { id: 'profile', name: 'Profile' },
-              { id: 'requests', name: 'Part Requests' },
-              { id: 'activity', name: 'Activity' },
+              { id: 'requests', name: 'Part Requests' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -113,7 +112,7 @@ export default function BuyerDetailsModal({ buyer, onClose }: BuyerDetailsModalP
         <div className="p-6">
           {activeTab === 'profile' && <BuyerProfileTab buyer={buyer} />}
           {activeTab === 'requests' && <BuyerRequestsTab stats={stats} loading={loading} />}
-          {activeTab === 'activity' && <BuyerActivityTab buyer={buyer} stats={stats} loading={loading} />}
+          {/* {activeTab === 'activity' && <BuyerActivityTab buyer={buyer} stats={stats} loading={loading} />} */}
         </div>
       </div>
     </div>
