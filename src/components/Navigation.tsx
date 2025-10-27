@@ -330,13 +330,13 @@ export default function Navigation() {
                           <Users className="w-4 h-4 text-green-600" />
                           Manage Users
                         </Link>
-                        <Link
+                        {/* <Link
                           href="/admin/parts"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
                         >
                           <Package className="w-4 h-4 text-purple-600" />
                           Manage Parts
-                        </Link>
+                        </Link> */}
                         <Link
                           href="/admin/payments"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
