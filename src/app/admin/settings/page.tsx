@@ -1,140 +1,198 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SystemSettings {
   general: {
-    siteName: string;
-    siteDescription: string;
-    adminEmail: string;
+    site_name: string;
+    site_description: string;
+    admin_email: string;
     timezone: string;
-    dateFormat: string;
-    itemsPerPage: number;
+    date_format: string;
+    items_per_page: number;
   };
   security: {
-    sessionTimeout: number;
-    passwordMinLength: number;
-    maxLoginAttempts: number;
-    enable2FA: boolean;
-    enableCaptcha: boolean;
+    session_timeout: number;
+    password_min_length: number;
+    max_login_attempts: number;
+    enable_2fa: boolean;
+    enable_captcha: boolean;
   };
   notifications: {
-    emailNotifications: boolean;
-    smsNotifications: boolean;
-    newUserAlerts: boolean;
-    paymentAlerts: boolean;
-    systemAlerts: boolean;
+    email_notifications: boolean;
+    sms_notifications: boolean;
+    new_user_alerts: boolean;
+    payment_alerts: boolean;
+    system_alerts: boolean;
   };
   payment: {
     currency: string;
-    taxRate: number;
-    paymentMethods: string[];
-    autoRenewal: boolean;
-    invoicePrefix: string;
+    tax_rate: number;
+    payment_methods: string[];
+    auto_renewal: boolean;
+    invoice_prefix: string;
   };
   appearance: {
     theme: string;
-    primaryColor: string;
-    logoUrl: string;
-    faviconUrl: string;
+    primary_color: string;
+    logo_url: string;
+    favicon_url: string;
     language: string;
   };
 }
 
 export default function SystemSettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'payment' | 'appearance'>('general');
-  const [settings, setSettings] = useState<SystemSettings>({
-    general: {
-      siteName: 'PartsFinda',
-      siteDescription: 'Auto Parts Marketplace',
-      adminEmail: 'admin@partsfinda.com',
-      timezone: 'UTC+5',
-      dateFormat: 'DD/MM/YYYY',
-      itemsPerPage: 20
-    },
-    security: {
-      sessionTimeout: 60,
-      passwordMinLength: 6,
-      maxLoginAttempts: 5,
-      enable2FA: false,
-      enableCaptcha: true
-    },
-    notifications: {
-      emailNotifications: true,
-      smsNotifications: false,
-      newUserAlerts: true,
-      paymentAlerts: true,
-      systemAlerts: true
-    },
-    payment: {
-      currency: 'USD',
-      taxRate: 0,
-      paymentMethods: ['stripe', 'paypal'],
-      autoRenewal: true,
-      invoicePrefix: 'INV'
-    },
-    appearance: {
-      theme: 'light',
-      primaryColor: '#3B82F6',
-      logoUrl: '/logo.png',
-      faviconUrl: '/favicon.ico',
-      language: 'en'
-    }
-  });
-
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
-    setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('Settings saved:', settings);
-    setSaving(false);
-    alert('Settings saved successfully!');
-  };
+  // Load settings from API
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
-  const handleReset = () => {
-    if (confirm('Are you sure you want to reset all settings to default?')) {
-      setSettings({
-        general: {
-          siteName: 'PartsFinda',
-          siteDescription: 'Auto Parts Marketplace',
-          adminEmail: 'admin@partsfinda.com',
-          timezone: 'UTC+5',
-          dateFormat: 'DD/MM/YYYY',
-          itemsPerPage: 20
-        },
-        security: {
-          sessionTimeout: 60,
-          passwordMinLength: 6,
-          maxLoginAttempts: 5,
-          enable2FA: false,
-          enableCaptcha: true
-        },
-        notifications: {
-          emailNotifications: true,
-          smsNotifications: false,
-          newUserAlerts: true,
-          paymentAlerts: true,
-          systemAlerts: true
-        },
-        payment: {
-          currency: 'USD',
-          taxRate: 0,
-          paymentMethods: ['stripe', 'paypal'],
-          autoRenewal: true,
-          invoicePrefix: 'INV'
-        },
-        appearance: {
-          theme: 'light',
-          primaryColor: '#3B82F6',
-          logoUrl: '/logo.png',
-          faviconUrl: '/favicon.ico',
-          language: 'en'
-        }
-      });
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/settings');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform flat settings to categorized structure
+        const categorizedSettings: SystemSettings = {
+          general: {
+            site_name: data.data.site_name || 'PartsFinda',
+            site_description: data.data.site_description || 'Auto Parts Marketplace',
+            admin_email: data.data.admin_email || 'admin@partsfinda.com',
+            timezone: data.data.timezone || 'UTC+5',
+            date_format: data.data.date_format || 'DD/MM/YYYY',
+            items_per_page: data.data.items_per_page || 20
+          },
+          security: {
+            session_timeout: data.data.session_timeout || 60,
+            password_min_length: data.data.password_min_length || 6,
+            max_login_attempts: data.data.max_login_attempts || 5,
+            enable_2fa: data.data.enable_2fa || false,
+            enable_captcha: data.data.enable_captcha || true
+          },
+          notifications: {
+            email_notifications: data.data.email_notifications || true,
+            sms_notifications: data.data.sms_notifications || false,
+            new_user_alerts: data.data.new_user_alerts || true,
+            payment_alerts: data.data.payment_alerts || true,
+            system_alerts: data.data.system_alerts || true
+          },
+          payment: {
+            currency: data.data.currency || 'USD',
+            tax_rate: data.data.tax_rate || 0,
+            payment_methods: data.data.payment_methods || ['stripe', 'paypal'],
+            auto_renewal: data.data.auto_renewal || true,
+            invoice_prefix: data.data.invoice_prefix || 'INV'
+          },
+          appearance: {
+            theme: data.data.theme || 'light',
+            primary_color: data.data.primary_color || '#3B82F6',
+            logo_url: data.data.logo_url || '/logo.png',
+            favicon_url: data.data.favicon_url || '/favicon.ico',
+            language: data.data.language || 'en'
+          }
+        };
+        
+        setSettings(categorizedSettings);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleSave = async () => {
+    if (!settings) return;
+    
+    setSaving(true);
+    try {
+      // Flatten settings for API
+      const flatSettings = {
+        ...settings.general,
+        ...settings.security,
+        ...settings.notifications,
+        ...settings.payment,
+        ...settings.appearance
+      };
+
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings: flatSettings }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Settings saved successfully!');
+      } else {
+        alert('Failed to save settings: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm('Are you sure you want to reset all settings to default?')) return;
+    
+    try {
+      const response = await fetch('/api/admin/settings/reset', {
+        method: 'POST',
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Settings reset to default!');
+        loadSettings();
+      } else {
+        alert('Failed to reset settings');
+      }
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      alert('Error resetting settings');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Failed to load settings</p>
+          <button
+            onClick={loadSettings}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -180,31 +238,31 @@ export default function SystemSettingsPage() {
             {activeTab === 'general' && (
               <GeneralSettings 
                 settings={settings.general} 
-                onChange={(data) => setSettings(prev => ({ ...prev, general: data }))} 
+                onChange={(data) => setSettings(prev => prev ? { ...prev, general: data } : null)} 
               />
             )}
             {activeTab === 'security' && (
               <SecuritySettings 
                 settings={settings.security} 
-                onChange={(data) => setSettings(prev => ({ ...prev, security: data }))} 
+                onChange={(data) => setSettings(prev => prev ? { ...prev, security: data } : null)} 
               />
             )}
             {activeTab === 'notifications' && (
               <NotificationSettings 
                 settings={settings.notifications} 
-                onChange={(data) => setSettings(prev => ({ ...prev, notifications: data }))} 
+                onChange={(data) => setSettings(prev => prev ? { ...prev, notifications: data } : null)} 
               />
             )}
             {activeTab === 'payment' && (
               <PaymentSettings 
                 settings={settings.payment} 
-                onChange={(data) => setSettings(prev => ({ ...prev, payment: data }))} 
+                onChange={(data) => setSettings(prev => prev ? { ...prev, payment: data } : null)} 
               />
             )}
             {activeTab === 'appearance' && (
               <AppearanceSettings 
                 settings={settings.appearance} 
-                onChange={(data) => setSettings(prev => ({ ...prev, appearance: data }))} 
+                onChange={(data) => setSettings(prev => prev ? { ...prev, appearance: data } : null)} 
               />
             )}
           </div>
@@ -219,7 +277,7 @@ export default function SystemSettingsPage() {
             </button>
             <div className="flex space-x-3">
               <button
-                onClick={() => console.log('Cancel')}
+                onClick={() => window.history.back()}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Cancel
@@ -252,8 +310,8 @@ function GeneralSettings({ settings, onChange }: { settings: SystemSettings['gen
           </label>
           <input
             type="text"
-            value={settings.siteName}
-            onChange={(e) => onChange({ ...settings, siteName: e.target.value })}
+            value={settings.site_name}
+            onChange={(e) => onChange({ ...settings, site_name: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter site name"
           />
@@ -265,8 +323,8 @@ function GeneralSettings({ settings, onChange }: { settings: SystemSettings['gen
           </label>
           <input
             type="email"
-            value={settings.adminEmail}
-            onChange={(e) => onChange({ ...settings, adminEmail: e.target.value })}
+            value={settings.admin_email}
+            onChange={(e) => onChange({ ...settings, admin_email: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="admin@example.com"
           />
@@ -293,8 +351,8 @@ function GeneralSettings({ settings, onChange }: { settings: SystemSettings['gen
             Date Format
           </label>
           <select
-            value={settings.dateFormat}
-            onChange={(e) => onChange({ ...settings, dateFormat: e.target.value })}
+            value={settings.date_format}
+            onChange={(e) => onChange({ ...settings, date_format: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -311,8 +369,8 @@ function GeneralSettings({ settings, onChange }: { settings: SystemSettings['gen
             type="number"
             min="5"
             max="100"
-            value={settings.itemsPerPage}
-            onChange={(e) => onChange({ ...settings, itemsPerPage: parseInt(e.target.value) })}
+            value={settings.items_per_page}
+            onChange={(e) => onChange({ ...settings, items_per_page: parseInt(e.target.value) })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -322,8 +380,8 @@ function GeneralSettings({ settings, onChange }: { settings: SystemSettings['gen
             Site Description
           </label>
           <textarea
-            value={settings.siteDescription}
-            onChange={(e) => onChange({ ...settings, siteDescription: e.target.value })}
+            value={settings.site_description}
+            onChange={(e) => onChange({ ...settings, site_description: e.target.value })}
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Brief description of your platform"
@@ -349,8 +407,8 @@ function SecuritySettings({ settings, onChange }: { settings: SystemSettings['se
             type="number"
             min="15"
             max="480"
-            value={settings.sessionTimeout}
-            onChange={(e) => onChange({ ...settings, sessionTimeout: parseInt(e.target.value) })}
+            value={settings.session_timeout}
+            onChange={(e) => onChange({ ...settings, session_timeout: parseInt(e.target.value) })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -363,8 +421,8 @@ function SecuritySettings({ settings, onChange }: { settings: SystemSettings['se
             type="number"
             min="4"
             max="20"
-            value={settings.passwordMinLength}
-            onChange={(e) => onChange({ ...settings, passwordMinLength: parseInt(e.target.value) })}
+            value={settings.password_min_length}
+            onChange={(e) => onChange({ ...settings, password_min_length: parseInt(e.target.value) })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -377,8 +435,8 @@ function SecuritySettings({ settings, onChange }: { settings: SystemSettings['se
             type="number"
             min="3"
             max="10"
-            value={settings.maxLoginAttempts}
-            onChange={(e) => onChange({ ...settings, maxLoginAttempts: parseInt(e.target.value) })}
+            value={settings.max_login_attempts}
+            onChange={(e) => onChange({ ...settings, max_login_attempts: parseInt(e.target.value) })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -393,14 +451,14 @@ function SecuritySettings({ settings, onChange }: { settings: SystemSettings['se
             <p className="text-sm text-gray-500">Add an extra layer of security to user accounts</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, enable2FA: !settings.enable2FA })}
+            onClick={() => onChange({ ...settings, enable_2fa: !settings.enable_2fa })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.enable2FA ? 'bg-blue-600' : 'bg-gray-200'
+              settings.enable_2fa ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.enable2FA ? 'translate-x-5' : 'translate-x-0'
+                settings.enable_2fa ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -414,14 +472,14 @@ function SecuritySettings({ settings, onChange }: { settings: SystemSettings['se
             <p className="text-sm text-gray-500">Protect against spam and automated attacks</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, enableCaptcha: !settings.enableCaptcha })}
+            onClick={() => onChange({ ...settings, enable_captcha: !settings.enable_captcha })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.enableCaptcha ? 'bg-blue-600' : 'bg-gray-200'
+              settings.enable_captcha ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.enableCaptcha ? 'translate-x-5' : 'translate-x-0'
+                settings.enable_captcha ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -446,14 +504,14 @@ function NotificationSettings({ settings, onChange }: { settings: SystemSettings
             <p className="text-sm text-gray-500">Send notifications via email</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, emailNotifications: !settings.emailNotifications })}
+            onClick={() => onChange({ ...settings, email_notifications: !settings.email_notifications })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.emailNotifications ? 'bg-blue-600' : 'bg-gray-200'
+              settings.email_notifications ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.emailNotifications ? 'translate-x-5' : 'translate-x-0'
+                settings.email_notifications ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -467,14 +525,14 @@ function NotificationSettings({ settings, onChange }: { settings: SystemSettings
             <p className="text-sm text-gray-500">Send notifications via SMS</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, smsNotifications: !settings.smsNotifications })}
+            onClick={() => onChange({ ...settings, sms_notifications: !settings.sms_notifications })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.smsNotifications ? 'bg-blue-600' : 'bg-gray-200'
+              settings.sms_notifications ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.smsNotifications ? 'translate-x-5' : 'translate-x-0'
+                settings.sms_notifications ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -488,14 +546,14 @@ function NotificationSettings({ settings, onChange }: { settings: SystemSettings
             <p className="text-sm text-gray-500">Get notified when new users register</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, newUserAlerts: !settings.newUserAlerts })}
+            onClick={() => onChange({ ...settings, new_user_alerts: !settings.new_user_alerts })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.newUserAlerts ? 'bg-blue-600' : 'bg-gray-200'
+              settings.new_user_alerts ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.newUserAlerts ? 'translate-x-5' : 'translate-x-0'
+                settings.new_user_alerts ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -509,14 +567,14 @@ function NotificationSettings({ settings, onChange }: { settings: SystemSettings
             <p className="text-sm text-gray-500">Get notified for payment activities</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, paymentAlerts: !settings.paymentAlerts })}
+            onClick={() => onChange({ ...settings, payment_alerts: !settings.payment_alerts })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.paymentAlerts ? 'bg-blue-600' : 'bg-gray-200'
+              settings.payment_alerts ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.paymentAlerts ? 'translate-x-5' : 'translate-x-0'
+                settings.payment_alerts ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -530,14 +588,14 @@ function NotificationSettings({ settings, onChange }: { settings: SystemSettings
             <p className="text-sm text-gray-500">Get notified for system events and errors</p>
           </div>
           <button
-            onClick={() => onChange({ ...settings, systemAlerts: !settings.systemAlerts })}
+            onClick={() => onChange({ ...settings, system_alerts: !settings.system_alerts })}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              settings.systemAlerts ? 'bg-blue-600' : 'bg-gray-200'
+              settings.system_alerts ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                settings.systemAlerts ? 'translate-x-5' : 'translate-x-0'
+                settings.system_alerts ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
@@ -579,8 +637,8 @@ function PaymentSettings({ settings, onChange }: { settings: SystemSettings['pay
             min="0"
             max="50"
             step="0.1"
-            value={settings.taxRate}
-            onChange={(e) => onChange({ ...settings, taxRate: parseFloat(e.target.value) })}
+            value={settings.tax_rate}
+            onChange={(e) => onChange({ ...settings, tax_rate: parseFloat(e.target.value) })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -591,8 +649,8 @@ function PaymentSettings({ settings, onChange }: { settings: SystemSettings['pay
           </label>
           <input
             type="text"
-            value={settings.invoicePrefix}
-            onChange={(e) => onChange({ ...settings, invoicePrefix: e.target.value })}
+            value={settings.invoice_prefix}
+            onChange={(e) => onChange({ ...settings, invoice_prefix: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="INV"
           />
@@ -608,12 +666,12 @@ function PaymentSettings({ settings, onChange }: { settings: SystemSettings['pay
             <label key={method} className="flex items-center">
               <input
                 type="checkbox"
-                checked={settings.paymentMethods.includes(method)}
+                checked={settings.payment_methods.includes(method)}
                 onChange={(e) => {
                   const updatedMethods = e.target.checked
-                    ? [...settings.paymentMethods, method]
-                    : settings.paymentMethods.filter(m => m !== method);
-                  onChange({ ...settings, paymentMethods: updatedMethods });
+                    ? [...settings.payment_methods, method]
+                    : settings.payment_methods.filter(m => m !== method);
+                  onChange({ ...settings, payment_methods: updatedMethods });
                 }}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
@@ -633,14 +691,14 @@ function PaymentSettings({ settings, onChange }: { settings: SystemSettings['pay
           <p className="text-sm text-gray-500">Automatically renew subscriptions</p>
         </div>
         <button
-          onClick={() => onChange({ ...settings, autoRenewal: !settings.autoRenewal })}
+          onClick={() => onChange({ ...settings, auto_renewal: !settings.auto_renewal })}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            settings.autoRenewal ? 'bg-blue-600' : 'bg-gray-200'
+            settings.auto_renewal ? 'bg-blue-600' : 'bg-gray-200'
           }`}
         >
           <span
             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              settings.autoRenewal ? 'translate-x-5' : 'translate-x-0'
+              settings.auto_renewal ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
@@ -678,14 +736,14 @@ function AppearanceSettings({ settings, onChange }: { settings: SystemSettings['
           <div className="flex items-center space-x-2">
             <input
               type="color"
-              value={settings.primaryColor}
-              onChange={(e) => onChange({ ...settings, primaryColor: e.target.value })}
+              value={settings.primary_color}
+              onChange={(e) => onChange({ ...settings, primary_color: e.target.value })}
               className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
             />
             <input
               type="text"
-              value={settings.primaryColor}
-              onChange={(e) => onChange({ ...settings, primaryColor: e.target.value })}
+              value={settings.primary_color}
+              onChange={(e) => onChange({ ...settings, primary_color: e.target.value })}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -713,8 +771,8 @@ function AppearanceSettings({ settings, onChange }: { settings: SystemSettings['
           </label>
           <input
             type="url"
-            value={settings.logoUrl}
-            onChange={(e) => onChange({ ...settings, logoUrl: e.target.value })}
+            value={settings.logo_url}
+            onChange={(e) => onChange({ ...settings, logo_url: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="/logo.png"
           />
@@ -726,8 +784,8 @@ function AppearanceSettings({ settings, onChange }: { settings: SystemSettings['
           </label>
           <input
             type="url"
-            value={settings.faviconUrl}
-            onChange={(e) => onChange({ ...settings, faviconUrl: e.target.value })}
+            value={settings.favicon_url}
+            onChange={(e) => onChange({ ...settings, favicon_url: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="/favicon.ico"
           />
@@ -743,7 +801,7 @@ function AppearanceSettings({ settings, onChange }: { settings: SystemSettings['
           {['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'].map((color) => (
             <button
               key={color}
-              onClick={() => onChange({ ...settings, primaryColor: color })}
+              onClick={() => onChange({ ...settings, primary_color: color })}
               className="w-8 h-8 rounded border-2 border-gray-200 hover:border-gray-300 transition-colors"
               style={{ backgroundColor: color }}
             />
