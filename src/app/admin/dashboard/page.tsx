@@ -844,7 +844,23 @@ const handleRejectApplication = async (applicationId: string) => {
                   </button>
                 </div> */}
 
-                {app.verifiedStatus === "approval" && (
+{app.verifiedStatus === "approval" ? (
+  <div className="flex gap-2 mt-2">
+    <button
+      disabled={true}
+      className="flex-1 bg-green-400 text-white px-3 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1 cursor-not-allowed"
+    >
+      <CheckCircle className="w-3 h-3" />
+      Approved
+    </button>
+    <button
+      disabled={true}
+      className="flex-1 bg-gray-400 text-white px-3 py-2 rounded text-xs font-semibold cursor-not-allowed"
+    >
+      Rejected
+    </button>
+  </div>
+) : (
   <div className="flex gap-2 mt-2">
     <button
       onClick={() => handleApproveApplication(app.id)}
