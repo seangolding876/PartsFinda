@@ -59,6 +59,7 @@ interface SupplierApplication {
   status: string;
   urgency: string;
   revenue: string;
+  verifiedStatus: string;
 }
 
 
@@ -738,7 +739,7 @@ const handleRejectApplication = async (applicationId: string) => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(app.status)}`}>
-                      {app.status.replace('_', ' ')}
+                      {app.verifiedStatus.replace('_', ' ')}
                     </span>
                     {app.urgency === 'urgent' && (
                       <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">

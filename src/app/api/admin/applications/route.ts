@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
           THEN 'verified'
           ELSE 'pending_review'
         END as status,
+        verified_status as "verifiedStatus",
         CASE 
           WHEN business_license IS NULL OR business_license = '' OR
                tax_certificate IS NULL OR tax_certificate = '' OR
