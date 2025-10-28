@@ -144,7 +144,31 @@ export default function Navigation() {
   };
 
   return (
+    
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+
+            {/* 🌟 Slim Upgrade Banner */}
+      {user?.role === 'seller' && (
+        <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white text-xs font-medium flex items-center justify-center py-1.5 shadow-sm">
+          <span className="flex items-center gap-1">
+            <Crown className="w-3 h-3" />
+            {membershipPlan?.plan_name === 'Basic' || !membershipPlan
+              ? 'Upgrade to Pro for more features!'
+              : isPlanExpired(membershipPlan)
+              ? 'Your plan expired — renew now!'
+              : 'Enjoy your Pro membership!'}
+          </span>
+
+          {(membershipPlan?.plan_name === 'Basic' || isPlanExpired(membershipPlan)) && (
+            <button
+              onClick={handleUpgradeToPro}
+              className="ml-3 px-2 py-0.5 rounded-full bg-white text-yellow-700 font-semibold hover:bg-yellow-50 transition-all text-[11px]"
+            >
+              Upgrade
+            </button>
+          )}
+        </div>
+      )}
       {/* 🎯 SELLER MEMBERSHIP PLAN BANNER - Professional Header */}
 {user?.role === 'seller' && (
   <div className={`bg-gradient-to-r ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).gradient : 'from-gray-100 to-gray-200'} border-b ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).borderColor : 'border-gray-300'}`}>
