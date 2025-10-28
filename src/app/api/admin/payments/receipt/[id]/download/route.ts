@@ -20,9 +20,9 @@ export async function GET(
       FROM payments p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN subscription_plans sp ON p.subscription_plan_id = sp.plan_id
-      WHERE p.payment_id = $1 OR p.stripe_payment_id = $1
+      WHERE p.payment_id = $1 
     `;
-
+//OR p.stripe_payment_id = $1
     const result = await query(paymentQuery, [paymentId]);
 
     if (result.rows.length === 0) {
