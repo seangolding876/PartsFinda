@@ -1,6 +1,6 @@
 // components/admin/PaymentDashboard.tsx
 'use client';
-import router from 'next/router';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 interface DashboardStats {
@@ -45,6 +45,7 @@ export default function PaymentDashboard() {
   const [expiring, setExpiring] = useState<ExpiringSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+    const router = useRouter(); // ✅ initialize router here
 
   useEffect(() => {
     fetchDashboardData();
