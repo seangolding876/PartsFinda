@@ -148,7 +148,7 @@ export default function Navigation() {
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
 
             {/* 🌟 Slim Upgrade Banner */}
-      {user?.role === 'seller' && (
+      {/* {user?.role === 'seller' && (
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white text-xs font-medium flex items-center justify-center py-1.5 shadow-sm">
           <span className="flex items-center gap-1">
             <Crown className="w-3 h-3" />
@@ -168,7 +168,7 @@ export default function Navigation() {
             </button>
           )}
         </div>
-      )}
+      )} */}
       {/* 🎯 SELLER MEMBERSHIP PLAN BANNER - Professional Header */}
 {user?.role === 'seller' && (
   <div className={`bg-gradient-to-r ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).gradient : 'from-gray-100 to-gray-200'} border-b ${membershipPlan ? getPlanDetails(membershipPlan.plan_name).borderColor : 'border-gray-300'}`}>
