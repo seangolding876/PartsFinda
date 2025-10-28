@@ -1,5 +1,14 @@
 import ReceiptPage from '@/components/admin/ReceiptPage';
 
-export default function ReceiptViewPage({ params }: { params: { id: string } }) {
+interface PageParams {
+  params: {
+    id: string;
+  };
+}
+
+export default function ReceiptViewPage({ params }: PageParams) {
   return <ReceiptPage paymentId={params.id} />;
 }
+
+// Dynamic page ko force karen
+export const dynamic = 'force-dynamic';

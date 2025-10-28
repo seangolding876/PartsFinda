@@ -47,7 +47,9 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
   const router = useRouter();
 
   useEffect(() => {
-    generateReceipt();
+    if (paymentId) {
+      generateReceipt();
+    }
   }, [paymentId]);
 
   const generateReceipt = async () => {
@@ -60,6 +62,10 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
         },
         body: JSON.stringify({ paymentId })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate receipt');
+      }
 
       const data = await response.json();
 
@@ -114,6 +120,7 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
     );
   }
 
+  // Rest of the component remains the same as before...
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">

@@ -48,13 +48,20 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
   const router = useRouter();
 
   useEffect(() => {
-    fetchPaymentDetail();
+    if (paymentId) {
+      fetchPaymentDetail();
+    }
   }, [paymentId]);
 
   const fetchPaymentDetail = async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/admin/payments/${paymentId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch payment details');
+      }
+      
       const data = await response.json();
 
       if (data.success) {
@@ -84,6 +91,8 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
       
       if (data.success) {
         router.push(data.data.receipt_url);
+      } else {
+        alert(data.error || 'Failed to generate receipt');
       }
     } catch (error) {
       console.error('Error generating receipt:', error);
@@ -165,6 +174,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
           </div>
         </div>
 
+        {/* Rest of the component remains the same */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Payment Information */}
           <div className="lg:col-span-2 space-y-6">
