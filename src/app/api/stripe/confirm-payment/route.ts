@@ -45,23 +45,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-// Fetch plan details - make sure plan_name matches the constraint
-const planResult = await query('SELECT * FROM subscription_plans WHERE plan_id = $1', [planId]);
-if (planResult.rows.length === 0) {
-  return NextResponse.json({ success: false, error: 'Invalid plan ID' }, { status: 400 });
-}
+    // Fetch plan details - make sure plan_name matches the constraint
+    const planResult = await query('SELECT * FROM subscription_plans WHERE plan_id = $1', [planId]);
+    if (planResult.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Invalid plan ID' }, { status: 400 });
+    }
 
-const plan = planResult.rows[0];
+    const plan = planResult.rows[0];
 
-// ✅ Validate plan name against allowed values
-const allowedPlans = ['Basic', 'Standard', 'Premium', 'Gold', 'Pro'];
-if (!allowedPlans.includes(plan.plan_name)) {
-  console.error('Invalid plan name:', plan.plan_name);
-  return NextResponse.json(
-    { success: false, error: 'Invalid subscription plan' },
-    { status: 400 }
-  );
-}
+    // ✅ Validate plan name against allowed values
+    const allowedPlans = ['Basic', 'Standard', 'Premium', 'Gold', 'Pro'];
+    if (!allowedPlans.includes(plan.plan_name)) {
+      console.error('Invalid plan name:', plan.plan_name);
+      return NextResponse.json(
+        { success: false, error: 'Invalid subscription plan' },
+        { status: 400 }
+      );
+    }
 
     console.log('Activating plan:', plan.plan_name);
 
@@ -108,8 +108,11 @@ if (!allowedPlans.includes(plan.plan_name)) {
       ]
     );
 
-    // ✅ Send subscription success email
+    // ✅ Send subscription success email to user
     await sendSubscriptionSuccessEmail(user.email, user.name, plan.plan_name, endDate, paymentIntent.amount);
+
+    // ✅ Send admin notification email
+    await sendAdminNotificationEmail(user.email, user.name, plan.plan_name, paymentIntent.amount);
 
     console.log('Subscription created:', subscriptionResult.rows[0]);
 
@@ -149,7 +152,7 @@ if (!allowedPlans.includes(plan.plan_name)) {
   }
 }
 
-// ✅ Subscription Success Email Template
+// ✅ Subscription Success Email Template (User)
 async function sendSubscriptionSuccessEmail(
   userEmail: string, 
   userName: string, 
@@ -340,6 +343,176 @@ async function sendSubscriptionSuccessEmail(
     console.log(`✅ Subscription success email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send subscription success email:', error);
+    // Don't throw error - email failure shouldn't break the payment flow
+  }
+}
+
+// ✅ Admin Notification Email Template
+// ✅ Admin Notification Email Template
+async function sendAdminNotificationEmail(
+  userEmail: string, 
+  userName: string, 
+  planName: string, 
+  amount: number
+) {
+  const formattedAmount = (amount / 100).toFixed(2);
+  
+  // ✅ Multiple admin emails support
+  const adminEmails = process.env.ADMIN_EMAIL 
+    ? process.env.ADMIN_EMAIL.split(',').map(email => email.trim())
+    : ['admin@partsfinda.com']; // Fallback
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+    }
+    .container { 
+      max-width: 600px; 
+      margin: 0 auto; 
+      background: white; 
+      border-radius: 10px; 
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .header { 
+      background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+      color: white; 
+      padding: 25px; 
+      text-align: center; 
+    }
+    .header h1 { 
+      margin: 0; 
+      font-size: 22px; 
+      font-weight: 700;
+    }
+    .content { 
+      padding: 25px; 
+      color: #374151;
+    }
+    .alert-badge { 
+      background: #fef3c7; 
+      border: 2px solid #d97706;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .transaction-details { 
+      background: #f8fafc; 
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .footer { 
+      text-align: center; 
+      color: #6b7280; 
+      font-size: 12px; 
+      margin-top: 20px; 
+      padding-top: 20px; 
+      border-top: 1px solid #e5e7eb; 
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📈 New Subscription Purchase</h1>
+      <p>PartsFinda Seller Subscription</p>
+    </div>
+    
+    <div class="content">
+      <div class="alert-badge">
+        <p style="margin: 0; font-size: 16px; font-weight: 600; color: #d97706;">
+          🎯 New Premium Subscription Activated
+        </p>
+      </div>
+
+      <p><strong>Hello Admin Team,</strong></p>
+      
+      <p>A new subscription has been successfully purchased on PartsFinda.</p>
+
+      <div class="transaction-details">
+        <h3 style="margin-top: 0; color: #374151;">Transaction Details:</h3>
+        <div class="detail-row">
+          <span><strong>Seller Name:</strong></span>
+          <span style="color: #7c3aed; font-weight: 600;">${userName}</span>
+        </div>
+        <div class="detail-row">
+          <span><strong>Seller Email:</strong></span>
+          <span style="color: #374151; font-weight: 500;">${userEmail}</span>
+        </div>
+        <div class="detail-row">
+          <span><strong>Plan Purchased:</strong></span>
+          <span style="color: #059669; font-weight: 600;">${planName}</span>
+        </div>
+        <div class="detail-row">
+          <span><strong>Amount:</strong></span>
+          <span style="color: #059669; font-weight: 600;">$${formattedAmount}</span>
+        </div>
+        <div class="detail-row">
+          <span><strong>Purchase Time:</strong></span>
+          <span style="color: #374151; font-weight: 500;">${new Date().toLocaleString('en-US', { 
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZoneName: 'short'
+          })}</span>
+        </div>
+      </div>
+
+      <p style="background: #f0f9ff; padding: 12px; border-radius: 6px; border-left: 4px solid #7c3aed;">
+        <strong>💡 Action Required:</strong> 
+        This is an automated notification. No immediate action is required. The subscription has been automatically activated in the system.
+      </p>
+
+      <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">
+        You can view seller details in the admin panel.
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>PartsFinda Admin System | Auto Parts Marketplace</p>
+      <p>© 2025 PartsFinda Inc.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    // ✅ Send email to all admin addresses
+    const emailPromises = adminEmails.map(adminEmail => 
+      sendMail({
+        to: adminEmail,
+        subject: `📈 New ${planName} Subscription - ${userName} (${userEmail})`,
+        html: emailHtml,
+      })
+    );
+
+    await Promise.all(emailPromises);
+    console.log(`✅ Admin notification emails sent to: ${adminEmails.join(', ')}`);
+  } catch (error) {
+    console.error('❌ Failed to send admin notification emails:', error);
     // Don't throw error - email failure shouldn't break the payment flow
   }
 }
