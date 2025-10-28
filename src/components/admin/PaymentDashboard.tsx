@@ -122,59 +122,78 @@ const getAuthData = () => {
   };
 
   // Simple pie chart component
-  const SimplePieChart = ({ data }: { data: SubscriptionPlan[] }) => {
-    const total = data.reduce((sum, plan) => sum + plan.total_revenue, 0);
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-    
-    let currentAngle = 0;
-    
+const SimplePieChart = ({ data }: { data: SubscriptionPlan[] }) => {
+  if (!data || data.length === 0) {
     return (
-      <div className="relative w-64 h-64 mx-auto">
-        <svg width="100%" height="100%" viewBox="0 0 100 100">
-          {data.map((plan, index) => {
-            const percentage = (plan.total_revenue / total) * 100;
-            const angle = (percentage / 100) * 360;
-            const largeArcFlag = percentage > 50 ? 1 : 0;
-            
-            const x1 = 50 + 40 * Math.cos(currentAngle * Math.PI / 180);
-            const y1 = 50 + 40 * Math.sin(currentAngle * Math.PI / 180);
-            const x2 = 50 + 40 * Math.cos((currentAngle + angle) * Math.PI / 180);
-            const y2 = 50 + 40 * Math.sin((currentAngle + angle) * Math.PI / 180);
-            
-            const path = `M50,50 L${x1},${y1} A40,40 0 ${largeArcFlag},1 ${x2},${y2} Z`;
-            
-            const segment = (
-              <path
-                key={plan.plan_name}
-                d={path}
-                fill={colors[index % colors.length]}
-                stroke="#fff"
-                strokeWidth="1"
-              />
-            );
-            
-            currentAngle += angle;
-            return segment;
-          })}
-        </svg>
-        
-        {/* Legend */}
-        <div className="absolute -right-32 top-0 space-y-2">
-          {data.map((plan, index) => (
-            <div key={plan.plan_name} className="flex items-center space-x-2">
-              <div 
-                className="w-4 h-4 rounded" 
-                style={{ backgroundColor: colors[index % colors.length] }}
-              />
-              <span className="text-sm text-gray-700">
-                {plan.plan_name} (${plan.total_revenue})
-              </span>
-            </div>
-          ))}
-        </div>
+      <div className="w-full text-center text-gray-500 py-16">
+        No plan data available
       </div>
     );
-  };
+  }
+
+  // Filter out invalid or undefined values
+  const validData = data.filter(d => !isNaN(Number(d.total_revenue)) && d.total_revenue > 0);
+  const total = validData.reduce((sum, plan) => sum + (plan.total_revenue || 0), 0);
+
+  if (total === 0) {
+    return (
+      <div className="w-full text-center text-gray-500 py-16">
+        No revenue yet to display
+      </div>
+    );
+  }
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  let currentAngle = 0;
+
+  return (
+    <div className="relative w-64 h-64 mx-auto">
+      <svg width="100%" height="100%" viewBox="0 0 100 100">
+        {validData.map((plan, index) => {
+          const revenue = plan.total_revenue || 0;
+          const percentage = (revenue / total) * 100;
+          const angle = (percentage / 100) * 360;
+          const largeArcFlag = percentage > 50 ? 1 : 0;
+
+          const x1 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+          const y1 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+          const x2 = 50 + 40 * Math.cos(((currentAngle + angle) * Math.PI) / 180);
+          const y2 = 50 + 40 * Math.sin(((currentAngle + angle) * Math.PI) / 180);
+
+          const path = `M50,50 L${x1},${y1} A40,40 0 ${largeArcFlag},1 ${x2},${y2} Z`;
+
+          currentAngle += angle;
+
+          return (
+            <path
+              key={plan.plan_name}
+              d={path}
+              fill={colors[index % colors.length]}
+              stroke="#fff"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div className="absolute -right-32 top-0 space-y-2">
+        {validData.map((plan, index) => (
+          <div key={plan.plan_name} className="flex items-center space-x-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: colors[index % colors.length] }}
+            />
+            <span className="text-sm text-gray-700">
+              {plan.plan_name} (${plan.total_revenue})
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
   if (loading) {
     return (
