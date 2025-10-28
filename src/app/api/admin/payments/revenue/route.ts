@@ -7,27 +7,28 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'monthly';
 
-    // Default: Monthly data
-    let interval = '1 month';
+    // Default values
+    let intervalUnit = 'month';
     let dateFormat = 'YYYY-MM';
 
-    // Change interval and format based on period
     switch (period) {
       case 'daily':
-        interval = '1 day';
+        intervalUnit = 'day';
         dateFormat = 'YYYY-MM-DD';
         break;
       case 'weekly':
-        interval = '1 week';
-        dateFormat = 'IYYY-IW'; // ISO week
+        intervalUnit = 'week';
+        dateFormat = 'IYYY-IW';
         break;
       case 'yearly':
-        interval = '1 year';
+        intervalUnit = 'year';
         dateFormat = 'YYYY';
         break;
     }
 
-    // Build dynamic query safely
+    // ✅ Proper interval syntax
+    const interval = `12 ${intervalUnit}s`;
+
     const revenueQuery = `
       SELECT 
         TO_CHAR(created_at, '${dateFormat}') AS period,
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT user_id) AS unique_customers
       FROM payments
       WHERE status = 'completed'
-        AND created_at >= NOW() - INTERVAL '12 ${interval}'
+        AND created_at >= NOW() - INTERVAL '${interval}'
       GROUP BY period
       ORDER BY period DESC
       LIMIT 12;
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: result.rows.reverse(), // reverse for chronological order
+      data: result.rows.reverse(),
     });
 
   } catch (error: any) {
