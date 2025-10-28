@@ -10,10 +10,10 @@ import {
   useElements,
   PaymentElement,
 } from '@stripe/react-stripe-js';
+import { useToast } from '@/hooks/useToast';
 
 // Stripe promise initialize karen
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
 
 interface SubscriptionPlan {
   id: number;
@@ -54,11 +54,13 @@ function StripeCheckoutForm({
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { successmsg, errormsg } = useToast();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     
     if (!stripe || !elements) {
+      errormsg('Payment system not ready. Please try again.');
       return;
     }
 
@@ -66,38 +68,27 @@ function StripeCheckoutForm({
     setError('');
 
     try {
-      // const { error: stripeError } = await stripe.confirmPayment({
-      //   elements,
-      //   confirmParams: {
-      //     return_url: `${window.location.origin}/seller/subscription/success`,
-      //   },
-      //   redirect: 'if_required',
-      // });
-
-      // if (stripeError) {
-      //   setError(stripeError.message || 'Payment failed. Please try again.');
-      // } else {
-      //   // Payment successful
-      //   onSuccess();
-      // }
-
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-  elements,
-  confirmParams: { return_url: window.location.origin + '/seller/subscription/success' },
-  redirect: 'if_required',
-});
+        elements,
+        confirmParams: { 
+          return_url: window.location.origin + '/seller/subscription/success' 
+        },
+        redirect: 'if_required',
+      });
 
-if (stripeError) {
-  console.error('Stripe Error:', stripeError);
-  alert(`Payment failed: ${stripeError.message}`);
-  setError(stripeError.message || 'Payment failed. Please try again.');
-} else {
-  onSuccess();
-  console.log('Payment successful:', paymentIntent);
-}
-
+      if (stripeError) {
+        console.error('Stripe Error:', stripeError);
+        setError(stripeError.message || 'Payment failed. Please try again.');
+        errormsg(stripeError.message || 'Payment failed. Please try again.');
+      } else {
+        console.log('Payment successful:', paymentIntent);
+        successmsg('Payment processed successfully! Activating your subscription...');
+        onSuccess();
+      }
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+      const errorMessage = err.message || 'An unexpected error occurred.';
+      setError(errorMessage);
+      errormsg(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -153,7 +144,7 @@ if (stripeError) {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Processing...
+                  Processing Payment...
                 </>
               ) : (
                 `Pay ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(plan.price)}`
@@ -175,6 +166,7 @@ if (stripeError) {
 // Main Subscription Component
 export default function SubscriptionPage() {
   const router = useRouter();
+  const { successmsg, infomsg, errormsg } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
@@ -183,6 +175,7 @@ export default function SubscriptionPage() {
   const [processing, setProcessing] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showStripeCheckout, setShowStripeCheckout] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   // Auth utility - pure localStorage based
   const getAuthData = () => {
@@ -207,14 +200,14 @@ export default function SubscriptionPage() {
       
       if (!authData?.token) {
         console.log('No token found, redirecting to login');
-        alert('Please login to access subscription page');
+        errormsg('Please login to access subscription page');
         router.push('/auth/login');
         return false;
       }
 
       if (!isSeller()) {
         console.log('Not a seller, redirecting to home');
-        alert('This page is for sellers only');
+        errormsg('This page is for sellers only');
         router.push('/');
         return false;
       }
@@ -226,7 +219,7 @@ export default function SubscriptionPage() {
       setAuthChecked(true);
       fetchSubscriptionData();
     }
-  }, [router]);
+  }, [router, errormsg]);
 
   const fetchSubscriptionData = async () => {
     try {
@@ -235,6 +228,7 @@ export default function SubscriptionPage() {
 
       if (!authData?.token) {
         console.error('No auth token found');
+        errormsg('Authentication token not found');
         return;
       }
 
@@ -257,6 +251,9 @@ export default function SubscriptionPage() {
 
       if (plansResult.success) {
         setPlans(plansResult.data);
+        infomsg('Subscription plans loaded successfully');
+      } else {
+        throw new Error(plansResult.error || 'Failed to load plans');
       }
 
       // Handle current subscription
@@ -269,9 +266,9 @@ export default function SubscriptionPage() {
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching subscription data:', error);
-      alert('Failed to load subscription data');
+      errormsg(error.message || 'Failed to load subscription data');
     } finally {
       setLoading(false);
     }
@@ -282,95 +279,100 @@ export default function SubscriptionPage() {
 
     try {
       setProcessing(true);
+      setSelectedPlan(plan);
       const authData = getAuthData();
       
       if (!authData?.token) {
-        alert('Please login again');
+        errormsg('Please login again');
         router.push('/auth/login');
         return;
       }
 
-        console.log('🔍 Selected plan:', plan); // ✅ Debug log
-    console.log('🔍 Plan ID:', plan.id); // ✅ Debug log
-
+      console.log('🔍 Selected plan:', plan);
+      console.log('🔍 Plan ID:', plan.id);
 
       // Check if this is the current plan
       if (currentSubscription?.plan_name === plan.name) {
-        alert('You are already on this plan');
+        infomsg('You are already on this plan');
         return;
       }
 
       console.log('Processing subscription for plan:', plan.name);
 
-       // For FREE plan - direct activate
-    if (plan.price === 0) {
-      const response = await fetch('/api/subscription/activate-free', {
+      // For FREE plan - direct activate
+      if (plan.price === 0) {
+        infomsg('Activating free plan...');
+        
+        const response = await fetch('/api/subscription/activate-free', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          },
+          body: JSON.stringify({ planId: plan.id })
+        });
+
+        const result = await response.json();
+        console.log('Free plan activation result:', result);
+
+        if (result.success) {
+          successmsg('Free plan activated successfully!');
+          setCurrentSubscription(result.data);
+          fetchSubscriptionData();
+        } else {
+          throw new Error(result.error || 'Failed to activate free plan');
+        }
+        return;
+      }
+
+      // For PAID plans - Stripe payment
+      console.log('Creating Stripe payment intent for plan ID:', plan.id);
+      infomsg('Preparing payment...');
+
+      const paymentResponse = await fetch('/api/stripe/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
-        body: JSON.stringify({ planId: plan.id })
+        body: JSON.stringify({ 
+          planId: plan.id
+        })
       });
 
-      const result = await response.json();
-      console.log('Free plan activation result:', result);
+      const paymentResult = await paymentResponse.json();
+      console.log('Stripe payment intent result:', paymentResult);
 
-      if (result.success) {
-        alert('Free plan activated successfully!');
-        setCurrentSubscription(result.data);
-        fetchSubscriptionData();
+      // Check if clientSecret properly mil raha hai
+      if (paymentResult.clientSecret) {
+        successmsg('Payment form loaded successfully');
+        setClientSecret(paymentResult.clientSecret);
+        setShowStripeCheckout(true);
       } else {
-        throw new Error(result.error || 'Failed to activate free plan');
+        console.error('No clientSecret received:', paymentResult);
+        throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
       }
-      return;
+
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      errormsg(error.message || 'Failed to process subscription');
+    } finally {
+      setProcessing(false);
     }
-
-    // For PAID plans - Stripe payment
-    console.log('Creating Stripe payment intent for plan ID:', plan.id);
-
-    const paymentResponse = await fetch('/api/stripe/create-payment-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      },
-      body: JSON.stringify({ 
-        planId: plan.id  // ✅ Make sure this is correct
-      })
-    });
-
-    const paymentResult = await paymentResponse.json();
-    console.log('Stripe payment intent result:', paymentResult);
-
-    // Check if clientSecret properly mil raha hai
-    if (paymentResult.clientSecret) {
-      setSelectedPlan(plan);
-      setClientSecret(paymentResult.clientSecret);
-      setShowStripeCheckout(true);
-    } else {
-      console.error('No clientSecret received:', paymentResult);
-      throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
-    }
-
-  } catch (error: any) {
-    console.error('Subscription error:', error);
-    alert(error.message || 'Failed to process subscription');
-  } finally {
-    setProcessing(false);
-  }
   };
 
   const handlePaymentSuccess = async () => {
     if (!selectedPlan) return;
 
     try {
+      setPaymentProcessing(true);
       const authData = getAuthData();
       
       // Extract payment intent ID from client secret
       const paymentIntentId = clientSecret.split('_secret')[0];
       
       console.log('Confirming payment with ID:', paymentIntentId);
+      infomsg('Finalizing your subscription...');
 
       // Confirm payment and activate subscription
       const response = await fetch('/api/stripe/confirm-payment', {
@@ -389,7 +391,7 @@ export default function SubscriptionPage() {
       console.log('Payment confirmation result:', result);
 
       if (result.success) {
-        alert('🎉 Subscription activated successfully!');
+        successmsg('🎉 Subscription activated successfully! Welcome emails and confirmation have been sent.');
         setShowStripeCheckout(false);
         setSelectedPlan(null);
         setClientSecret('');
@@ -400,11 +402,14 @@ export default function SubscriptionPage() {
       }
     } catch (error: any) {
       console.error('Payment confirmation error:', error);
-      alert(error.message || 'Failed to activate subscription');
+      errormsg(error.message || 'Failed to activate subscription');
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 
   const handlePaymentCancel = () => {
+    infomsg('Payment cancelled');
     setShowStripeCheckout(false);
     setSelectedPlan(null);
     setClientSecret('');
@@ -429,8 +434,9 @@ export default function SubscriptionPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-lg text-gray-600">Checking authentication...</p>
+          <p className="text-sm text-gray-500 mt-2">Please wait while we verify your access</p>
         </div>
       </div>
     );
@@ -440,8 +446,9 @@ export default function SubscriptionPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading subscription plans...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-lg text-gray-600">Loading subscription plans...</p>
+          <p className="text-sm text-gray-500 mt-2">Getting the latest pricing and features</p>
         </div>
       </div>
     );
@@ -502,6 +509,25 @@ export default function SubscriptionPage() {
                     You are currently on the free plan. Upgrade to get early access to part requests and premium features.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Processing Overlay */}
+        {paymentProcessing && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Your Subscription</h3>
+              <p className="text-gray-600 mb-4">
+                Please wait while we activate your {selectedPlan?.name} plan...
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>✓ Payment verified successfully</p>
+                <p>⏳ Activating subscription features</p>
+                <p>⏳ Sending confirmation email</p>
+                <p>⏳ Updating your account</p>
               </div>
             </div>
           </div>
@@ -571,7 +597,7 @@ export default function SubscriptionPage() {
                   {processing && selectedPlan?.id === plan.id ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processing...
+                      Preparing...
                     </>
                   ) : currentSubscription?.plan_name === plan.name ? (
                     'Current Plan'
