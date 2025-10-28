@@ -47,6 +47,17 @@ export default function PaymentDashboard() {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
     const router = useRouter(); // ✅ initialize router here
 
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+
   useEffect(() => {
     fetchDashboardData();
   }, [period]);
@@ -54,12 +65,16 @@ export default function PaymentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+        const authData = getAuthData();
+  const headers = authData
+    ? { Authorization: `Bearer ${authData.token}` }
+    : {};
       
       const [statsRes, revenueRes, plansRes, expiringRes] = await Promise.all([
-        fetch('/api/admin/payments/dashboard'),
-        fetch(`/api/admin/payments/revenue?period=${period}`),
-        fetch('/api/admin/payments/subscriptions'),
-        fetch('/api/admin/payments/expiring')
+    fetch('/api/admin/payments/dashboard', { headers }),
+    fetch(`/api/admin/payments/revenue?period=${period}`, { headers }),
+    fetch('/api/admin/payments/subscriptions', { headers }),
+    fetch('/api/admin/payments/expiring', { headers })
       ]);
 
       const statsData = await statsRes.json();
