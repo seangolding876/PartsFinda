@@ -38,14 +38,59 @@ interface ExpiringSubscription {
   days_remaining: number;
 }
 
+// Auth utility functions
+const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      return parsed.token || parsed.accessToken || null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
+};
+
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
+const isAdmin = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const authData = localStorage.getItem('authData');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      return parsed.role === 'admin' || parsed.user?.role === 'admin';
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking admin role:', error);
+    return false;
+  }
+};
+
 export default function PaymentDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [expiring, setExpiring] = useState<ExpiringSubscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
-    const router = useRouter(); // ✅ initialize router here
+  const router = useRouter();
 
   useEffect(() => {
     fetchDashboardData();
@@ -54,13 +99,46 @@ export default function PaymentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError('');
+
+      // Check if user is admin
+      if (!isAdmin()) {
+        setError('Access denied. Admin privileges required.');
+        setLoading(false);
+        return;
+      }
+
+      const headers = getAuthHeaders();
       
       const [statsRes, revenueRes, plansRes, expiringRes] = await Promise.all([
-        fetch('/api/admin/payments/dashboard'),
-        fetch(`/api/admin/payments/revenue?period=${period}`),
-        fetch('/api/admin/payments/subscriptions'),
-        fetch('/api/admin/payments/expiring')
+        fetch('/api/admin/payments/dashboard', { 
+          headers,
+          cache: 'no-store'
+        }),
+        fetch(`/api/admin/payments/revenue?period=${period}&t=${Date.now()}`, { 
+          headers,
+          cache: 'no-store'
+        }),
+        fetch('/api/admin/payments/subscriptions', { 
+          headers,
+          cache: 'no-store'
+        }),
+        fetch('/api/admin/payments/expiring', { 
+          headers,
+          cache: 'no-store'
+        })
       ]);
+
+      // Check for authentication errors
+      if (statsRes.status === 401 || revenueRes.status === 401) {
+        setError('Authentication failed. Please login again.');
+        return;
+      }
+
+      if (!statsRes.ok) throw new Error(`Dashboard API error: ${statsRes.status}`);
+      if (!revenueRes.ok) throw new Error(`Revenue API error: ${revenueRes.status}`);
+      if (!plansRes.ok) throw new Error(`Plans API error: ${plansRes.status}`);
+      if (!expiringRes.ok) throw new Error(`Expiring API error: ${expiringRes.status}`);
 
       const statsData = await statsRes.json();
       const revenueData = await revenueRes.json();
@@ -74,30 +152,55 @@ export default function PaymentDashboard() {
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleViewPayments = () => {
+    router.push('/admin/payments/list');
+  };
+
+  const handleRetry = () => {
+    fetchDashboardData();
+  };
+
   // Simple bar chart component
   const SimpleBarChart = ({ data }: { data: RevenueData[] }) => {
-    const maxRevenue = Math.max(...data.map(d => d.revenue));
+    if (!data || data.length === 0) {
+      return (
+        <div className="w-full h-64 flex items-center justify-center">
+          <p className="text-gray-500">No revenue data available</p>
+        </div>
+      );
+    }
+
+    const maxRevenue = Math.max(...data.map(d => d.revenue || 0));
+    if (maxRevenue === 0) {
+      return (
+        <div className="w-full h-64 flex items-center justify-center">
+          <p className="text-gray-500">No revenue data to display</p>
+        </div>
+      );
+    }
     
     return (
-      <div className="w-full h-64 flex items-end space-x-2 pt-4">
+      <div className="w-full h-64 flex items-end space-x-1 pt-4">
         {data.map((item, index) => (
           <div key={index} className="flex-1 flex flex-col items-center">
             <div 
               className="w-full bg-blue-500 rounded-t hover:bg-blue-600 transition-all cursor-pointer"
               style={{ 
-                height: `${(item.revenue / maxRevenue) * 80}%`,
-                minHeight: '20px'
+                height: `${((item.revenue || 0) / maxRevenue) * 80}%`,
+                minHeight: '4px'
               }}
-              title={`$${item.revenue} - ${item.period}`}
+              title={`$${item.revenue || 0} - ${item.period}`}
             />
-            <div className="text-xs text-gray-500 mt-2 text-center">
+            <div className="text-xs text-gray-500 mt-2 text-center whitespace-nowrap overflow-hidden">
               {period === 'daily' ? item.period.split('-')[2] : 
                period === 'monthly' ? item.period.split('-')[1] : 
+               period === 'weekly' ? `W${item.period.split('-')[1]?.replace('W', '') || ''}` :
                item.period}
             </div>
           </div>
@@ -108,7 +211,23 @@ export default function PaymentDashboard() {
 
   // Simple pie chart component
   const SimplePieChart = ({ data }: { data: SubscriptionPlan[] }) => {
-    const total = data.reduce((sum, plan) => sum + plan.total_revenue, 0);
+    if (!data || data.length === 0) {
+      return (
+        <div className="w-64 h-64 mx-auto flex items-center justify-center">
+          <p className="text-gray-500 text-center">No plan data available</p>
+        </div>
+      );
+    }
+
+    const total = data.reduce((sum, plan) => sum + (plan.total_revenue || 0), 0);
+    if (total === 0) {
+      return (
+        <div className="w-64 h-64 mx-auto flex items-center justify-center">
+          <p className="text-gray-500 text-center">No revenue data</p>
+        </div>
+      );
+    }
+
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
     
     let currentAngle = 0;
@@ -117,7 +236,7 @@ export default function PaymentDashboard() {
       <div className="relative w-64 h-64 mx-auto">
         <svg width="100%" height="100%" viewBox="0 0 100 100">
           {data.map((plan, index) => {
-            const percentage = (plan.total_revenue / total) * 100;
+            const percentage = ((plan.total_revenue || 0) / total) * 100;
             const angle = (percentage / 100) * 360;
             const largeArcFlag = percentage > 50 ? 1 : 0;
             
@@ -151,8 +270,8 @@ export default function PaymentDashboard() {
                 className="w-4 h-4 rounded" 
                 style={{ backgroundColor: colors[index % colors.length] }}
               />
-              <span className="text-sm text-gray-700">
-                {plan.plan_name} (${plan.total_revenue})
+              <span className="text-sm text-gray-700 whitespace-nowrap">
+                {plan.plan_name} (${(plan.total_revenue || 0).toLocaleString()})
               </span>
             </div>
           ))}
@@ -165,6 +284,30 @@ export default function PaymentDashboard() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-xl mb-4">❌ {error}</div>
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={handleRetry}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => window.location.href = '/auth/login'}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+            >
+              Login Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -197,7 +340,7 @@ export default function PaymentDashboard() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-blue-100 text-sm font-medium">Total Revenue</p>
-              <p className="text-2xl font-bold mt-2">${stats?.total_revenue.toLocaleString() || '0'}</p>
+              <p className="text-2xl font-bold mt-2">${stats?.total_revenue?.toLocaleString() || '0'}</p>
               <p className="text-blue-100 text-xs mt-1">All time revenue</p>
             </div>
             <div className="bg-blue-400 rounded-full p-2">
@@ -212,7 +355,7 @@ export default function PaymentDashboard() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-green-100 text-sm font-medium">Today's Revenue</p>
-              <p className="text-2xl font-bold mt-2">${stats?.today_revenue.toLocaleString() || '0'}</p>
+              <p className="text-2xl font-bold mt-2">${stats?.today_revenue?.toLocaleString() || '0'}</p>
               <p className="text-green-100 text-xs mt-1">Revenue today</p>
             </div>
             <div className="bg-green-400 rounded-full p-2">
@@ -227,7 +370,7 @@ export default function PaymentDashboard() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-purple-100 text-sm font-medium">Active Subscribers</p>
-              <p className="text-2xl font-bold mt-2">{stats?.active_subscribers.toString() || '0'}</p>
+              <p className="text-2xl font-bold mt-2">{stats?.active_subscribers?.toString() || '0'}</p>
               <p className="text-purple-100 text-xs mt-1">Currently active</p>
             </div>
             <div className="bg-purple-400 rounded-full p-2">
@@ -242,7 +385,7 @@ export default function PaymentDashboard() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-orange-100 text-sm font-medium">Expiring Soon</p>
-              <p className="text-2xl font-bold mt-2">{stats?.expiring_soon.toString() || '0'}</p>
+              <p className="text-2xl font-bold mt-2">{stats?.expiring_soon?.toString() || '0'}</p>
               <p className="text-orange-100 text-xs mt-1">In next 7 days</p>
             </div>
             <div className="bg-orange-400 rounded-full p-2">
@@ -254,21 +397,22 @@ export default function PaymentDashboard() {
         </div>
       </div>
 
-<div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-  <div className="flex justify-between items-center">
-    <h3 className="text-lg font-semibold text-gray-900">Payment Management</h3>
-    <button
-      onClick={() => router.push('/admin/payments/list')}
-      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-    >
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-      <span>View All Payments & Receipts</span>
-    </button>
-  </div>
-  <p className="text-gray-600 mt-2">View detailed payment history, generate receipts, and manage subscriptions</p>
-</div>
+      {/* Payment Management Card */}
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">Payment Management</h3>
+          <button
+            onClick={handleViewPayments}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>View All Payments & Receipts</span>
+          </button>
+        </div>
+        <p className="text-gray-600 mt-2">View detailed payment history, generate receipts, and manage subscriptions</p>
+      </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -282,19 +426,19 @@ export default function PaymentDashboard() {
             <div className="mt-4 grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-2xl font-bold text-blue-600">
-                  ${revenueData.reduce((sum, item) => sum + item.revenue, 0).toLocaleString()}
+                  ${revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-500">Total Revenue</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">
-                  {revenueData.reduce((sum, item) => sum + item.transaction_count, 0)}
+                  {revenueData.reduce((sum, item) => sum + (item.transaction_count || 0), 0)}
                 </p>
                 <p className="text-sm text-gray-500">Transactions</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-purple-600">
-                  {revenueData.reduce((sum, item) => sum + item.unique_customers, 0)}
+                  {revenueData.reduce((sum, item) => sum + (item.unique_customers || 0), 0)}
                 </p>
                 <p className="text-sm text-gray-500">Customers</p>
               </div>
@@ -316,7 +460,7 @@ export default function PaymentDashboard() {
                   <div className="flex space-x-4 text-sm">
                     <span className="text-blue-600">${plan.price}</span>
                     <span className="text-green-600">{plan.active_subscriptions} active</span>
-                    <span className="font-bold">${plan.total_revenue.toLocaleString()}</span>
+                    <span className="font-bold">${(plan.total_revenue || 0).toLocaleString()}</span>
                   </div>
                 </div>
               ))}
@@ -442,7 +586,7 @@ export default function PaymentDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ${plan.total_revenue.toLocaleString()}
+                      ${(plan.total_revenue || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))}
