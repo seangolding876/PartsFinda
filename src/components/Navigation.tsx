@@ -26,6 +26,7 @@ import {
   Package,
   TrendingUp,
   Shield,
+  Contact,
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { Dialog } from '@headlessui/react';
@@ -374,6 +375,13 @@ export default function Navigation() {
                         >
                           <Settings className="w-4 h-4 text-gray-600" />
                           System Settings
+                        </Link>
+                        <Link
+                          href="/admin/contact-messages"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Contact className="w-4 h-4 text-gray-600" />
+                          Contact Messages
                         </Link>
                       </div>
                     )}
