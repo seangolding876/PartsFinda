@@ -6,18 +6,50 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Contact Messages API Called');
+    
     // Authentication check
     const authHeader = request.headers.get('authorization');
+    console.log('🔑 Auth Header:', authHeader ? 'Present' : 'Missing');
+    
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('❌ No auth token provided');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
+    console.log('🔑 Token:', token.substring(0, 20) + '...');
+    
+    let userInfo;
+    try {
+      userInfo = verifyToken(token);
+      console.log('👤 User ID:', userInfo.userId);
+    } catch (tokenError) {
+      console.error('❌ Token verification failed:', tokenError);
+      return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
+    }
 
     // Check if user is admin
-    const userResult = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
+    console.log('🔍 Checking user role...');
+    let userResult;
+    try {
+      userResult = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
+      console.log('👤 User query result:', userResult.rows.length ? 'Found' : 'Not found');
+    } catch (dbError) {
+      console.error('❌ Database error in user query:', dbError);
+      return NextResponse.json({ success: false, error: 'Database error' }, { status: 500 });
+    }
+
+    if (userResult.rows.length === 0) {
+      console.log('❌ User not found in database');
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    const userRole = userResult.rows[0].role;
+    console.log('🎭 User role:', userRole);
+
+    if (userRole !== 'admin') {
+      console.log('❌ Access denied - User is not admin');
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
     }
 
@@ -27,6 +59,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search');
+
+    console.log('📋 Query params:', { status, type, page, limit, search });
 
     const offset = (page - 1) * limit;
 
@@ -57,6 +91,9 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${whereConditions.join(' AND ')}` 
       : '';
 
+    console.log('📊 Where clause:', whereClause);
+    console.log('🔢 Query params:', queryParams);
+
     // Get messages with pagination
     const messagesQuery = `
       SELECT 
@@ -69,9 +106,24 @@ export async function GET(request: NextRequest) {
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
     `;
 
-    queryParams.push(limit, offset);
+    const messagesParams = [...queryParams, limit, offset];
+    console.log('📨 Messages query params:', messagesParams);
 
-    const messagesResult = await query(messagesQuery, queryParams);
+    let messagesResult;
+    try {
+      console.log('🚀 Executing messages query...');
+      messagesResult = await query(messagesQuery, messagesParams);
+      console.log('✅ Messages fetched:', messagesResult.rows.length);
+    } catch (messagesError) {
+      console.error('❌ Error in messages query:', messagesError);
+      console.error('📝 Failed query:', messagesQuery);
+      console.error('🔢 Failed params:', messagesParams);
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Database query failed',
+        details: process.env.NODE_ENV === 'development' ? messagesError.message : undefined
+      }, { status: 500 });
+    }
 
     // Get total count for pagination
     const countQuery = `
@@ -80,32 +132,47 @@ export async function GET(request: NextRequest) {
       ${whereClause}
     `;
 
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
-    const totalCount = parseInt(countResult.rows[0].total_count);
+    console.log('📊 Count query:', countQuery);
+    
+    let countResult;
+    try {
+      countResult = await query(countQuery, queryParams);
+      const totalCount = parseInt(countResult.rows[0].total_count);
+      console.log('🔢 Total count:', totalCount);
+    } catch (countError) {
+      console.error('❌ Error in count query:', countError);
+      // Continue with default count
+    }
+
+    const totalCount = countResult ? parseInt(countResult.rows[0].total_count) : 0;
 
     // Get status counts for filters
-    const statusCountsQuery = `
-      SELECT 
-        status,
-        COUNT(*) as count
-      FROM contact_messages
-      GROUP BY status
-      ORDER BY status
-    `;
-
-    const statusCountsResult = await query(statusCountsQuery);
+    let statusCountsResult = { rows: [] };
+    try {
+      statusCountsResult = await query(`
+        SELECT status, COUNT(*) as count 
+        FROM contact_messages 
+        GROUP BY status 
+        ORDER BY status
+      `);
+    } catch (error) {
+      console.error('❌ Error in status counts query:', error);
+    }
 
     // Get type counts for filters
-    const typeCountsQuery = `
-      SELECT 
-        type,
-        COUNT(*) as count
-      FROM contact_messages
-      GROUP BY type
-      ORDER BY type
-    `;
+    let typeCountsResult = { rows: [] };
+    try {
+      typeCountsResult = await query(`
+        SELECT type, COUNT(*) as count 
+        FROM contact_messages 
+        GROUP BY type 
+        ORDER BY type
+      `);
+    } catch (error) {
+      console.error('❌ Error in type counts query:', error);
+    }
 
-    const typeCountsResult = await query(typeCountsQuery);
+    console.log('✅ API call successful, returning data...');
 
     return NextResponse.json({
       success: true,
@@ -127,165 +194,18 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error fetching contact messages:', error);
+    console.error('🔥 Unexpected error in contact messages API:', error);
+    console.error('📝 Error stack:', error.stack);
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch contact messages' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    // Authentication check
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
-
-    // Check if user is admin
-    const userResult = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { messageId, status, adminNotes, assignedTo } = body;
-
-    if (!messageId) {
-      return NextResponse.json(
-        { success: false, error: 'Message ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Build update query dynamically
-    const updateFields = [];
-    const updateParams = [];
-    let paramCount = 0;
-
-    if (status) {
-      paramCount++;
-      updateFields.push(`status = $${paramCount}`);
-      updateParams.push(status);
-
-      // If status is being set to resolved, set responded_at
-      if (status === 'resolved') {
-        paramCount++;
-        updateFields.push(`responded_at = $${paramCount}`);
-        updateParams.push(new Date());
-      }
-    }
-
-    if (adminNotes !== undefined) {
-      paramCount++;
-      updateFields.push(`admin_notes = $${paramCount}`);
-      updateParams.push(adminNotes);
-    }
-
-    if (assignedTo !== undefined) {
-      paramCount++;
-      updateFields.push(`assigned_to = $${paramCount}`);
-      updateParams.push(assignedTo);
-    }
-
-    // Always update the updated_at timestamp
-    paramCount++;
-    updateFields.push(`updated_at = $${paramCount}`);
-    updateParams.push(new Date());
-
-    if (updateFields.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No fields to update' },
-        { status: 400 }
-      );
-    }
-
-    paramCount++;
-    updateParams.push(messageId);
-
-    const updateQuery = `
-      UPDATE contact_messages 
-      SET ${updateFields.join(', ')}
-      WHERE id = $${paramCount}
-      RETURNING *
-    `;
-
-    const result = await query(updateQuery, updateParams);
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: result.rows[0],
-      message: 'Message updated successfully'
-    });
-
-  } catch (error: any) {
-    console.error('Error updating contact message:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update message' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    // Authentication check
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const userInfo = verifyToken(token);
-
-    // Check if user is admin
-    const userResult = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
-    if (userResult.rows.length === 0 || userResult.rows[0].role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const messageId = searchParams.get('id');
-
-    if (!messageId) {
-      return NextResponse.json(
-        { success: false, error: 'Message ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const result = await query(
-      'DELETE FROM contact_messages WHERE id = $1 RETURNING *',
-      [messageId]
-    );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Message deleted successfully'
-    });
-
-  } catch (error: any) {
-    console.error('Error deleting contact message:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete message' },
+      {
+        success: false,
+        error: 'Failed to fetch contact messages',
+        details: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          stack: error.stack
+        } : undefined,
+      },
       { status: 500 }
     );
   }

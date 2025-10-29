@@ -66,42 +66,55 @@ export default function ContactMessagesPage() {
     type: []
   });
 
-  const fetchMessages = async () => {
-    try {
-      setLoading(true);
-      
-      const token = localStorage.getItem('token'); // Adjust based on your auth storage
-      const queryParams = new URLSearchParams({
-        status: filters.status,
-        type: filters.type,
-        page: filters.page.toString(),
-        limit: filters.limit.toString(),
-        ...(filters.search && { search: filters.search })
-      });
-
-      const response = await fetch(`/api/admin/contact-messages?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setMessages(data.data.messages);
-        setPagination(data.data.pagination);
-        setFilterCounts(data.data.filters);
-      } else {
-        console.error('Failed to fetch messages:', data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching contact messages:', error);
-    } finally {
-      setLoading(false);
+// In your page component, update the fetch function:
+const fetchMessages = async () => {
+  try {
+    setLoading(true);
+    console.log('🔄 Fetching messages...');
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('❌ No token found in localStorage');
+      return;
     }
-  };
 
+    const queryParams = new URLSearchParams({
+      status: filters.status,
+      type: filters.type,
+      page: filters.page.toString(),
+      limit: filters.limit.toString(),
+      ...(filters.search && { search: filters.search })
+    });
+
+    console.log('📨 API URL:', `/api/admin/contact-messages?${queryParams}`);
+    
+    const response = await fetch(`/api/admin/contact-messages?${queryParams}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📊 Response status:', response.status);
+    
+    const data = await response.json();
+    console.log('📦 Response data:', data);
+    
+    if (data.success) {
+      setMessages(data.data.messages);
+      setPagination(data.data.pagination);
+      setFilterCounts(data.data.filters);
+      console.log('✅ Messages fetched successfully');
+    } else {
+      console.error('❌ API Error:', data.error);
+      console.error('❌ API Details:', data.details);
+    }
+  } catch (error) {
+    console.error('🔥 Fetch error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchMessages();
   }, [filters]);
