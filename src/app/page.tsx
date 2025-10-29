@@ -216,7 +216,7 @@ export default function HomePage() {
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-800 mb-4">How PartFinda Works</h2>
+            <h2 className="text-4xl font-bold text-gray-800 mb-4">How PartsFinda Works</h2>
             <p className="text-xl text-gray-600">Get your car parts in 4 simple steps</p>
           </div>
 
@@ -617,7 +617,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div className="text-white">
               <Mail className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-xl font-semibold">info@partfinda.com</div>
+              <div className="text-xl font-semibold">info@partsfinda.com</div>
             </div>
             <div className="text-white">
               <Phone className="w-12 h-12 mx-auto mb-4" />
