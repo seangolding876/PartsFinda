@@ -160,7 +160,7 @@ export default function ContactPage() {
                   Request a Part
                 </a>
                 <a
-                  href="/auth/seller-signup"
+                  href="/auth/seller-register"
                   className="block w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 text-center"
                 >
                   Become a Seller

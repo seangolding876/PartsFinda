@@ -262,7 +262,7 @@ export default function RegisterPage() {
           <div className="text-center">
             <span className="text-sm text-gray-600">
               Are you a seller?{' '}
-              <Link href="/auth/seller-signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/auth/seller-register" className="font-medium text-blue-600 hover:text-blue-500">
                 Register as a seller here
               </Link>
             </span>
