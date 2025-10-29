@@ -5,6 +5,7 @@ import ContactMessagesTable from '@/components/admin/contact-messages/ContactMes
 import ContactMessagesFilters from '@/components/admin/contact-messages/ContactMessagesFilters';
 import ContactMessageDetails from '@/components/admin/contact-messages/ContactMessageDetails';
 import {  MessageStatus, MessageType } from '@/types/contact';
+import { getAuthToken, isAdmin, logout } from '@/lib/auth';
 
 export interface ContactMessage {
   id: string;
@@ -66,15 +67,25 @@ export default function ContactMessagesPage() {
     type: []
   });
 
-// In your page component, update the fetch function:
 const fetchMessages = async () => {
   try {
     setLoading(true);
-    console.log('🔄 Fetching messages...');
     
-    const token = localStorage.getItem('token');
+    // ✅ USE YOUR EXISTING AUTH UTILITY
+    const token = getAuthToken();
+    
     if (!token) {
-      console.error('❌ No token found in localStorage');
+      console.error('❌ User not authenticated');
+      // Redirect to login or show message
+      alert('Please login to access this page');
+      window.location.href = '/auth/login';
+      return;
+    }
+
+    // Also check if user is admin
+    if (!isAdmin()) {
+      console.error('❌ User is not admin');
+      alert('Access denied. Admin privileges required.');
       return;
     }
 
@@ -86,8 +97,6 @@ const fetchMessages = async () => {
       ...(filters.search && { search: filters.search })
     });
 
-    console.log('📨 API URL:', `/api/admin/contact-messages?${queryParams}`);
-    
     const response = await fetch(`/api/admin/contact-messages?${queryParams}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -95,26 +104,41 @@ const fetchMessages = async () => {
       }
     });
 
-    console.log('📊 Response status:', response.status);
-    
+    // Handle non-OK responses
+    if (response.status === 401) {
+      console.error('❌ Unauthorized - token may be invalid');
+      logout(); // Use your logout function
+      return;
+    }
+
+    if (response.status === 403) {
+      console.error('❌ Forbidden - user is not admin');
+      alert('Access denied. Admin privileges required.');
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
-    console.log('📦 Response data:', data);
     
     if (data.success) {
       setMessages(data.data.messages);
       setPagination(data.data.pagination);
       setFilterCounts(data.data.filters);
-      console.log('✅ Messages fetched successfully');
     } else {
-      console.error('❌ API Error:', data.error);
-      console.error('❌ API Details:', data.details);
+      console.error('Failed to fetch messages:', data.error);
+      alert('Error: ' + data.error);
     }
   } catch (error) {
-    console.error('🔥 Fetch error:', error);
+    console.error('Error fetching contact messages:', error);
+    alert('Network error. Please try again.');
   } finally {
     setLoading(false);
   }
 };
+
   useEffect(() => {
     fetchMessages();
   }, [filters]);
