@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ContactMessage, MessageStatus, MessageType } from '@/types/contact';
+import { getAuthToken } from '@/lib/auth';
 
 interface ContactMessageDetailsProps {
   message: ContactMessage;
@@ -19,6 +20,7 @@ export default function ContactMessageDetails({
   getTypeColor
 }: ContactMessageDetailsProps) {
   const [adminNotes, setAdminNotes] = useState(message.admin_notes || '');
+  const token = getAuthToken();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -32,7 +34,7 @@ export default function ContactMessageDetails({
 
   const handleSaveNotes = async () => {
     try {
-      const token = localStorage.getItem('token');
+   
       const response = await fetch('/api/admin/contact-messages', {
         method: 'PUT',
         headers: {

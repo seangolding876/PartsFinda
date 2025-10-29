@@ -43,6 +43,7 @@ export default function ContactMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const token = getAuthToken();
   
   // Filters state
   const [filters, setFilters] = useState({
@@ -72,7 +73,7 @@ const fetchMessages = async () => {
     setLoading(true);
     
     // ✅ USE YOUR EXISTING AUTH UTILITY
-    const token = getAuthToken();
+
     
     if (!token) {
       console.error('❌ User not authenticated');
@@ -153,7 +154,7 @@ const fetchMessages = async () => {
 
   const handleStatusUpdate = async (messageId: string, newStatus: MessageStatus) => {
     try {
-      const token = localStorage.getItem('token');
+      
       const response = await fetch('/api/admin/contact-messages', {
         method: 'PUT',
         headers: {
@@ -205,7 +206,6 @@ const fetchMessages = async () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`/api/admin/contact-messages?id=${messageId}`, {
         method: 'DELETE',
         headers: {
