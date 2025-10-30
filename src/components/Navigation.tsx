@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { Dialog } from '@headlessui/react';
+import MessageBell from './MessageBell';
 
 export default function Navigation() {
   const { user, logout, isLoading } = useAuth();
@@ -282,13 +283,13 @@ export default function Navigation() {
             {user && (
               <>
                 {/* Common for all users */}
-                <Link
+                {/* <Link
                   href="/messages"
                   className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
                 >
                   <MessageSquare className="w-4 h-4" />
                   Messages
-                </Link>
+                </Link> */}
 
                 {/* Buyer Specific */}
                 {user.role === 'buyer' && (
@@ -402,8 +403,10 @@ export default function Navigation() {
               <div className="flex items-center gap-6">
                 {/* Notifications */}
                 <div className="flex items-center gap-4">
+                   <MessageBell />
                   <NotificationBell />
                 </div>
+
 
                 {/* User Profile Dropdown */}
                 <div className="relative">
@@ -578,14 +581,14 @@ export default function Navigation() {
 
             {user && (
               <>
-                <Link
+                {/* <Link
                   href="/messages"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 p-4 hover:bg-blue-50 rounded-xl transition-colors text-gray-700 font-medium"
                 >
                   <MessageSquare className="w-6 h-6 text-blue-600" />
                   Messages
-                </Link>
+                </Link> */}
 
                 {/* Buyer Mobile Links */}
                 {user.role === 'buyer' && (
