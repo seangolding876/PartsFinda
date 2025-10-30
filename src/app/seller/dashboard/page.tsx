@@ -8,7 +8,6 @@ import QuoteModal from '@/components/QuoteModal';
 import { useToast } from '@/hooks/useToast'; 
 import { useWelcomeMessage } from '@/hooks/useWelcomeMessage';
 
-
 // Auth utility
 const getAuthData = () => {
   if (typeof window === 'undefined') return null;
@@ -68,11 +67,16 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const { successmsg, errormsg, infomsg } = useToast(); // ✅ Use hook
+  
+  // ✅ Toast hook use karein
+  const { successmsg, errormsg, infomsg } = useToast();
 
-    //Welcome Messge First Time
-      useWelcomeMessage(); 
+  // Welcome Message First Time
+  useWelcomeMessage();
 
+  // Real-time data tracking ke liye
+  const [lastRequestCount, setLastRequestCount] = useState(0);
+  const [lastStats, setLastStats] = useState<SellerStats | null>(null);
 
   // Fetch data based on active tab
   useEffect(() => {
@@ -81,7 +85,7 @@ function SellerDashboard() {
       const authData = getAuthData();
       
       if (!authData?.token) {
-        console.error('No authentication token found');
+        errormsg('No authentication token found');
         setLoading(false);
         return;
       }
@@ -98,8 +102,18 @@ function SellerDashboard() {
           if (requestsResponse.ok) {
             const requestsResult = await requestsResponse.json();
             if (requestsResult.success) {
+              // ✅ Real-time notification for new requests
+              if (requests.length > 0 && requestsResult.data.length > requests.length) {
+                const newRequests = requestsResult.data.length - requests.length;
+                infomsg(`${newRequests} new request${newRequests > 1 ? 's' : ''} available`);
+              }
+              
               setRequests(requestsResult.data);
+            } else {
+              errormsg(requestsResult.error || 'Failed to load requests');
             }
+          } else {
+            errormsg('Failed to fetch requests');
           }
 
           // Fetch stats for overview
@@ -113,12 +127,24 @@ function SellerDashboard() {
             if (statsResponse.ok) {
               const statsResult = await statsResponse.json();
               if (statsResult.success) {
+                // ✅ Real-time stats comparison
+                if (lastStats && statsResult.data.monthlyRevenue > lastStats.monthlyRevenue) {
+                  const increase = statsResult.data.monthlyRevenue - lastStats.monthlyRevenue;
+                  successmsg(`Revenue increased by ${formatCurrency(increase)} this month!`);
+                }
+                
                 setStats(statsResult.data);
+                setLastStats(statsResult.data);
+              } else {
+                errormsg(statsResult.error || 'Failed to load stats');
               }
+            } else {
+              errormsg('Failed to fetch stats');
             }
           }
         }
       } catch (error) {
+        errormsg('Error fetching data');
         console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
@@ -128,55 +154,99 @@ function SellerDashboard() {
     fetchData();
   }, [activeTab, filterStatus]);
 
-const handleSubmitQuote = async (quoteData: any) => {
-  const authData = getAuthData();
-  if (!authData?.token) return;
+  // ✅ Real-time polling for new requests (every 30 seconds)
+  useEffect(() => {
+    if (activeTab === 'requests' || activeTab === 'overview') {
+      const interval = setInterval(async () => {
+        const authData = getAuthData();
+        if (!authData?.token) return;
 
-  setSubmittingQuote(quoteData.requestId);
+        try {
+          const response = await fetch(`/api/seller/requests?action=getRequests&status=pending`, {
+            headers: {
+              'Authorization': `Bearer ${authData.token}`
+            }
+          });
 
-  try {
-    const response = await fetch('/api/seller/quotes', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      },
-      body: JSON.stringify(quoteData)
-    });
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data.length > requests.length) {
+              const newCount = result.data.length - requests.length;
+              infomsg(`🆕 ${newCount} new request${newCount > 1 ? 's' : ''} available!`);
+              setRequests(result.data);
+            }
+          }
+        } catch (error) {
+          console.error('Error polling for new requests:', error);
+        }
+      }, 30000); // 30 seconds
 
-    const result = await response.json();
-
-    if (result.success) {
-      // Update local state
-      setRequests(prev => prev.map(req => 
-        req.id === quoteData.requestId ? { 
-          ...req, 
-          hasQuoted: true, 
-          quoted: true,
-          totalQuotes: req.totalQuotes + 1
-        } : req
-      ));
-      
-      setShowQuoteModal(false);
-      setSelectedRequest(null);
-      
-      // Show success message
-      alert('Quote submitted successfully!');
-    } else {
-      alert('Failed to submit quote: ' + result.error);
+      return () => clearInterval(interval);
     }
-  } catch (error) {
-    console.error('Error submitting quote:', error);
-    alert('Failed to submit quote. Please try again.');
-  } finally {
-    setSubmittingQuote(null);
-  }
-};
+  }, [activeTab, requests.length]);
 
-const openQuoteModal = (request: SellerRequest) => {
-  setSelectedRequest(request);
-  setShowQuoteModal(true);
-};
+  // ✅ Handle quote submission with toast messages
+  const handleSubmitQuote = async (quoteData: any) => {
+    const authData = getAuthData();
+    if (!authData?.token) {
+      errormsg('Authentication required');
+      return;
+    }
+
+    setSubmittingQuote(quoteData.requestId);
+
+    try {
+      const response = await fetch('/api/seller/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(quoteData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update local state
+        setRequests(prev => prev.map(req => 
+          req.id === quoteData.requestId ? { 
+            ...req, 
+            hasQuoted: true, 
+            quoted: true,
+            totalQuotes: req.totalQuotes + 1
+          } : req
+        ));
+        
+        setShowQuoteModal(false);
+        setSelectedRequest(null);
+        
+        // ✅ Success message with quote details
+        successmsg(`Quote submitted successfully for ${quoteData.price}! Buyer notified.`);
+      } else {
+        errormsg(result.error || 'Failed to submit quote');
+      }
+    } catch (error) {
+      errormsg('Failed to submit quote. Please try again.');
+      console.error('Error submitting quote:', error);
+    } finally {
+      setSubmittingQuote(null);
+    }
+  };
+
+  // ✅ Open quote modal with info message
+  const openQuoteModal = (request: SellerRequest) => {
+    setSelectedRequest(request);
+    setShowQuoteModal(true);
+    infomsg(`Preparing quote for ${request.partName}`);
+  };
+
+  // ✅ View details with info message
+  const openDetailsModal = (request: SellerRequest) => {
+    setSelectedRequestForDetails(request);
+    setShowDetailsModal(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -279,6 +349,7 @@ const openQuoteModal = (request: SellerRequest) => {
               <Link
                 href="/seller/add-part"
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                onClick={() => infomsg('Opening add part form...')}
               >
                 <Plus className="w-5 h-5" />
                 Add Part
@@ -286,6 +357,7 @@ const openQuoteModal = (request: SellerRequest) => {
               <Link
                 href="/seller/subscription"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                onClick={() => infomsg('Checking subscription options...')}
               >
                 Upgrade Plan
               </Link>
@@ -322,7 +394,10 @@ const openQuoteModal = (request: SellerRequest) => {
 
               <nav className="space-y-2">
                 <button
-                  onClick={() => setActiveTab('overview')}
+                  onClick={() => {
+                    setActiveTab('overview');
+                    infomsg('Loading overview...');
+                  }}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
                     activeTab === 'overview' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
                   }`}
@@ -330,7 +405,10 @@ const openQuoteModal = (request: SellerRequest) => {
                   Overview
                 </button>
                 <button
-                  onClick={() => setActiveTab('requests')}
+                  onClick={() => {
+                    setActiveTab('requests');
+                    infomsg('Loading part requests...');
+                  }}
                   className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
                     activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
                   }`}
@@ -340,7 +418,6 @@ const openQuoteModal = (request: SellerRequest) => {
                     {requests.filter(r => !r.hasQuoted).length}
                   </span>
                 </button>
-                {/* ... other nav items ... */}
               </nav>
             </div>
           </div>
@@ -368,7 +445,10 @@ const openQuoteModal = (request: SellerRequest) => {
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Quick Actions</h3>
                   <div className="grid md:grid-cols-3 gap-4">
                     <button
-                      onClick={() => setActiveTab('requests')}
+                      onClick={() => {
+                        setActiveTab('requests');
+                        infomsg('Showing pending requests...');
+                      }}
                       className="bg-orange-50 border border-orange-200 p-4 rounded-lg hover:bg-orange-100 transition-colors text-left"
                     >
                       <AlertCircle className="w-8 h-8 text-orange-600 mb-3" />
@@ -378,6 +458,7 @@ const openQuoteModal = (request: SellerRequest) => {
                     <Link
                       href="/seller/add-part"
                       className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition-colors text-left block"
+                      onClick={() => infomsg('Opening add part form...')}
                     >
                       <Plus className="w-8 h-8 text-green-600 mb-3" />
                       <h4 className="font-semibold text-gray-800">Add New Part</h4>
@@ -386,6 +467,7 @@ const openQuoteModal = (request: SellerRequest) => {
                     <Link
                       href="/seller/subscription"
                       className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition-colors text-left block"
+                      onClick={() => infomsg('Checking subscription options...')}
                     >
                       <TrendingUp className="w-8 h-8 text-blue-600 mb-3" />
                       <h4 className="font-semibold text-gray-800">Upgrade Plan</h4>
@@ -433,13 +515,21 @@ const openQuoteModal = (request: SellerRequest) => {
                         type="text"
                         placeholder="Search requests..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          if (e.target.value) {
+                            infomsg(`Searching for "${e.target.value}"...`);
+                          }
+                        }}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <select
                       value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
+                      onChange={(e) => {
+                        setFilterStatus(e.target.value);
+                        infomsg(`Filtering by ${e.target.value === 'all' ? 'all requests' : e.target.value}...`);
+                      }}
                       className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="all">All Requests</option>
@@ -501,35 +591,27 @@ const openQuoteModal = (request: SellerRequest) => {
                         </div>
 
                         <div className="flex gap-3">
-                     {!request.hasQuoted ? (
-  <button 
-    onClick={() => openQuoteModal(request)}
-    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-  >
-    <Send className="w-4 h-4" />
-    Submit Quote
-  </button>
-) : (
-  <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-    <Edit className="w-4 h-4" />
-    View Quote
-  </button>
-)}
-                          {/* <button className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                          {!request.hasQuoted ? (
+                            <button 
+                              onClick={() => openQuoteModal(request)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                            >
+                              <Send className="w-4 h-4" />
+                              Submit Quote
+                            </button>
+                          ) : (
+                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                              <Edit className="w-4 h-4" />
+                              View Quote
+                            </button>
+                          )}
+                          <button 
+                            onClick={() => openDetailsModal(request)}
+                            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                          >
                             <Eye className="w-4 h-4" />
                             View Details
-                          </button> */}
-<button 
-  onClick={() => {
-    setSelectedRequestForDetails(request);
-    setShowDetailsModal(true);
-  }}
-  className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
->
-  <Eye className="w-4 h-4" />
-  View Details
-</button>
-
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -550,17 +632,17 @@ const openQuoteModal = (request: SellerRequest) => {
                 )}
               </div>
             )}
-
-            {/* Other tabs would be similar... */}
           </div>
         </div>
       </div>
-        {/* MODEL POPUP */}
+
+      {/* MODALS */}
       <QuoteModal
         isOpen={showQuoteModal}
         onClose={() => {
           setShowQuoteModal(false);
           setSelectedRequest(null);
+          infomsg('Quote modal closed');
         }}
         onSubmit={handleSubmitQuote}
         request={selectedRequest}
@@ -579,7 +661,6 @@ const openQuoteModal = (request: SellerRequest) => {
   );
 }
 
-
 export default function SellerDashboardPage() {
   return (
     <Suspense fallback={
@@ -592,9 +673,5 @@ export default function SellerDashboardPage() {
     }>
       <SellerDashboard />
     </Suspense>
-
-    
   );
-
-
 }
