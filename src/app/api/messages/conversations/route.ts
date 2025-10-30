@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       ) last_msg ON true
       
       WHERE cp.user_id = $1
-      ORDER BY COALESCE(last_msg.created_at, c.created_at) DESC
+      ORDER BY c.id, COALESCE(last_msg.created_at, c.created_at) DESC;
     `;
 
     const result = await query(queryStr, [userInfo.userId]);
