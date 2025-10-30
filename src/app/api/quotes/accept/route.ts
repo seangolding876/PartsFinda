@@ -1,4 +1,4 @@
-// app/api/quotes/accept/route.ts - UPDATED
+// app/api/quotes/accept/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Transaction start
+    // Start transaction
     await query('BEGIN');
 
-    // 1. Verify that quote exists and belongs to buyer's request
+    // 1. Verify quote exists and belongs to buyer
     const quoteCheck = await query(
       `SELECT rq.*, pr.user_id as buyer_id, pr.part_name, 
               u.name as buyer_name, rq.seller_id, s.name as seller_name,
@@ -72,13 +72,13 @@ export async function POST(request: NextRequest) {
       ['rejected', quote.request_id, quoteId]
     );
 
-    // ✅ 5. Create BUYER notification in single table
+    // 5. Create BUYER notification
     await query(
       `INSERT INTO notifications 
        (user_id, part_request_id, title, message, type, user_type) 
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        userInfo.userId, // buyer user_id
+        userInfo.userId,
         quote.request_id,
         'Quote Accepted Successfully',
         `You have accepted the quote for ${quote.part_name} from ${quote.seller_name} at J$${quote.price}`,
@@ -87,13 +87,13 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // ✅ 6. Create SELLER notification in single table
+    // 6. Create SELLER notification
     await query(
       `INSERT INTO notifications 
        (user_id, part_request_id, title, message, type, user_type) 
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
-        quote.seller_id, // seller user_id
+        quote.seller_id,
         quote.request_id,
         'Your Quote Was Accepted!',
         `${quote.buyer_name} has accepted your quote for ${quote.part_name} at J$${quote.price}`,
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // 7. Create conversation automatically
+    // 7. Create conversation AND ensure participants are added
     const existingConv = await query(
       'SELECT id FROM conversations WHERE part_request_id = $1 AND buyer_id = $2 AND seller_id = $3',
       [quote.request_id, userInfo.userId, quote.seller_id]
@@ -110,22 +110,62 @@ export async function POST(request: NextRequest) {
 
     let conversationId;
     if (existingConv.rows.length === 0) {
+      // Create new conversation
       const newConv = await query(
         `INSERT INTO conversations (part_request_id, buyer_id, seller_id) 
          VALUES ($1, $2, $3) RETURNING id`,
         [quote.request_id, userInfo.userId, quote.seller_id]
       );
       conversationId = newConv.rows[0].id;
+
+      // ✅ CRITICAL: Add BOTH buyer and seller to conversation_participants
+      await query(
+        `INSERT INTO conversation_participants (conversation_id, user_id) 
+         VALUES ($1, $2), ($1, $3)`,
+        [conversationId, userInfo.userId, quote.seller_id]
+      );
     } else {
       conversationId = existingConv.rows[0].id;
+
+      // Ensure both users are in conversation_participants (for safety)
+      const participantCheck = await query(
+        `SELECT user_id FROM conversation_participants 
+         WHERE conversation_id = $1 AND user_id IN ($2, $3)`,
+        [conversationId, userInfo.userId, quote.seller_id]
+      );
+
+      const existingUserIds = participantCheck.rows.map((r: any) => r.user_id);
+      const valuesToInsert: any[] = [];
+      const params: any[] = [conversationId];
+
+      if (!existingUserIds.includes(userInfo.userId)) {
+        valuesToInsert.push(`($${params.length + 1})`);
+        params.push(userInfo.userId);
+      }
+      if (!existingUserIds.includes(quote.seller_id)) {
+        valuesToInsert.push(`($${params.length + 1})`);
+        params.push(quote.seller_id);
+      }
+
+      if (valuesToInsert.length > 0) {
+        await query(
+          `INSERT INTO conversation_participants (conversation_id, user_id) 
+           VALUES ${valuesToInsert.join(', ')}`,
+          params
+        );
+      }
     }
 
     // 8. Send automatic acceptance message
     await query(
-      `INSERT INTO messages (conversation_id, sender_id, receiver_id, message_text) 
-       VALUES ($1, $2, $3, $4)`,
-      [conversationId, userInfo.userId, quote.seller_id, 
-       `Hello! I have accepted your quote for ${quote.part_name} at J$${quote.price}. Please let me know the next steps for pickup/delivery.`]
+      `INSERT INTO messages (conversation_id, sender_id, receiver_id, message_text, is_read) 
+       VALUES ($1, $2, $3, $4, false)`,
+      [
+        conversationId,
+        userInfo.userId,
+        quote.seller_id,
+        `Hello! I have accepted your quote for ${quote.part_name} at J$${quote.price}. Please let me know the next steps for pickup/delivery.`
+      ]
     );
 
     // 9. Update conversation last message time
@@ -134,17 +174,16 @@ export async function POST(request: NextRequest) {
       [conversationId]
     );
 
+    // Commit transaction
     await query('COMMIT');
 
-    console.log('✅ Quote accepted and notifications created:', quoteId);
+    console.log('✅ Quote accepted, conversation created, participants added, and message sent:', quoteId);
 
-    // 10. Send email notification to seller
+    // 10. Optional: Send email to seller
     try {
       await fetch(`${process.env.NEXTAUTH_URL}/api/email/notify`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'quote_accepted',
           userId: quote.seller_id,
@@ -165,12 +204,12 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Quote accepted successfully',
       sellerId: quote.seller_id,
-      conversationId: conversationId
+      conversationId
     });
 
   } catch (error: any) {
     await query('ROLLBACK');
-    console.error('Error accepting quote:', error);
+    console.error('❌ Error accepting quote:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to accept quote' },
       { status: 500 }

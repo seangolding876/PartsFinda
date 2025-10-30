@@ -3,66 +3,54 @@
 
 import { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
-import Link from 'next/link';
-
-interface MessageNotification {
-  id: string;
-  title: string;
-  created_at: string;
-  is_read: boolean;
-}
 
 export default function MessageBell() {
-  const [messages, setMessages] = useState<MessageNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const fetchMessages = async () => {
+  const fetchUnreadCount = async () => {
     try {
-      const authData = localStorage.getItem('authData');
-      const token = authData ? JSON.parse(authData).token : null;
+      // Get token from localStorage (same as your auth system)
+      const authData = typeof window !== 'undefined' 
+        ? localStorage.getItem('authData') 
+        : null;
       
-      if (!token) {
+      if (!authData) {
+        setUnreadCount(0);
         setLoading(false);
         return;
       }
 
-      const response = await fetch('/api/notifications', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const { token } = JSON.parse(authData);
+
+      const response = await fetch('/api/messages/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
-      
+
       if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          const messageNotifications = result.data.filter((n: any) => n.type === 'message');
-          setMessages(messageNotifications);
-          setUnreadCount(messageNotifications.filter((m: any) => !m.is_read).length);
-        }
+        const data = await response.json();
+        setUnreadCount(data.count || 0);
+      } else {
+        setUnreadCount(0);
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('Error fetching unread message count:', error);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 5000);
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
   }, []);
 
-  const markAllAsRead = async () => {
-    try {
-      const authData = localStorage.getItem('authData');
-      const token = authData ? JSON.parse(authData).token : null;
-      
-      // Optional: call API to mark all message notifications as read
-      // For now, just redirect to messages page (which can handle read status)
-      window.location.href = '/messages';
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
+  const goToMessages = () => {
+    window.location.href = '/messages';
   };
 
   if (loading) {
@@ -78,8 +66,9 @@ export default function MessageBell() {
   return (
     <div className="relative">
       <button
-        onClick={markAllAsRead}
+        onClick={goToMessages}
         className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors"
+        aria-label="Messages"
       >
         <MessageCircle className="w-6 h-6" />
         {unreadCount > 0 && (
