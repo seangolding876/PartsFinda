@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export async function GET(request: NextRequest) {
   try {
     // 1. Get and verify token
-    const authHeader = request.headers.get('authData');
+    const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -17,6 +17,7 @@ export default function MessageBell() {
       const response = await fetch('/api/messages/unread-count', {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       });
 
