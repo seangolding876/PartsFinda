@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // CORRECTED QUERY: Using conversation_participants table
     const queryStr = `
-      SELECT DISTINCT
+      SELECT DISTINCT  ON (c.id)
         c.id,
         c.part_request_id,
         c.created_at,
