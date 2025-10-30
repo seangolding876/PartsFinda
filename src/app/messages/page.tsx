@@ -129,7 +129,7 @@ export default function MessagesPage() {
         return;
       }
 
-      const response = await fetch(`/api/messages/conversations?t=${Date.now()}`, {
+      const response = await fetch(`/api/conversations?t=${Date.now()}`, { // ✅ YEH CHANGE KAREIN - /api/messages/conversations se /api/conversations
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -200,6 +200,25 @@ export default function MessagesPage() {
       console.error('❌ Error fetching messages:', error);
       setMessages([]);
     }
+  };
+
+  // ✅ Conversation select handler - YEH ADD KAREIN
+  const handleSelectConversation = async (conversation: Conversation) => {
+    console.log('🎯 Selecting conversation:', conversation.id);
+    setSelectedConversation(conversation);
+    
+    // Join socket room
+    if (socket) {
+      socket.emit('join_conversation', { 
+        conversationId: conversation.id 
+      });
+    }
+    
+    // Fetch messages
+    await fetchMessages(conversation.id);
+    
+    // Check rating status
+    await checkRatingStatus(conversation.id);
   };
 
 // ✅ Check rating status function - IMPROVED VERSION
@@ -342,6 +361,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     throw error;
   }
 };
+
   // ✅ Conversation select hone par rating status check karo
   useEffect(() => {
     if (selectedConversation) {
@@ -860,7 +880,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  onClick={() => setSelectedConversation(conversation)}
+                  onClick={() => handleSelectConversation(conversation)} // ✅ YEH CHANGE KAREIN
                   className={`p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
                     selectedConversation?.id === conversation.id 
                       ? 'bg-blue-50 border-r-2 border-r-blue-500' 
