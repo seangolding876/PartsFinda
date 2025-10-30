@@ -1,4 +1,4 @@
-// app/api/conversations/route.ts - CORRECTED VERSION
+// app/api/conversations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
@@ -7,20 +7,26 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔄 /api/conversations called');
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('❌ No auth header');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     const userInfo = verifyToken(token);
 
-    console.log('🔄 Fetching conversations for user:', userInfo.userId);
+    console.log('👤 User fetching conversations:', userInfo.userId);
 
     // CORRECTED QUERY: Using conversation_participants table
     const queryStr = `
       SELECT DISTINCT
-        c.*,
+        c.id,
+        c.part_request_id,
+        c.created_at,
+        c.last_message_at,
         pr.part_name,
         pr.part_number,
         m.name as make_name,
@@ -37,6 +43,7 @@ export async function GET(request: NextRequest) {
         -- Last message
         last_msg.message_text as last_message_text,
         last_msg.created_at as last_message_time,
+        last_msg.sender_id as last_message_sender_id,
         
         -- Unread count
         (SELECT COUNT(*) FROM messages m2 
@@ -69,11 +76,10 @@ export async function GET(request: NextRequest) {
       ORDER BY COALESCE(last_msg.created_at, c.created_at) DESC
     `;
 
-    const conversations = await query(queryStr, [userInfo.userId]);
+    const result = await query(queryStr, [userInfo.userId]);
+    console.log('✅ Conversations query result:', result.rows.length);
 
-    console.log('✅ Conversations found:', conversations.rows.length);
-
-    const formattedConversations = conversations.rows.map(conv => ({
+    const formattedConversations = result.rows.map(conv => ({
       id: conv.id.toString(),
       participant: {
         id: conv.participant_id,
@@ -83,7 +89,7 @@ export async function GET(request: NextRequest) {
         avatar: conv.participant_role === 'seller' 
           ? 'https://media.istockphoto.com/id/1257558676/vector/buyer-avatar-icon.jpg?s=170667a&w=0&k=20&c=VG92-sJeQVUZaZO9cRgBHwnUTVRTDD252tM8z-dYyzA='
           : 'https://img.freepik.com/premium-vector/investment-banker-vector-character-flat-style-illustration_1033579-58081.jpg',
-        location: 'Unknown', // You might want to add this to users table
+        location: 'Unknown',
         online: false
       },
       lastMessage: {
@@ -98,7 +104,7 @@ export async function GET(request: NextRequest) {
         status: conv.request_status
       } : null,
       unreadCount: parseInt(conv.unread_count) || 0,
-      isAdminConversation: conv.is_admin_conversation || false
+      isAdminConversation: false
     }));
 
     return NextResponse.json({
@@ -107,7 +113,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Error fetching conversations:', error);
+    console.error('❌ Error in /api/conversations:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch conversations' },
       { status: 500 }
