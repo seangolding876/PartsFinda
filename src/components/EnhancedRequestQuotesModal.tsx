@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, MessageCircle, User, Calendar, DollarSign, Package, Truck, CheckCircle, XCircle } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import
 
 interface EnhancedQuote {
   id: number;
@@ -23,7 +24,7 @@ interface EnhancedRequestQuotesModalProps {
   isOpen: boolean;
   onClose: () => void;
   request: any;
-  onQuoteUpdate?: () => void; // Refresh parent component
+  onQuoteUpdate?: () => void;
 }
 
 const getAuthToken = () => {
@@ -48,6 +49,9 @@ export default function EnhancedRequestQuotesModal({
   const [messageText, setMessageText] = useState('');
   const [processing, setProcessing] = useState<number | null>(null);
 
+  // ✅ Toast hook use karein
+  const { successmsg, errormsg } = useToast();
+
   useEffect(() => {
     if (isOpen && request) {
       fetchQuotes();
@@ -69,9 +73,13 @@ export default function EnhancedRequestQuotesModal({
         const result = await response.json();
         if (result.success) {
           setQuotes(result.data);
+          if (result.data.length > 0) {
+            successmsg(`Loaded ${result.data.length} quotes`);
+          }
         }
       }
     } catch (error) {
+      errormsg('Error fetching quotes');
       console.error('Error fetching quotes:', error);
     } finally {
       setLoading(false);
@@ -79,7 +87,8 @@ export default function EnhancedRequestQuotesModal({
   };
 
   const handleAcceptQuote = async (quoteId: number) => {
-    if (!confirm('Are you sure you want to accept this quote? All other quotes will be automatically rejected.')) return;
+    const userConfirmed = window.confirm('Are you sure you want to accept this quote? All other quotes will be automatically rejected.');
+    if (!userConfirmed) return;
     
     try {
       setProcessing(quoteId);
@@ -101,24 +110,25 @@ export default function EnhancedRequestQuotesModal({
         // Send automatic acceptance message
         await sendAcceptanceMessage(result.sellerId);
         
-        alert('Quote accepted successfully! Conversation started with seller.');
+        successmsg('Quote accepted successfully! Conversation started with seller.');
         
         // Refresh quotes and parent component
         fetchQuotes();
         if (onQuoteUpdate) onQuoteUpdate();
       } else {
-        alert(result.error || 'Failed to accept quote');
+        errormsg(result.error || 'Failed to accept quote');
       }
     } catch (error) {
+      errormsg('Failed to accept quote');
       console.error('Error accepting quote:', error);
-      alert('Failed to accept quote');
     } finally {
       setProcessing(null);
     }
   };
 
   const handleRejectQuote = async (quoteId: number) => {
-    if (!confirm('Are you sure you want to reject this quote?')) return;
+    const userConfirmed = window.confirm('Are you sure you want to reject this quote?');
+    if (!userConfirmed) return;
     
     try {
       setProcessing(quoteId);
@@ -134,15 +144,15 @@ export default function EnhancedRequestQuotesModal({
 
       const result = await response.json();
       if (result.success) {
-        alert('Quote rejected successfully!');
+        successmsg('Quote rejected successfully!');
         fetchQuotes();
         if (onQuoteUpdate) onQuoteUpdate();
       } else {
-        alert(result.error || 'Failed to reject quote');
+        errormsg(result.error || 'Failed to reject quote');
       }
     } catch (error) {
+      errormsg('Failed to reject quote');
       console.error('Error rejecting quote:', error);
-      alert('Failed to reject quote');
     } finally {
       setProcessing(null);
     }
@@ -206,7 +216,10 @@ export default function EnhancedRequestQuotesModal({
   };
 
   const handleSendMessage = async (sellerId: string) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim()) {
+      errormsg('Please enter a message');
+      return;
+    }
 
     try {
       const token = getAuthToken();
@@ -246,16 +259,16 @@ export default function EnhancedRequestQuotesModal({
 
         const result = await response.json();
         if (result.success) {
+          successmsg('Message sent successfully!');
           setMessageText('');
           setSelectedSeller(null);
-          alert('Message sent successfully!');
         } else {
-          alert(result.error || 'Failed to send message');
+          errormsg(result.error || 'Failed to send message');
         }
       }
     } catch (error) {
+      errormsg('Failed to send message');
       console.error('Error sending message:', error);
-      alert('Failed to send message');
     }
   };
 

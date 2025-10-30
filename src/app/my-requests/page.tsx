@@ -9,6 +9,7 @@ import RequestDetailsModal from '@/components/RequestDetailsModal';
 import RequestQuotesModal from '@/components/RequestQuotesModal';
 import EnhancedRequestQuotesModal from '@/components/EnhancedRequestQuotesModal';
 import { useWelcomeMessage } from '@/hooks/useWelcomeMessage';
+import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import karein
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -76,9 +77,11 @@ function BuyerDashboard() {
   const [showQuotesModal, setShowQuotesModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  //Welcome Messge First Time
-    useWelcomeMessage(); 
+  // ✅ Toast hook use karein
+  const { successmsg, errormsg } = useToast();
 
+  //Welcome Messge First Time
+  useWelcomeMessage(); 
 
   // Fetch user's part requests
   const fetchUserRequests = async () => {
@@ -87,7 +90,7 @@ function BuyerDashboard() {
       const token = getAuthToken();
       
       if (!token) {
-        console.error('No authentication token found');
+        errormsg('No authentication token found');
         return;
       }
 
@@ -106,10 +109,15 @@ function BuyerDashboard() {
       if (result.success) {
         setPartRequests(result.data);
         await calculateStats(result.data);
+        // ✅ Success message agar data mila ho
+        if (result.data.length > 0) {
+          successmsg(`Loaded ${result.data.length} requests successfully`);
+        }
       } else {
-        console.error('Failed to fetch requests:', result.error);
+        errormsg(result.error || 'Failed to fetch requests');
       }
     } catch (error) {
+      errormsg('Error fetching requests');
       console.error('Error fetching requests:', error);
     } finally {
       setLoading(false);
@@ -169,9 +177,11 @@ function BuyerDashboard() {
     });
   };
 
-  // Handle repost request
+  // ✅ Handle repost request - Alert ko replace karein
   const handleRepostRequest = async (requestId: number) => {
-    if (!confirm('Are you sure you want to repost this request?')) return;
+    // Custom confirmation dialog banayein
+    const userConfirmed = window.confirm('Are you sure you want to repost this request?');
+    if (!userConfirmed) return;
     
     try {
       const token = getAuthToken();
@@ -186,20 +196,35 @@ function BuyerDashboard() {
 
       const result = await response.json();
       if (result.success) {
-        alert('Request reposted successfully!');
+        successmsg('Request reposted successfully!');
         fetchUserRequests(); // Refresh the list
       } else {
-        alert(result.error || 'Failed to repost request');
+        errormsg(result.error || 'Failed to repost request');
       }
     } catch (error) {
+      errormsg('Failed to repost request');
       console.error('Error reposting request:', error);
-      alert('Failed to repost request');
     }
   };
 
   useEffect(() => {
     fetchUserRequests();
   }, []);
+
+  // Real-time data tracking ke liye useEffect
+  useEffect(() => {
+    // Agar koi new request add hui ho to detect karein
+    if (partRequests.length > 0) {
+      const storedCount = localStorage.getItem('lastRequestCount');
+      const currentCount = partRequests.length;
+      
+      if (storedCount && parseInt(storedCount) < currentCount) {
+        successmsg('New request added successfully!');
+      }
+      
+      localStorage.setItem('lastRequestCount', currentCount.toString());
+    }
+  }, [partRequests.length]);
 
   const statsData = [
     { 
@@ -580,15 +605,15 @@ function BuyerDashboard() {
           />
 
           <EnhancedRequestQuotesModal
-  isOpen={showQuotesModal}
-  onClose={() => {
-    setShowQuotesModal(false);
-    setSelectedRequest(null);
-    setRefreshKey(prev => prev + 1); // Refresh parent
-  }}
-  request={selectedRequest}
-  onQuoteUpdate={() => setRefreshKey(prev => prev + 1)}
-/>
+            isOpen={showQuotesModal}
+            onClose={() => {
+              setShowQuotesModal(false);
+              setSelectedRequest(null);
+              setRefreshKey(prev => prev + 1); // Refresh parent
+            }}
+            request={selectedRequest}
+            onQuoteUpdate={() => setRefreshKey(prev => prev + 1)}
+          />
         </>
       )}
     </div>
