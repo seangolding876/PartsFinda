@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
+import { getAuthData } from '@/lib/auth';
 
 export default function MessageBell() {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -10,18 +11,8 @@ export default function MessageBell() {
 
   const fetchUnreadCount = async () => {
     try {
-      // Get token from localStorage (same as your auth system)
-      const authData = typeof window !== 'undefined' 
-        ? localStorage.getItem('authData') 
-        : null;
-      
-      if (!authData) {
-        setUnreadCount(0);
-        setLoading(false);
-        return;
-      }
 
-      const { token } = JSON.parse(authData);
+      const { token } = getAuthData();
 
       const response = await fetch('/api/messages/unread-count', {
         headers: {
