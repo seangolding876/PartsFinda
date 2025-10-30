@@ -129,7 +129,7 @@ export default function MessagesPage() {
         return;
       }
 
-      const response = await fetch(`/api/conversations?t=${Date.now()}`, { // ✅ YEH CHANGE KAREIN - /api/messages/conversations se /api/conversations
+      const response = await fetch(`/api/messages/conversations?t=${Date.now()}`, { // ✅ YEH CHANGE KAREIN - /api/messages/conversations se /api/conversations
         headers: {
           'Authorization': `Bearer ${token}`
         },
