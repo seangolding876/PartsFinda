@@ -21,6 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+              <head>
+        {/* Favicon and Icons */}
+        <link rel="icon" href="/favicon.ico" />
+      </head>
         {/* ✅ Navigation ko AuthProvider ke ANDAR rakhein */}
         <AuthProvider>
           <Navigation />
