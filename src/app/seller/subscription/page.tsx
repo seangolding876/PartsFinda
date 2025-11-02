@@ -105,9 +105,12 @@ function StripeCheckoutForm({
           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
             <div className="flex justify-between items-center">
               <span className="text-gray-700">Total Amount:</span>
-              <span className="text-2xl font-bold text-green-600">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(plan.price)}
-              </span>
+         <span className="text-2xl font-bold text-green-600">
+  {new Intl.NumberFormat('en-JM', { 
+    style: 'currency', 
+    currency: 'JMD' 
+  }).format(plan.price)}
+</span>
             </div>
           </div>
         </div>
@@ -147,7 +150,10 @@ function StripeCheckoutForm({
                   Processing Payment...
                 </>
               ) : (
-                `Pay ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(plan.price)}`
+                `Pay ${new Intl.NumberFormat('en-JM', { 
+  style: 'currency', 
+  currency: 'JMD' 
+}).format(plan.price)}`
               )}
             </button>
           </div>
@@ -417,11 +423,11 @@ export default function SubscriptionPage() {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
-  };
+    return new Intl.NumberFormat('en-JM', { // ✅ Jamaican locale
+    style: 'currency',
+    currency: 'JMD'
+  }).format(price);
+};
 
   const getPlanPeriod = (durationDays: number) => {
     if (durationDays === 30) return '/month';
