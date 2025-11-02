@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
-      currency: 'usd',
+      currency: 'jmd',
       metadata: {
         plan_id: planId.toString(),
         user_id: userInfo.userId.toString(),
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         userInfo.userId,
         paymentIntent.id,
         plan.price, // This should be the decimal amount, not the cents
-        'USD',
+        'JMD',
         'pending',
         `Subscription: ${plan.plan_name}`,
         planId  // ✅ This should work now
