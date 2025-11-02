@@ -1,5 +1,6 @@
 // components/admin/PaymentDashboard.tsx
 'use client';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 interface DashboardStats {
@@ -44,6 +45,18 @@ export default function PaymentDashboard() {
   const [expiring, setExpiring] = useState<ExpiringSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+    const router = useRouter(); // ✅ initialize router here
+
+const getAuthData = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const authData = localStorage.getItem('authData');
+    return authData ? JSON.parse(authData) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -52,12 +65,16 @@ export default function PaymentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+        const authData = getAuthData();
+  const headers = authData
+    ? { Authorization: `Bearer ${authData.token}` }
+    : {};
       
       const [statsRes, revenueRes, plansRes, expiringRes] = await Promise.all([
-        fetch('/api/admin/payments/dashboard'),
-        fetch(`/api/admin/payments/revenue?period=${period}`),
-        fetch('/api/admin/payments/subscriptions'),
-        fetch('/api/admin/payments/expiring')
+    fetch('/api/admin/payments/dashboard', { headers }),
+    fetch(`/api/admin/payments/revenue?period=${period}`, { headers }),
+    fetch('/api/admin/payments/subscriptions', { headers }),
+    fetch('/api/admin/payments/expiring', { headers })
       ]);
 
       const statsData = await statsRes.json();
@@ -105,59 +122,78 @@ export default function PaymentDashboard() {
   };
 
   // Simple pie chart component
-  const SimplePieChart = ({ data }: { data: SubscriptionPlan[] }) => {
-    const total = data.reduce((sum, plan) => sum + plan.total_revenue, 0);
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-    
-    let currentAngle = 0;
-    
+const SimplePieChart = ({ data }: { data: SubscriptionPlan[] }) => {
+  if (!data || data.length === 0) {
     return (
-      <div className="relative w-64 h-64 mx-auto">
-        <svg width="100%" height="100%" viewBox="0 0 100 100">
-          {data.map((plan, index) => {
-            const percentage = (plan.total_revenue / total) * 100;
-            const angle = (percentage / 100) * 360;
-            const largeArcFlag = percentage > 50 ? 1 : 0;
-            
-            const x1 = 50 + 40 * Math.cos(currentAngle * Math.PI / 180);
-            const y1 = 50 + 40 * Math.sin(currentAngle * Math.PI / 180);
-            const x2 = 50 + 40 * Math.cos((currentAngle + angle) * Math.PI / 180);
-            const y2 = 50 + 40 * Math.sin((currentAngle + angle) * Math.PI / 180);
-            
-            const path = `M50,50 L${x1},${y1} A40,40 0 ${largeArcFlag},1 ${x2},${y2} Z`;
-            
-            const segment = (
-              <path
-                key={plan.plan_name}
-                d={path}
-                fill={colors[index % colors.length]}
-                stroke="#fff"
-                strokeWidth="1"
-              />
-            );
-            
-            currentAngle += angle;
-            return segment;
-          })}
-        </svg>
-        
-        {/* Legend */}
-        <div className="absolute -right-32 top-0 space-y-2">
-          {data.map((plan, index) => (
-            <div key={plan.plan_name} className="flex items-center space-x-2">
-              <div 
-                className="w-4 h-4 rounded" 
-                style={{ backgroundColor: colors[index % colors.length] }}
-              />
-              <span className="text-sm text-gray-700">
-                {plan.plan_name} (${plan.total_revenue})
-              </span>
-            </div>
-          ))}
-        </div>
+      <div className="w-full text-center text-gray-500 py-16">
+        No plan data available
       </div>
     );
-  };
+  }
+
+  // Filter out invalid or undefined values
+  const validData = data.filter(d => !isNaN(Number(d.total_revenue)) && d.total_revenue > 0);
+  const total = validData.reduce((sum, plan) => sum + (plan.total_revenue || 0), 0);
+
+  if (total === 0) {
+    return (
+      <div className="w-full text-center text-gray-500 py-16">
+        No revenue yet to display
+      </div>
+    );
+  }
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  let currentAngle = 0;
+
+  return (
+    <div className="relative w-64 h-64 mx-auto">
+      <svg width="100%" height="100%" viewBox="0 0 100 100">
+        {validData.map((plan, index) => {
+          const revenue = plan.total_revenue || 0;
+          const percentage = (revenue / total) * 100;
+          const angle = (percentage / 100) * 360;
+          const largeArcFlag = percentage > 50 ? 1 : 0;
+
+          const x1 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+          const y1 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+          const x2 = 50 + 40 * Math.cos(((currentAngle + angle) * Math.PI) / 180);
+          const y2 = 50 + 40 * Math.sin(((currentAngle + angle) * Math.PI) / 180);
+
+          const path = `M50,50 L${x1},${y1} A40,40 0 ${largeArcFlag},1 ${x2},${y2} Z`;
+
+          currentAngle += angle;
+
+          return (
+            <path
+              key={plan.plan_name}
+              d={path}
+              fill={colors[index % colors.length]}
+              stroke="#fff"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div className="absolute -right-32 top-0 space-y-2">
+        {validData.map((plan, index) => (
+          <div key={plan.plan_name} className="flex items-center space-x-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: colors[index % colors.length] }}
+            />
+            <span className="text-sm text-gray-700">
+              {plan.plan_name} (${plan.total_revenue})
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
   if (loading) {
     return (
@@ -251,6 +287,22 @@ export default function PaymentDashboard() {
           </div>
         </div>
       </div>
+
+<div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+  <div className="flex justify-between items-center">
+    <h3 className="text-lg font-semibold text-gray-900">Payment Management</h3>
+    <button
+      onClick={() => router.push('/admin/payments/list')}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span>View All Payments & Receipts</span>
+    </button>
+  </div>
+  <p className="text-gray-600 mt-2">View detailed payment history, generate receipts, and manage subscriptions</p>
+</div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

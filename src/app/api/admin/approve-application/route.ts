@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     // ✅ 6. Perform Action (Approve or Reject)
     if (action === 'approve') {
       await query(
-        `UPDATE users SET verified_status = 'approval' WHERE id = $1`,
+        `UPDATE users SET verified_status = 'approved WHERE id = $1`,
         [applicationId]
       );
       

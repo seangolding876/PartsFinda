@@ -844,7 +844,7 @@ const handleRejectApplication = async (applicationId: string) => {
                   </button>
                 </div> */}
 
-{app.verifiedStatus === "approval" ? (
+{app.verifiedStatus === "approved" ? (
   <div className="flex gap-2 mt-2">
     <button
       disabled={true}

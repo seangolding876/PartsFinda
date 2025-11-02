@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import
 
 interface QuoteModalProps {
   isOpen: boolean;
@@ -21,19 +22,12 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
     notes: ''
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit({
-      requestId: request.id,
-      price: parseFloat(formData.price),
-      availability: formData.availability,
-      deliveryTime: formData.deliveryTime,
-      condition: formData.condition,
-      warranty: formData.warranty,
-      notes: formData.notes
-    });
-    
-    if (!loading) {
+  // ✅ Toast hook use karein
+  const { errormsg } = useToast();
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
       setFormData({
         price: '',
         availability: 'in_stock',
@@ -43,12 +37,36 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
         notes: ''
       });
     }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // ✅ Validation with toast
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      errormsg('Please enter a valid price');
+      return;
+    }
+
+    if (parseFloat(formData.price) > request.budget * 2) {
+      errormsg('Price seems too high compared to buyer budget');
+      return;
+    }
+
+    await onSubmit({
+      requestId: request.id,
+      price: parseFloat(formData.price),
+      availability: formData.availability,
+      deliveryTime: formData.deliveryTime,
+      condition: formData.condition,
+      warranty: formData.warranty,
+      notes: formData.notes
+    });
   };
 
   if (!isOpen) return null;
 
   return (
-    
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b">
@@ -203,10 +221,6 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
           </div>
         </form>
       </div>
-
-      
     </div>
-
-    
   );
 }

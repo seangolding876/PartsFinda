@@ -162,7 +162,7 @@ export default function AboutPage() {
               Browse Parts
             </a>
             <a
-              href="/auth/seller-signup"
+              href="/auth/seller-register"
               className="inline-block bg-orange-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-800 transition"
             >
               Become a Seller

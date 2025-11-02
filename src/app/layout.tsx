@@ -21,6 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+              <head>
+        {/* Favicon and Icons */}
+        <link rel="icon" href="/favicon.ico" />
+      </head>
         {/* ✅ Navigation ko AuthProvider ke ANDAR rakhein */}
         <AuthProvider>
           <Navigation />
@@ -66,11 +70,11 @@ export default function RootLayout({
               <div>
                 <h4 className="font-semibold mb-4">For Sellers</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li><a href="/auth/seller-signup" className="hover:text-white">Register as Seller</a></li>
+                  <li><a href="/auth/seller-register" className="hover:text-white">Register as Seller</a></li>
                   <li><a href="/seller/dashboard" className="hover:text-white">Seller Dashboard</a></li>
                   <li><a href="/seller/subscription" className="hover:text-white">Subscription Plans</a></li>
                   <li className="pt-3">
-                    <a href="/auth/seller-signup" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block">
+                    <a href="/auth/seller-register" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block">
                       Start Selling
                     </a>
                   </li>

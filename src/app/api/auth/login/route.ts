@@ -102,6 +102,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       // Case 2: Email verified but account not approved
       if (dbUser.email_verified && dbUser.verified_status !== 'approved') {
         console.log('⚠️ Seller email verified but account pending approval');
+                console.log(dbUser.email_verified, dbUser.verified_status);
         return NextResponse.json(
           { 
             success: false, 
@@ -114,7 +115,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<AuthRespo
       // Case 3: Fully verified and approved seller - Check subscription
       if (dbUser.email_verified && dbUser.verified_status === 'approved') {
         console.log('✅ Seller fully verified and approved - Checking subscription...');
-        
         // ✅ Yahan dbUser.id use kar rahe hain
         const subscriptionResult = await query(
           `SELECT plan_name, end_date 

@@ -1,55 +1,61 @@
-// app/api/admin/payments/revenue/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'monthly';
-    
-    let interval = '1 month';
+
+    // Default values
+    let intervalUnit = 'month';
     let dateFormat = 'YYYY-MM';
-    
+
     switch (period) {
       case 'daily':
-        interval = '1 day';
+        intervalUnit = 'day';
         dateFormat = 'YYYY-MM-DD';
         break;
       case 'weekly':
-        interval = '1 week';
-        dateFormat = 'YYYY-WW';
+        intervalUnit = 'week';
+        dateFormat = 'IYYY-IW';
         break;
       case 'yearly':
-        interval = '1 year';
+        intervalUnit = 'year';
         dateFormat = 'YYYY';
         break;
     }
 
+    // ✅ Proper interval syntax
+    const interval = `12 ${intervalUnit}s`;
+
     const revenueQuery = `
       SELECT 
-        TO_CHAR(created_at, $1) as period,
-        COUNT(*) as transaction_count,
-        COALESCE(SUM(amount), 0) as revenue,
-        COUNT(DISTINCT user_id) as unique_customers
-      FROM payments 
-      WHERE status = 'completed' 
-        AND created_at >= NOW() - INTERVAL '12 ${interval}'
+        TO_CHAR(created_at, '${dateFormat}') AS period,
+        COUNT(*) AS transaction_count,
+        COALESCE(SUM(amount), 0) AS revenue,
+        COUNT(DISTINCT user_id) AS unique_customers
+      FROM payments
+      WHERE status = 'completed'
+        AND created_at >= NOW() - INTERVAL '${interval}'
       GROUP BY period
       ORDER BY period DESC
-      LIMIT 12
+      LIMIT 12;
     `;
 
-    const result = await query(revenueQuery, [dateFormat]);
-    
+    console.log('Running revenue query:', revenueQuery);
+
+    const result = await query(revenueQuery);
+
     return NextResponse.json({
       success: true,
-      data: result.rows.reverse()
+      data: result.rows.reverse(),
     });
 
   } catch (error: any) {
     console.error('Revenue analytics error:', error);
     return NextResponse.json(
-      { success: false, error: 'Server error' },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

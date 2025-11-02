@@ -1,12 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { getAuthData } from '@/lib/auth'; // ✅ adjust path if different
-
-interface Message {
-  type: 'success' | 'error';
-  text: string;
-}
+import { getAuthData } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import
 
 interface ProfileForm {
   name: string;
@@ -24,7 +20,9 @@ export default function BuyerProfile() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<Message | null>(null);
+  
+  // ✅ Toast hook use karein
+  const { successmsg, errormsg } = useToast();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -44,11 +42,12 @@ export default function BuyerProfile() {
             phone: result.data.phone || '',
             password: '',
           });
+          successmsg('Profile loaded successfully');
         } else {
-          setMessage({ type: 'error', text: result.error || 'Failed to load profile' });
+          errormsg(result.error || 'Failed to load profile');
         }
       } catch {
-        setMessage({ type: 'error', text: 'Something went wrong while fetching profile.' });
+        errormsg('Something went wrong while fetching profile.');
       } finally {
         setLoading(false);
       }
@@ -64,12 +63,11 @@ export default function BuyerProfile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage(null);
 
     try {
       const authData = getAuthData();
       if (!authData?.token) {
-        setMessage({ type: 'error', text: 'Not authorized' });
+        errormsg('Not authorized');
         setSaving(false);
         return;
       }
@@ -89,13 +87,13 @@ export default function BuyerProfile() {
 
       const result = await res.json();
       if (result.success) {
-        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        successmsg('Profile updated successfully!');
         setForm({ ...form, password: '' }); // clear password field
       } else {
-        setMessage({ type: 'error', text: result.error || 'Failed to update profile' });
+        errormsg(result.error || 'Failed to update profile');
       }
     } catch {
-      setMessage({ type: 'error', text: 'An error occurred while updating profile.' });
+      errormsg('An error occurred while updating profile.');
     } finally {
       setSaving(false);
     }
@@ -107,17 +105,7 @@ export default function BuyerProfile() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-      {message && (
-        <div
-          className={`p-3 rounded-lg ${
-            message.type === 'success'
-              ? 'bg-green-100 text-green-700 border border-green-200'
-              : 'bg-red-100 text-red-700 border border-red-200'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      {/* ✅ Ab yahan custom message display ki zaroorat nahi, kyunki toast automatically show hoga */}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>

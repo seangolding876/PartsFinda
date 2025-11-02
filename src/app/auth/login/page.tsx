@@ -351,7 +351,7 @@ export default function LoginPage() {
           <div className="text-center pt-4 border-t border-gray-200">
             <span className="text-sm text-gray-600">
               Want to sell auto parts?{' '}
-              <Link href="/auth/seller-signup" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+              <Link href="/auth/seller-register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
                 Register as a seller
               </Link>
             </span>

@@ -191,7 +191,7 @@ export default function TestLoginPage() {
             <a href="/seller/dashboard" className="bg-white hover:bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-center font-medium text-blue-700 transition-colors">
               Seller Dashboard
             </a>
-            <a href="/auth/seller-signup" className="bg-white hover:bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-center font-medium text-blue-700 transition-colors">
+            <a href="/auth/seller-register" className="bg-white hover:bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg text-center font-medium text-blue-700 transition-colors">
               Supplier Signup
             </a>
           </div>

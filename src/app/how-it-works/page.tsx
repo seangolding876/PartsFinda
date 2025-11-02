@@ -93,7 +93,7 @@ export default function HowItWorksPage() {
               Jamaica's #1 Parts Platform
             </div>
             <h1 className="text-5xl lg:text-6xl font-bold mb-6">
-              How PartFinda Works
+              How PartsFinda Works
             </h1>
             <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
               Get your car parts in 4 simple steps. Our platform connects you with verified suppliers
@@ -183,7 +183,7 @@ export default function HowItWorksPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">
-              Why Choose PartFinda?
+              Why Choose PartsFinda?
             </h2>
             <p className="text-xl text-gray-600">
               Experience the advantages of Jamaica's premier car parts marketplace

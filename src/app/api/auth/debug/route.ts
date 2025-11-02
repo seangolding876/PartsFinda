@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         adminDashboard: '/admin/dashboard',
         sellerDashboard: '/seller/dashboard',
         buyerDashboard: '/my-requests',
-        supplierSignup: '/auth/seller-signup'
+        supplierSignup: '/auth/seller-register'
       }
     };
 
