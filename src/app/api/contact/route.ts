@@ -2,268 +2,72 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
 
-// ✅ Advanced sanitization function
-const sanitizeInput = (input: string): string => {
-  if (typeof input !== 'string') return '';
-  
-  return input
-    .trim()
-    // HTML tags remove karo
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
-    .replace(/<link\b[^<]*(?:(?!<\/link>)<[^<]*)*<\/link>/gi, '')
-    .replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '')
-    .replace(/<input\b[^<]*>/gi, '')
-    .replace(/<button\b[^<]*(?:(?!<\/button>)<[^<]*)*<\/button>/gi, '')
-    // Dangerous characters escape karo
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-    .replace(/\\/g, '&#x5C;')
-    .replace(/`/g, '&#96;')
-    .replace(/\$/g, '&#36;')
-    .replace(/{/g, '&#123;')
-    .replace(/}/g, '&#125;')
-    .replace(/\(/g, '&#40;')
-    .replace(/\)/g, '&#41;')
-    .replace(/\[/g, '&#91;')
-    .replace(/\]/g, '&#93;')
-    // Multiple spaces reduce karo
-    .replace(/\s+/g, ' ')
-    // Remove control characters
-    .replace(/[\x00-\x1F\x7F]/g, '');
-};
-
-// ✅ Input length validation
-const validateLength = (field: string, value: string, min: number, max: number): string | null => {
-  if (value.length < min) {
-    return `${field} must be at least ${min} characters`;
-  }
-  if (value.length > max) {
-    return `${field} must be less than ${max} characters`;
-  }
-  return null;
-};
-
-// ✅ Email validation
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  return emailRegex.test(email) && email.length <= 254;
-};
-
-// ✅ Phone validation
-const isValidPhone = (phone: string | null): boolean => {
-  if (!phone) return true; // Optional field
-  const phoneRegex = /^[\d\s\-()+.\s]{10,20}$/;
-  return phoneRegex.test(phone);
-};
-
-// ✅ Type validation
-const isValidType = (type: string): boolean => {
-  const validTypes = ['general', 'parts', 'seller', 'technical', 'billing'];
-  return validTypes.includes(type);
-};
-
-// ✅ Rate limiting simulation (production mei proper rate limiting use karna)
-const isRateLimited = (request: NextRequest): boolean => {
-  // Yaha tum proper rate limiting implement kar sakte ho
-  // Jaise: Upstash Redis, etc.
-  return false;
-};
-
 export async function POST(request: NextRequest) {
   try {
-    // ✅ Rate limiting check
-    if (isRateLimited(request)) {
-      return NextResponse.json(
-        { success: false, error: 'Too many requests. Please try again later.' },
-        { status: 429 }
-      );
-    }
+    const body = await request.json();
+    
+    const { name, email, phone, subject, message, type } = body;
 
-    // ✅ Request body parse karo safely
-    let body;
-    try {
-      const text = await request.text();
-      if (!text) {
-        return NextResponse.json(
-          { success: false, error: 'Request body is empty' },
-          { status: 400 }
-        );
-      }
-      body = JSON.parse(text);
-    } catch (parseError) {
+    // Basic validation
+    if (!name || !email || !subject || !message) {
       return NextResponse.json(
-        { success: false, error: 'Invalid JSON in request body' },
+        { success: false, error: 'All required fields must be filled' },
         { status: 400 }
       );
-    }
-    
-    // ✅ Extract and sanitize ALL fields
-    const rawName = body.name || '';
-    const rawEmail = body.email || '';
-    const rawPhone = body.phone || null;
-    const rawSubject = body.subject || '';
-    const rawMessage = body.message || '';
-    const rawType = body.type || 'general';
-
-    // ✅ Deep sanitization
-    const sanitizedData = {
-      name: sanitizeInput(rawName),
-      email: sanitizeInput(rawEmail).toLowerCase().trim(),
-      phone: rawPhone ? sanitizeInput(rawPhone) : null,
-      subject: sanitizeInput(rawSubject),
-      message: sanitizeInput(rawMessage),
-      type: sanitizeInput(rawType)
-    };
-
-    const { name, email, phone, subject, message, type } = sanitizedData;
-
-    // ✅ Comprehensive validation
-    const validationErrors: string[] = [];
-
-    // Name validation
-    if (!name) {
-      validationErrors.push('Name is required');
-    } else {
-      const nameError = validateLength('Name', name, 2, 100);
-      if (nameError) validationErrors.push(nameError);
     }
 
     // Email validation
-    if (!email) {
-      validationErrors.push('Email is required');
-    } else if (!isValidEmail(email)) {
-      validationErrors.push('Please provide a valid email address');
-    }
-
-    // Phone validation
-    if (!isValidPhone(phone)) {
-      validationErrors.push('Please provide a valid phone number');
-    }
-
-    // Subject validation
-    if (!subject) {
-      validationErrors.push('Subject is required');
-    } else {
-      const subjectError = validateLength('Subject', subject, 5, 200);
-      if (subjectError) validationErrors.push(subjectError);
-    }
-
-    // Message validation
-    if (!message) {
-      validationErrors.push('Message is required');
-    } else {
-      const messageError = validateLength('Message', message, 10, 2000);
-      if (messageError) validationErrors.push(messageError);
-    }
-
-    // Type validation
-    if (!isValidType(type)) {
-      validationErrors.push('Invalid inquiry type');
-    }
-
-    // ✅ Return all validation errors at once
-    if (validationErrors.length > 0) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Please fix the following errors:',
-          details: validationErrors 
-        },
+        { success: false, error: 'Please provide a valid email address' },
         { status: 400 }
       );
     }
 
-    // ✅ Database insertion with sanitized data
+    // Save contact message to database
     const contactResult = await query(
       `INSERT INTO contact_messages (
-        name, email, phone, subject, message, type, status, ip_address, user_agent
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        name, email, phone, subject, message, type, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
-      [
-        name, 
-        email, 
-        phone, 
-        subject, 
-        message, 
-        type, 
-        'new',
-        request.ip || request.headers.get('x-forwarded-for') || 'unknown',
-        request.headers.get('user-agent') || 'unknown'
-      ]
+      [name, email, phone || null, subject, message, type || 'general', 'new']
     );
 
     const contactMessage = contactResult.rows[0];
 
-    // ✅ Background email processing (non-blocking)
-    const emailPromises = [
-      sendUserConfirmationEmail(name, email, subject, message, type),
-      sendAdminNotificationEmail(name, email, phone, subject, message, type)
-    ].map(promise => 
-      promise.catch(error => {
-        console.error('Email sending failed:', error);
-        return null; // Don't let email failures break the main flow
-      })
-    );
+    // ✅ Send confirmation email to user
+    await sendUserConfirmationEmail(name, email, subject, message, type);
 
-    // ✅ Don't wait for emails - respond immediately
-    Promise.allSettled(emailPromises)
-      .then((results) => {
-        const failedEmails = results.filter(result => result.status === 'rejected');
-        if (failedEmails.length > 0) {
-          console.warn(`Some emails failed to send: ${failedEmails.length}`);
-        } else {
-          console.log('All emails sent successfully');
-        }
-      });
+    // ✅ Send notification email to admin
+    await sendAdminNotificationEmail(name, email, phone, subject, message, type);
 
-    console.log('Contact form submitted successfully:', {
-      id: contactMessage.id,
-      email: email.substring(0, 3) + '***', // Partial email for logs
-      type: type,
-      timestamp: new Date().toISOString()
-    });
+    console.log('Contact form submitted successfully:', contactMessage.id);
 
-    // ✅ Success response
     return NextResponse.json({
       success: true,
       message: 'Your message has been sent successfully! We will get back to you within 24 hours.',
       data: {
         id: contactMessage.id,
-        timestamp: contactMessage.created_at,
-        caseId: `CASE-${contactMessage.id.toString().padStart(6, '0')}`
+        timestamp: contactMessage.created_at
       }
     });
 
   } catch (error: any) {
-    // ✅ Secure error logging
-    console.error('🔥 Contact form submission error:', {
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : 'hidden',
-      timestamp: new Date().toISOString()
-    });
-
-    // ✅ Don't expose internal errors in production
-    const errorMessage = process.env.NODE_ENV === 'development' 
-      ? `Server error: ${error.message}`
-      : 'Failed to send message. Please try again or contact us directly.';
+    console.error('🔥 Contact form submission error:', error);
 
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage
+        error: 'Failed to send message. Please try again or contact us directly.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       },
       { status: 500 }
     );
   }
 }
 
-// ✅ User Confirmation Email Template (Sanitized version)
+// ✅ User Confirmation Email Template
 async function sendUserConfirmationEmail(
   userName: string,
   userEmail: string,
@@ -271,12 +75,6 @@ async function sendUserConfirmationEmail(
   message: string,
   type: string
 ) {
-  // ✅ Email content ko bhi sanitize karo for display
-  const safeName = userName;
-  const safeEmail = userEmail;
-  const safeSubject = subject;
-  const safeMessage = message.replace(/\n/g, '<br>').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
   const inquiryTypeLabels: { [key: string]: string } = {
     general: 'General Inquiry',
     parts: 'Parts Question',
@@ -374,7 +172,7 @@ async function sendUserConfirmationEmail(
     </div>
     
     <div class="content">
-      <p>Hello <strong>${safeName}</strong>,</p>
+      <p>Hello <strong>${userName}</strong>,</p>
       
       <p>Thank you for reaching out to PartsFinda! We have received your message and our team will get back to you as soon as possible.</p>
 
@@ -388,11 +186,11 @@ async function sendUserConfirmationEmail(
         <h3 style="margin-top: 0; color: #374151;">Your Message Details:</h3>
         <div class="detail-row">
           <span class="detail-label">Name:</span>
-          <span class="detail-value">${safeName}</span>
+          <span class="detail-value">${userName}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Email:</span>
-          <span class="detail-value">${safeEmail}</span>
+          <span class="detail-value">${userEmail}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Inquiry Type:</span>
@@ -400,11 +198,11 @@ async function sendUserConfirmationEmail(
         </div>
         <div class="detail-row">
           <span class="detail-label">Subject:</span>
-          <span class="detail-value">${safeSubject}</span>
+          <span class="detail-value">${subject}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Message:</span>
-          <span class="detail-value">${safeMessage}</span>
+          <span class="detail-value">${message}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Submitted:</span>
@@ -447,18 +245,17 @@ async function sendUserConfirmationEmail(
 
   try {
     await sendMail({
-      to: safeEmail,
+      to: userEmail,
       subject: `✅ Message Received - PartsFinda Contact Confirmation`,
       html: emailHtml,
     });
-    console.log(`✅ User confirmation email sent to ${safeEmail}`);
+    console.log(`✅ User confirmation email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send user confirmation email:', error);
-    throw error;
   }
 }
 
-// ✅ Admin Notification Email Template (Sanitized version)
+// ✅ Admin Notification Email Template
 async function sendAdminNotificationEmail(
   userName: string,
   userEmail: string,
@@ -467,13 +264,6 @@ async function sendAdminNotificationEmail(
   message: string,
   type: string
 ) {
-  // ✅ Sanitize admin email content
-  const safeName = userName;
-  const safeEmail = userEmail;
-  const safePhone = userPhone || 'Not provided';
-  const safeSubject = subject;
-  const safeMessage = message.replace(/\n/g, '<br>').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
   const inquiryTypeLabels: { [key: string]: string } = {
     general: 'General Inquiry',
     parts: 'Parts Question',
@@ -486,7 +276,7 @@ async function sendAdminNotificationEmail(
   
   // ✅ Multiple admin emails support
   const adminEmails = process.env.ADMIN_EMAIL 
-    ? process.env.ADMIN_EMAIL.split(',').map(email => email.trim()).filter(email => isValidEmail(email))
+    ? process.env.ADMIN_EMAIL.split(',').map(email => email.trim())
     : ['admin@partsfinda.com', 'support@partsfinda.com'];
 
   const emailHtml = `
@@ -609,15 +399,15 @@ async function sendAdminNotificationEmail(
         <h3 style="margin-top: 0; color: #374151;">Contact Information:</h3>
         <div class="detail-row">
           <span class="detail-label">Customer Name:</span>
-          <span class="detail-value" style="color: #2563eb; font-weight: 600;">${safeName}</span>
+          <span class="detail-value" style="color: #2563eb; font-weight: 600;">${userName}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Email Address:</span>
-          <span class="detail-value">${safeEmail}</span>
+          <span class="detail-value">${userEmail}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Phone Number:</span>
-          <span class="detail-value">${safePhone}</span>
+          <span class="detail-value">${userPhone || 'Not provided'}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Inquiry Type:</span>
@@ -625,7 +415,7 @@ async function sendAdminNotificationEmail(
         </div>
         <div class="detail-row">
           <span class="detail-label">Subject:</span>
-          <span class="detail-value"><strong>${safeSubject}</strong></span>
+          <span class="detail-value"><strong>${subject}</strong></span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Submission Time:</span>
@@ -641,14 +431,14 @@ async function sendAdminNotificationEmail(
 
       <div class="message-content priority-${type}">
         <h4 style="margin: 0 0 10px 0; color: #374151;">📝 Customer Message:</h4>
-        <p style="margin: 0; color: #4b5563; line-height: 1.6;">${safeMessage}</p>
+        <p style="margin: 0; color: #4b5563; line-height: 1.6;">${message}</p>
       </div>
 
       <div class="action-buttons">
-        <a href="mailto:${safeEmail}" class="button" style="background: #2563eb;">
+        <a href="mailto:${userEmail}" class="button" style="background: #2563eb;">
           📧 Reply to Customer
         </a>
-        <a href="tel:${safePhone !== 'Not provided' ? safePhone : '1-876-219-3329'}" class="button" style="background: #059669;">
+        <a href="tel:${userPhone || '1-876-219-3329'}" class="button" style="background: #059669;">
           📞 Call Customer
         </a>
       </div>
@@ -678,7 +468,7 @@ async function sendAdminNotificationEmail(
     const emailPromises = adminEmails.map(adminEmail => 
       sendMail({
         to: adminEmail,
-        subject: `📨 New ${inquiryType} - ${safeName} (${safeEmail})`,
+        subject: `📨 New ${inquiryType} - ${userName} (${userEmail})`,
         html: emailHtml,
       })
     );
@@ -687,62 +477,37 @@ async function sendAdminNotificationEmail(
     console.log(`✅ Admin notification emails sent to: ${adminEmails.join(', ')}`);
   } catch (error) {
     console.error('❌ Failed to send admin notification emails:', error);
-    throw error;
   }
 }
 
-// ✅ GET endpoint to fetch contact messages (for admin panel) - Sanitized
+// Optional: GET endpoint to fetch contact messages (for admin panel)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const rawStatus = searchParams.get('status') || 'all';
-    const rawLimit = searchParams.get('limit') || '50';
+    const status = searchParams.get('status') || 'all';
     
-    // ✅ Sanitize and validate parameters
-    const status = sanitizeInput(rawStatus);
-    const limit = parseInt(sanitizeInput(rawLimit)) || 50;
-    
-    // ✅ Validate status parameter
-    const validStatuses = ['all', 'new', 'read', 'replied', 'closed'];
-    const safeStatus = validStatuses.includes(status) ? status : 'all';
-    
-    // ✅ Validate limit parameter
-    const safeLimit = Math.min(Math.max(1, limit), 100); // 1-100 range
-    
-    let queryString = `
-      SELECT id, name, email, subject, type, status, created_at 
-      FROM contact_messages
-    `;
+    let queryString = 'SELECT * FROM contact_messages';
     let queryParams = [];
     
-    if (safeStatus !== 'all') {
+    if (status !== 'all') {
       queryString += ' WHERE status = $1';
-      queryParams.push(safeStatus);
+      queryParams.push(status);
     }
     
-    queryString += ' ORDER BY created_at DESC LIMIT $' + (queryParams.length + 1);
-    queryParams.push(safeLimit);
+    queryString += ' ORDER BY created_at DESC LIMIT 50';
     
     const result = await query(queryString, queryParams);
     
     return NextResponse.json({
       success: true,
       data: result.rows,
-      total: result.rows.length,
-      limit: safeLimit,
-      status: safeStatus
+      total: result.rows.length
     });
     
   } catch (error: any) {
     console.error('Error fetching contact messages:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch contact messages',
-        ...(process.env.NODE_ENV === 'development' && {
-          details: error.message
-        })
-      },
+      { success: false, error: 'Failed to fetch contact messages' },
       { status: 500 }
     );
   }
