@@ -36,13 +36,38 @@ export async function POST(request: NextRequest) {
 
     const contactMessage = contactResult.rows[0];
 
-    // ✅ Send confirmation email to user
-    await sendUserConfirmationEmail(name, email, subject, message, type);
+    console.log('📝 Contact form submitted to DB:', contactMessage.id);
 
-    // ✅ Send notification email to admin
-    await sendAdminNotificationEmail(name, email, phone, subject, message, type);
+    // ✅ IMPORTANT: Email sending ko try-catch mein wrap karo
+    let emailResults = {
+      userEmail: false,
+      adminEmail: false
+    };
 
-    console.log('Contact form submitted successfully:', contactMessage.id);
+    try {
+      // Send confirmation email to user
+      await sendUserConfirmationEmail(name, email, subject, message, type);
+      emailResults.userEmail = true;
+      console.log('✅ User email sent successfully');
+    } catch (emailError) {
+      console.error('❌ User email failed:', emailError);
+    }
+
+    try {
+      // Send notification email to admin
+      await sendAdminNotificationEmail(name, email, phone, subject, message, type);
+      emailResults.adminEmail = true;
+      console.log('✅ Admin email sent successfully');
+    } catch (emailError) {
+      console.error('❌ Admin email failed:', emailError);
+    }
+
+    // Response based on email results
+    if (emailResults.userEmail || emailResults.adminEmail) {
+      console.log('🎯 Some emails were sent successfully');
+    } else {
+      console.log('⚠️ No emails were sent due to errors');
+    }
 
     return NextResponse.json({
       success: true,
