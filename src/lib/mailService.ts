@@ -11,63 +11,84 @@ export async function sendMail({
   html: string; 
 }) {
   try {
-    console.log('📧 Preparing to send email...', {
-      to,
-      subject,
-      smtpHost: process.env.SMTP_HOST,
-      smtpUser: process.env.SMTP_USER
-    });
-
+    console.log('🔍 Checking SMTP Configuration...');
+    
     // Validate required environment variables
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('SMTP configuration is missing');
+      console.error('❌ Missing Environment Variables:');
+      console.error('   SMTP_HOST:', process.env.SMTP_HOST);
+      console.error('   SMTP_USER:', process.env.SMTP_USER);
+      console.error('   SMTP_PASS:', process.env.SMTP_PASS ? '***' : 'NOT SET');
+      throw new Error('SMTP configuration is missing. Please check your .env file');
     }
 
+    console.log('✅ Environment variables found');
+
+    // Create transporter with better configuration
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
+      tls: {
+        rejectUnauthorized: false // Important for local development
+      },
+      debug: true, // This will show detailed logs
+      logger: true
     });
 
-    // Verify connection
+    console.log('🔄 Verifying SMTP connection...');
+
+    // Verify connection with better error handling
     await transporter.verify();
-    console.log('✅ SMTP connection verified');
+    console.log('✅ SMTP connection verified successfully');
 
     const mailOptions = {
       from: `"PartsFinda" <${process.env.SMTP_USER}>`,
-      to,
-      subject,
-      html,
-      text: html, // Basic HTML to text conversion
+      to: to,
+      subject: subject,
+      html: html,
+      text: html.replace(/<[^>]*>/g, ''), // Proper HTML to text conversion
     };
+
+    console.log('📤 Sending email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
 
     const info = await transporter.sendMail(mailOptions);
 
-    console.log("✅ Email sent successfully:", {
+    // **DETAILED SUCCESS LOGS**
+    console.log("🎉 EMAIL SENT SUCCESSFULLY - DETAILS:", {
       messageId: info.messageId,
-      to: to,
-      subject: subject
+      response: info.response,
+      accepted: info.accepted, // This should contain the recipient email
+      rejected: info.rejected, // This should be empty
+      envelope: info.envelope,
+      pending: info.pending
     });
 
     return { 
       success: true, 
       messageId: info.messageId,
+      accepted: info.accepted,
       response: info.response 
     };
 
   } catch (error: any) {
-    console.error("❌ Email sending failed:", {
-      error: error.message,
+    // **DETAILED ERROR LOGS**
+    console.error("💥 EMAIL SENDING FAILED - DETAILED ERROR:", {
+      name: error.name,
+      message: error.message,
       code: error.code,
-      to: to,
-      subject: subject
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack
     });
     
     throw new Error(`Email sending failed: ${error.message}`);

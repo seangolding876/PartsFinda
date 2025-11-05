@@ -16,7 +16,35 @@ const getAuthData = () => {
   }
 };
 
+//Send Email Demo
+// useEffect(() => {
+//   const sendNotificationEmail = async () => {
+//     try {
+//       const response = await fetch('/api/send-mail', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           to: 'adnan.shafi91@gmail.com',
+//           subject: 'PartsFinda Page Opened',
+//           html: `
+//             <div style="font-family: Arial; padding: 16px;">
+//               <h2>🚀 Page Opened</h2>
+//               <p>This email was automatically triggered when someone opened the Part Requests page.</p>
+//               <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
+//             </div>
+//           `,
+//         }),
+//       });
 
+//       const result = await response.json();
+//       console.log('📧 Mail result:', result);
+//     } catch (error) {
+//       console.error('❌ Failed to send email:', error);
+//     }
+//   };
+
+//   sendNotificationEmail();
+// }, []);
 
 const isAuthenticated = () => {
   const authData = getAuthData();
@@ -74,106 +102,58 @@ function RequestPartForm() {
     urgency: 'medium',
   });
 
-
-  // Send Email Demo
-// Enhanced Email Sender with Complete Error Handling & Logging
+// Test email bhejne ke liye
 useEffect(() => {
-  const sendNotificationEmail = async () => {
-    // Log start of process
-    console.log('🚀 Starting email notification process...');
-    
-    // Create email data with enhanced info
-    const emailData = {
-      to: 'adnan.shafi91@gmail.com',
-      subject: 'PartsFinda Page Opened',
-      html: `
-        <div style="font-family: Arial; padding: 16px;">
-          <h2>🚀 Page Opened</h2>
-          <p>This email was automatically triggered when someone opened the Part Requests page.</p>
-          <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
-          <p><b>User Agent:</b> ${navigator.userAgent}</p>
-          <p><b>Platform:</b> ${navigator.platform}</p>
-        </div>
-      `,
-    };
-
+  const testEmail = async () => {
     try {
-      console.log('📤 Attempting to send email...', {
-        timestamp: new Date().toISOString(),
-        to: emailData.to
-      });
-
+      console.log('🚀 Testing email system...');
+      
       const response = await fetch('/api/send-mail', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(emailData),
+        body: JSON.stringify({
+          to: 'adnan.shafi91@gmail.com',
+          subject: '🚀 TEST: PartsFinda Email System Working!',
+          html: `
+            <div style="font-family: Arial; padding: 20px; background: #f5f5f5;">
+              <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h1 style="color: #2563eb; text-align: center;">✅ Email System Test</h1>
+                <p><strong>Time:</strong> ${new Date().toString()}</p>
+                <p><strong>Status:</strong> If you receive this, your email system is WORKING!</p>
+                <p><strong>From:</strong> PartsFinda Notification System</p>
+                <div style="margin-top: 20px; padding: 15px; background: #dcfce7; border-radius: 5px;">
+                  <p style="margin: 0; color: #166534;">🎉 Congratulations! Your email setup is successful.</p>
+                </div>
+              </div>
+            </div>
+          `,
+        }),
       });
-
-      // Log raw response
-      console.log('📨 Raw Response:', {
-        status: response.status,
-        statusText: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
-        ok: response.ok
-      });
-
-      // Handle HTTP errors
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}. Response: ${errorText}`);
-      }
 
       const result = await response.json();
-      
-      // Log successful result
-      console.log('✅ Email sent successfully:', {
-        timestamp: new Date().toISOString(),
-        result: result,
-        messageId: result.messageId || 'Not provided'
-      });
+      console.log('📧 Test Email Result:', result);
 
-      // You can also update state to show success in UI
-      // setEmailStatus({ status: 'success', message: 'Email sent successfully' });
-
-    } catch (error) {
-      // Comprehensive error logging
-      console.error('❌ Email sending failed:', {
-        timestamp: new Date().toISOString(),
-        error: {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-          type: error.constructor.name
-        }
-      });
-
-      // Categorize different types of errors
-      let errorMessage = 'Unknown error occurred';
-      
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = 'Network error: Failed to connect to server';
-      } else if (error.name === 'SyntaxError') {
-        errorMessage = 'Invalid JSON response from server';
-      } else if (error.message.includes('HTTP Error')) {
-        errorMessage = `Server error: ${error.message}`;
+      if (result.success) {
+        console.log('✅ Test email sent successfully! Check your inbox and spam folder.');
+        alert('✅ Test email sent! Check your inbox and spam folder.');
       } else {
-        errorMessage = error.message;
+        console.error('❌ Test email failed:', result.error);
+        alert('❌ Test email failed: ' + result.error);
       }
 
-      console.error('🔍 Error Analysis:', errorMessage);
-      
-      // You can also update state to show error in UI
-      // setEmailStatus({ status: 'error', message: errorMessage });
+    } catch (error) {
+      console.error('💥 Test email error:', error);
+      alert('💥 Test email error: ' + error.message);
     }
   };
 
-  // Execute with additional safety
-  sendNotificationEmail().catch(finalError => {
-    console.error('💥 Unhandled exception in email process:', finalError);
-  });
+  // Page load pe test email bhejne ke liye
+  testEmail();
 }, []);
+
+
 
 
   // Check authentication on component mount
