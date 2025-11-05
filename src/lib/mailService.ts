@@ -1,4 +1,4 @@
-// src/lib/mailService.ts
+// src/lib/mailService.ts - GODADDY VERSION
 import nodemailer from "nodemailer";
 
 export async function sendMail({ 
@@ -11,50 +11,56 @@ export async function sendMail({
   html: string; 
 }) {
   try {
-    console.log('🔍 Checking SMTP Configuration...');
-    
+    console.log('🔍 GoDaddy SMTP Configuration Check:', {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      user: process.env.SMTP_USER,
+      secure: process.env.SMTP_SECURE
+    });
+
     // Validate required environment variables
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.error('❌ Missing Environment Variables:');
-      console.error('   SMTP_HOST:', process.env.SMTP_HOST);
-      console.error('   SMTP_USER:', process.env.SMTP_USER);
-      console.error('   SMTP_PASS:', process.env.SMTP_PASS ? '***' : 'NOT SET');
-      throw new Error('SMTP configuration is missing. Please check your .env file');
+      throw new Error('GoDaddy SMTP configuration is missing');
     }
 
-    console.log('✅ Environment variables found');
-
-    // Create transporter with better configuration
+    // GoDaddy Specific Transporter Configuration
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
+      host: process.env.SMTP_HOST, // smtpout.secureserver.net
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false, // true for 465, false for other ports
+      secure: false, // ❌ MUST BE false for GoDaddy port 587
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: process.env.SMTP_USER, // support@partsfinda.com
+        pass: process.env.SMTP_PASS, // Partsfinda@123
       },
+      // GoDaddy specific settings
       tls: {
-        rejectUnauthorized: false // Important for local development
+        rejectUnauthorized: false
       },
-      debug: true, // This will show detailed logs
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      debug: true,
       logger: true
     });
 
-    console.log('🔄 Verifying SMTP connection...');
+    console.log('🔄 Verifying GoDaddy SMTP connection...');
 
-    // Verify connection with better error handling
+    // Verify connection
     await transporter.verify();
-    console.log('✅ SMTP connection verified successfully');
+    console.log('✅ GoDaddy SMTP connection verified');
+
+    // Use SMTP_FROM or fallback to SMTP_USER
+    const fromAddress = process.env.SMTP_FROM || `"PartsFinda Support" <${process.env.SMTP_USER}>`;
 
     const mailOptions = {
-      from: `"PartsFinda" <${process.env.SMTP_USER}>`,
+      from: fromAddress,
       to: to,
       subject: subject,
       html: html,
-      text: html.replace(/<[^>]*>/g, ''), // Proper HTML to text conversion
+      text: html.replace(/<[^>]*>/g, ''), // HTML to text
     };
 
-    console.log('📤 Sending email with options:', {
+    console.log('📤 Sending via GoDaddy:', {
       from: mailOptions.from,
       to: mailOptions.to,
       subject: mailOptions.subject
@@ -62,14 +68,13 @@ export async function sendMail({
 
     const info = await transporter.sendMail(mailOptions);
 
-    // **DETAILED SUCCESS LOGS**
-    console.log("🎉 EMAIL SENT SUCCESSFULLY - DETAILS:", {
+    // Detailed success logs
+    console.log("🎉 GODADDY EMAIL SENT SUCCESSFULLY:", {
       messageId: info.messageId,
       response: info.response,
-      accepted: info.accepted, // This should contain the recipient email
+      accepted: info.accepted, // This should show the recipient
       rejected: info.rejected, // This should be empty
-      envelope: info.envelope,
-      pending: info.pending
+      envelope: info.envelope
     });
 
     return { 
@@ -80,17 +85,14 @@ export async function sendMail({
     };
 
   } catch (error: any) {
-    // **DETAILED ERROR LOGS**
-    console.error("💥 EMAIL SENDING FAILED - DETAILED ERROR:", {
-      name: error.name,
-      message: error.message,
+    console.error("💥 GODADDY EMAIL FAILED:", {
+      error: error.message,
       code: error.code,
       command: error.command,
       response: error.response,
-      responseCode: error.responseCode,
-      stack: error.stack
+      responseCode: error.responseCode
     });
     
-    throw new Error(`Email sending failed: ${error.message}`);
+    throw new Error(`GoDaddy email failed: ${error.message}`);
   }
 }
