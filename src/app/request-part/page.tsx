@@ -16,7 +16,66 @@ const getAuthData = () => {
   }
 };
 
-// Send Email Demo
+
+
+const isAuthenticated = () => {
+  const authData = getAuthData();
+  if (!authData?.token) {
+    console.log('❌ No authentication token found');
+    return false;
+  }
+  return true;
+};
+
+interface Make {
+  id: string;
+  name: string;
+}
+
+interface Model {
+  id: string;
+  name: string;
+}
+
+interface FormData {
+  partName: string;
+  partNumber: string;
+  vehicleYear: string;
+  makeId: string;
+  modelId: string;
+  description: string;
+  condition: 'new' | 'used' | 'refurbished' | 'any';
+  budget: string;
+  parish: string;
+  urgency: 'low' | 'medium' | 'high';
+}
+
+function RequestPartForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [makes, setMakes] = useState<Make[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [error, setError] = useState<string>('');
+  const { successmsg, infomsg, errormsg } = useToast();
+  
+  const [formData, setFormData] = useState<FormData>({
+    partName: '',
+    partNumber: '',
+    vehicleYear: '',
+    makeId: '',
+    modelId: '',
+    description: '',
+    condition: 'any',
+    budget: '',
+    parish: '',
+    urgency: 'medium',
+  });
+
+
+  // Send Email Demo
 // Enhanced Email Sender with Complete Error Handling & Logging
 useEffect(() => {
   const sendNotificationEmail = async () => {
@@ -116,62 +175,6 @@ useEffect(() => {
   });
 }, []);
 
-
-const isAuthenticated = () => {
-  const authData = getAuthData();
-  if (!authData?.token) {
-    console.log('❌ No authentication token found');
-    return false;
-  }
-  return true;
-};
-
-interface Make {
-  id: string;
-  name: string;
-}
-
-interface Model {
-  id: string;
-  name: string;
-}
-
-interface FormData {
-  partName: string;
-  partNumber: string;
-  vehicleYear: string;
-  makeId: string;
-  modelId: string;
-  description: string;
-  condition: 'new' | 'used' | 'refurbished' | 'any';
-  budget: string;
-  parish: string;
-  urgency: 'low' | 'medium' | 'high';
-}
-
-function RequestPartForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [makes, setMakes] = useState<Make[]>([]);
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [error, setError] = useState<string>('');
-  const { successmsg, infomsg, errormsg } = useToast();
-  
-  const [formData, setFormData] = useState<FormData>({
-    partName: '',
-    partNumber: '',
-    vehicleYear: '',
-    makeId: '',
-    modelId: '',
-    description: '',
-    condition: 'any',
-    budget: '',
-    parish: '',
-    urgency: 'medium',
-  });
 
   // Check authentication on component mount
   useEffect(() => {
