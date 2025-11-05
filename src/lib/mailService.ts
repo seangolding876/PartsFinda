@@ -45,7 +45,7 @@ export async function sendMail({
       to,
       subject,
       html,
-      text: html.replace(/<[^>]*>/g, ''), // Basic HTML to text conversion
+      text: html, // Basic HTML to text conversion
     };
 
     const info = await transporter.sendMail(mailOptions);
