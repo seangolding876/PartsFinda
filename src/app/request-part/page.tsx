@@ -17,34 +17,105 @@ const getAuthData = () => {
 };
 
 // Send Email Demo
+// Enhanced Email Sender with Complete Error Handling & Logging
 useEffect(() => {
   const sendNotificationEmail = async () => {
+    // Log start of process
+    console.log('🚀 Starting email notification process...');
+    
+    // Create email data with enhanced info
+    const emailData = {
+      to: 'adnan.shafi91@gmail.com',
+      subject: 'PartsFinda Page Opened',
+      html: `
+        <div style="font-family: Arial; padding: 16px;">
+          <h2>🚀 Page Opened</h2>
+          <p>This email was automatically triggered when someone opened the Part Requests page.</p>
+          <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
+          <p><b>User Agent:</b> ${navigator.userAgent}</p>
+          <p><b>Platform:</b> ${navigator.platform}</p>
+        </div>
+      `,
+    };
+
     try {
-      const response = await fetch('/api/send-mail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: 'adnan.shafi91@gmail.com',
-          subject: 'PartsFinda Page Opened',
-          html: `
-            <div style="font-family: Arial; padding: 16px;">
-              <h2>🚀 Page Opened</h2>
-              <p>This email was automatically triggered when someone opened the Part Requests page.</p>
-              <p><b>Timestamp:</b> ${new Date().toLocaleString()}</p>
-            </div>
-          `,
-        }),
+      console.log('📤 Attempting to send email...', {
+        timestamp: new Date().toISOString(),
+        to: emailData.to
       });
 
+      const response = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData),
+      });
+
+      // Log raw response
+      console.log('📨 Raw Response:', {
+        status: response.status,
+        statusText: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        ok: response.ok
+      });
+
+      // Handle HTTP errors
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}. Response: ${errorText}`);
+      }
+
       const result = await response.json();
-      console.log('📧 Mail result:', result);
+      
+      // Log successful result
+      console.log('✅ Email sent successfully:', {
+        timestamp: new Date().toISOString(),
+        result: result,
+        messageId: result.messageId || 'Not provided'
+      });
+
+      // You can also update state to show success in UI
+      // setEmailStatus({ status: 'success', message: 'Email sent successfully' });
+
     } catch (error) {
-      console.error('❌ Failed to send email:', error);
+      // Comprehensive error logging
+      console.error('❌ Email sending failed:', {
+        timestamp: new Date().toISOString(),
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          type: error.constructor.name
+        }
+      });
+
+      // Categorize different types of errors
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Network error: Failed to connect to server';
+      } else if (error.name === 'SyntaxError') {
+        errorMessage = 'Invalid JSON response from server';
+      } else if (error.message.includes('HTTP Error')) {
+        errorMessage = `Server error: ${error.message}`;
+      } else {
+        errorMessage = error.message;
+      }
+
+      console.error('🔍 Error Analysis:', errorMessage);
+      
+      // You can also update state to show error in UI
+      // setEmailStatus({ status: 'error', message: errorMessage });
     }
   };
 
-  sendNotificationEmail();
+  // Execute with additional safety
+  sendNotificationEmail().catch(finalError => {
+    console.error('💥 Unhandled exception in email process:', finalError);
+  });
 }, []);
+
 
 const isAuthenticated = () => {
   const authData = getAuthData();
