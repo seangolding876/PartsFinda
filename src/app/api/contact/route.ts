@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
+import { rateLimit } from "@/lib/rateLimit";
 
 // ✅ Rate limiting storage
 const submissionCounts = new Map<string, { count: number; lastSubmission: number }>();
@@ -22,29 +23,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 2. RATE LIMITING (5 submissions per hour per IP)
-    const now = Date.now();
-    const oneHourAgo = now - 60 * 60 * 1000;
-    
-    const ipData = submissionCounts.get(clientIP) || { count: 0, lastSubmission: 0 };
-    
-    // Clean old entries
-    if (ipData.lastSubmission < oneHourAgo) {
-      ipData.count = 0;
-    }
-    
-    if (ipData.count >= 5) {
-      console.log('🚫 Rate limit exceeded for IP:', clientIP);
-      return NextResponse.json(
-        { success: false, error: 'Too many submissions. Please try again later.' },
-        { status: 429 }
-      );
-    }
-    
-    ipData.count++;
-    ipData.lastSubmission = now;
-    submissionCounts.set(clientIP, ipData);
+// ✅ Global Rate Limiting - ADNAN
+const allowed = await rateLimit(clientIP, 5, 60 * 60); // 5 req/hour
 
+if (!allowed) {
+  return NextResponse.json(
+    { success: false, error: "Too many submissions. Please try again later." },
+    { status: 429 }
+  );
+}
     // ✅ 3. BASIC VALIDATION
     if (!name || !email || !subject || !message) {
       return NextResponse.json(
