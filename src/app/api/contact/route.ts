@@ -2,13 +2,50 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
 
+// ✅ Rate limiting storage
+const submissionCounts = new Map<string, { count: number; lastSubmission: number }>();
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    const { name, email, phone, subject, message, type } = body;
+    const { name, email, phone, subject, message, type, website } = body; // Added website for honeypot
+    const clientIP = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
 
-    // Basic validation
+    console.log('🔍 Contact form submission:', { name, email, subject, clientIP });
+
+    // ✅ 1. HONEYPOT CHECK - Agar website field bhara hai toh spam hai
+    if (website && website !== '') {
+      console.log('🚫 Honeypot triggered - spam detected');
+      return NextResponse.json(
+        { success: false, error: 'Message sent successfully!' }, // Don't reveal it's spam
+        { status: 200 }
+      );
+    }
+
+    // ✅ 2. RATE LIMITING (5 submissions per hour per IP)
+    const now = Date.now();
+    const oneHourAgo = now - 60 * 60 * 1000;
+    
+    const ipData = submissionCounts.get(clientIP) || { count: 0, lastSubmission: 0 };
+    
+    // Clean old entries
+    if (ipData.lastSubmission < oneHourAgo) {
+      ipData.count = 0;
+    }
+    
+    if (ipData.count >= 5) {
+      console.log('🚫 Rate limit exceeded for IP:', clientIP);
+      return NextResponse.json(
+        { success: false, error: 'Too many submissions. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    
+    ipData.count++;
+    ipData.lastSubmission = now;
+    submissionCounts.set(clientIP, ipData);
+
+    // ✅ 3. BASIC VALIDATION
     if (!name || !email || !subject || !message) {
       return NextResponse.json(
         { success: false, error: 'All required fields must be filled' },
@@ -16,7 +53,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Email validation
+    // ✅ 4. SPAM DETECTION
+    const spamCheck = detectSpam({ name, email, subject, message, phone });
+    if (spamCheck.isSpam) {
+      console.log('🚫 Spam detected:', spamCheck.reason);
+      return NextResponse.json(
+        { success: false, error: 'Invalid form submission detected.' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ 5. EMAIL VALIDATION
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -25,24 +72,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Save contact message to database
+    // ✅ 6. CONTENT VALIDATION
+    if (!isValidContent(name) || !isValidContent(subject) || !isValidContent(message)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid content detected in form fields' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ 7. Save contact message to database
     const contactResult = await query(
       `INSERT INTO contact_messages (
-        name, email, phone, subject, message, type, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        name, email, phone, subject, message, type, status, ip_address
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [name, email, phone || null, subject, message, type || 'general', 'new']
+      [name, email, phone || null, subject, message, type || 'general', 'new', clientIP]
     );
 
     const contactMessage = contactResult.rows[0];
 
-    // ✅ Send confirmation email to user
+    // ✅ 8. Send confirmation email to user
     await sendUserConfirmationEmail(name, email, subject, message, type);
 
-    // ✅ Send notification email to admin
+    // ✅ 9. Send notification email to admin
     await sendAdminNotificationEmail(name, email, phone, subject, message, type);
 
-    console.log('Contact form submitted successfully:', contactMessage.id);
+    console.log('✅ Contact form submitted successfully:', contactMessage.id);
 
     return NextResponse.json({
       success: true,
@@ -66,6 +121,70 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// ✅ SPAM DETECTION FUNCTION
+function detectSpam(data: { name: string; email: string; subject: string; message: string; phone?: string }) {
+  const { name, email, subject, message, phone } = data;
+
+  // Check for random strings (like lBCvfehJZzJHdOPUldUQrxS)
+  if (isRandomString(name) || isRandomString(subject) || isRandomString(message)) {
+    return { isSpam: true, reason: 'Random string detected' };
+  }
+
+  // Check for suspicious patterns
+  if (name.length > 100 || subject.length > 200 || message.length > 5000) {
+    return { isSpam: true, reason: 'Field length too long' };
+  }
+
+  // Check for too many special characters
+  const specialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
+  const nameSpecialChars = (name.match(specialCharRegex) || []).length;
+  if (nameSpecialChars > 5) {
+    return { isSpam: true, reason: 'Too many special characters in name' };
+  }
+
+  // Check for common spam keywords
+  const spamKeywords = ['casino', 'viagra', 'lottery', 'get rich', 'work from home', 'make money', 'investment'];
+  const combinedText = `${subject} ${message}`.toLowerCase();
+  if (spamKeywords.some(keyword => combinedText.includes(keyword))) {
+    return { isSpam: true, reason: 'Spam keywords detected' };
+  }
+
+  // Check phone number (if provided)
+  if (phone && !isValidPhone(phone)) {
+    return { isSpam: true, reason: 'Invalid phone number' };
+  }
+
+  return { isSpam: false, reason: '' };
+}
+
+// ✅ RANDOM STRING DETECTION
+function isRandomString(str: string): boolean {
+  if (str.length < 8) return false;
+  
+  const letterRatio = (str.match(/[a-zA-Z]/g) || []).length / str.length;
+  const hasMixedCase = /[a-z]/.test(str) && /[A-Z]/.test(str);
+  const noSpaces = !/\s/.test(str);
+  const noVowels = !/[aeiouAEIOU]/.test(str);
+  const consecutiveConsonants = /[bcdfghjklmnpqrstvwxyz]{4,}/i.test(str);
+
+  // If it has mixed case, no spaces, no vowels, and high letter ratio - likely random
+  return letterRatio > 0.7 && hasMixedCase && noSpaces && (noVowels || consecutiveConsonants);
+}
+
+// ✅ CONTENT VALIDATION
+function isValidContent(content: string): boolean {
+  return content.trim().length >= 2 && 
+         content.length <= 5000 && 
+         /[a-zA-Z]/.test(content); // At least one letter
+}
+
+// ✅ PHONE VALIDATION
+function isValidPhone(phone: string): boolean {
+  const cleaned = phone.replace(/\D/g, '');
+  return cleaned.length >= 10 && cleaned.length <= 15;
+}
+
 
 // ✅ User Confirmation Email Template
 async function sendUserConfirmationEmail(

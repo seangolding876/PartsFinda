@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
 
 export default function ContactPage() {
@@ -10,16 +10,33 @@ export default function ContactPage() {
     phone: '',
     subject: '',
     message: '',
-    type: 'general'
+    type: 'general',
+    website: '' // ✅ Honeypot field
   });
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const honeypotRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // ✅ Client-side validation
+    if (formData.name.length < 2 || formData.subject.length < 3 || formData.message.length < 10) {
+      setError('Please fill in all fields properly.');
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ Check for suspicious content
+    if (isSuspiciousContent(formData.name) || isSuspiciousContent(formData.subject)) {
+      setError('Invalid content detected in form fields.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/contact', {
@@ -30,11 +47,16 @@ export default function ContactPage() {
         body: JSON.stringify(formData),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to submit form');
+        throw new Error(result.error || 'Failed to submit form');
       }
 
-      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
       console.log('Contact form submitted successfully:', result);
       setSubmitted(true);
       setFormData({
@@ -43,11 +65,12 @@ export default function ContactPage() {
         phone: '',
         subject: '',
         message: '',
-        type: 'general'
+        type: 'general',
+        website: '' // Reset honeypot
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting form:', err);
-      setError('Failed to send message. Please try again.');
+      setError(err.message || 'Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +81,20 @@ export default function ContactPage() {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  // ✅ Client-side suspicious content detection
+  const isSuspiciousContent = (text: string): boolean => {
+    if (text.length < 8) return false;
+    
+    // Check for random character patterns
+    const hasMixedRandomCase = /[a-z].*[A-Z]|[A-Z].*[a-z]/.test(text) && 
+                              !/\s/.test(text);
+    
+    const noVowels = !/[aeiouAEIOU]/.test(text);
+    const consecutiveConsonants = /[bcdfghjklmnpqrstvwxyz]{4,}/i.test(text);
+    
+    return hasMixedRandomCase && (noVowels || consecutiveConsonants);
   };
 
   if (submitted) {
@@ -186,6 +223,22 @@ export default function ContactPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ✅ HONEYPOT FIELD - Bots will fill this but users won't see it */}
+              <div className="hidden" aria-hidden="true">
+                <label htmlFor="website">Website</label>
+                <input
+                  type="text"
+                  id="website"
+                  name="website"
+                  ref={honeypotRef}
+                  value={formData.website}
+                  onChange={handleChange}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  className="absolute left-[-9999px]"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -196,6 +249,8 @@ export default function ContactPage() {
                     id="name"
                     name="name"
                     required
+                    minLength={2}
+                    maxLength={100}
                     value={formData.name}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -261,6 +316,8 @@ export default function ContactPage() {
                   id="subject"
                   name="subject"
                   required
+                  minLength={3}
+                  maxLength={200}
                   value={formData.subject}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -276,6 +333,8 @@ export default function ContactPage() {
                   name="message"
                   required
                   rows={5}
+                  minLength={10}
+                  maxLength={5000}
                   value={formData.message}
                   onChange={handleChange}
                   placeholder="Tell us how we can help you..."
