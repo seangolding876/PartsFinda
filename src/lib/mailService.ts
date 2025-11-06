@@ -1,4 +1,4 @@
-// src/lib/mailService.ts - PORT 465 VERSION
+// src/lib/mailService.ts - GODADDY VERSION
 import nodemailer from "nodemailer";
 
 export async function sendMail({ 
@@ -11,7 +11,7 @@ export async function sendMail({
   html: string; 
 }) {
   try {
-    console.log('🔍 GoDaddy SMTP Configuration (Port 465):', {
+    console.log('🔍 GoDaddy SMTP Configuration Check:', {
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
       user: process.env.SMTP_USER,
@@ -23,29 +23,33 @@ export async function sendMail({
       throw new Error('GoDaddy SMTP configuration is missing');
     }
 
-    // GoDaddy Port 465 with SSL
+    // GoDaddy Specific Transporter Configuration
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST, // smtpout.secureserver.net
-      port: 465, // ✅ Fixed port 465
-      secure: true, // ✅ SSL enabled for port 465
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false, // ❌ MUST BE false for GoDaddy port 587
       auth: {
         user: process.env.SMTP_USER, // support@partsfinda.com
         pass: process.env.SMTP_PASS, // Partsfinda@123
       },
+      // GoDaddy specific settings
       tls: {
         rejectUnauthorized: false
       },
-      connectionTimeout: 15000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
       debug: true,
       logger: true
     });
 
-    console.log('🔄 Verifying GoDaddy SMTP (Port 465)...');
+    console.log('🔄 Verifying GoDaddy SMTP connection...');
 
     // Verify connection
     await transporter.verify();
-    console.log('✅ GoDaddy SMTP (Port 465) connection verified');
+    console.log('✅ GoDaddy SMTP connection verified');
 
+    // Use SMTP_FROM or fallback to SMTP_USER
     const fromAddress = process.env.SMTP_FROM || `"PartsFinda Support" <${process.env.SMTP_USER}>`;
 
     const mailOptions = {
@@ -53,10 +57,10 @@ export async function sendMail({
       to: to,
       subject: subject,
       html: html,
-      text: html.replace(/<[^>]*>/g, ''),
+      text: html.replace(/<[^>]*>/g, ''), // HTML to text
     };
 
-    console.log('📤 Sending via GoDaddy (Port 465):', {
+    console.log('📤 Sending via GoDaddy:', {
       from: mailOptions.from,
       to: mailOptions.to,
       subject: mailOptions.subject
@@ -64,10 +68,13 @@ export async function sendMail({
 
     const info = await transporter.sendMail(mailOptions);
 
-    console.log("🎉 GODADDY EMAIL SENT (Port 465):", {
+    // Detailed success logs
+    console.log("🎉 GODADDY EMAIL SENT SUCCESSFULLY:", {
       messageId: info.messageId,
-      accepted: info.accepted,
-      response: info.response
+      response: info.response,
+      accepted: info.accepted, // This should show the recipient
+      rejected: info.rejected, // This should be empty
+      envelope: info.envelope
     });
 
     return { 
@@ -78,10 +85,12 @@ export async function sendMail({
     };
 
   } catch (error: any) {
-    console.error("💥 GODADDY EMAIL FAILED (Port 465):", {
+    console.error("💥 GODADDY EMAIL FAILED:", {
       error: error.message,
       code: error.code,
-      command: error.command
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
     });
     
     throw new Error(`GoDaddy email failed: ${error.message}`);
