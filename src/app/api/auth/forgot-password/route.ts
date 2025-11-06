@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
 import { v4 as uuidv4 } from 'uuid';
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Email is required' },
         { status: 400 }
+      );
+    }
+
+        const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0] ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    const ipAllowed = await rateLimit(`fp:ip:${ip}`, 5, 60 * 60);
+    if (!ipAllowed) {
+      return NextResponse.json(
+        { success: true, message: "If an account exists, reset instructions were sent." },
+        { status: 200 }
+      );
+    }
+
+    const emailAllowed = await rateLimit(`fp:email:${email.toLowerCase()}`, 2, 60 * 60);
+    if (!emailAllowed) {
+      return NextResponse.json(
+        { success: true, message: "If an account exists, reset instructions were sent." },
+        { status: 200 }
       );
     }
 

@@ -5,11 +5,31 @@ import { generateToken } from '@/lib/jwt';
 import { RegisterRequest, AuthResponse, UserResponse } from '@/types/auth';
 import { v4 as uuidv4 } from 'uuid'; 
 import { sendMail } from '@/lib/mailService'; 
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest): Promise<NextResponse<AuthResponse>> {
   try {
     const body: RegisterRequest = await request.json();
+    const clientIP = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
     const { email, password, name, phone, role = 'buyer' } = body;
+
+const emailAllowed = await rateLimit(`reg:${email.toLowerCase()}`, 1, 24 * 60 * 60);
+if (!emailAllowed) {
+  return NextResponse.json(
+    { success: false, error: "Registration already attempted. Try again later." },
+    { status: 429 }
+  );
+}
+    
+// ✅ Global Rate Limiting - ADNAN
+const allowed = await rateLimit(clientIP, 3, 60 * 60); // 5 req/hour
+
+if (!allowed) {
+  return NextResponse.json(
+    { success: false, error: "Too many submissions. Please try again later." },
+    { status: 429 }
+  );
+}
 
     // Validation
     if (!email || !password || !name || !phone) {

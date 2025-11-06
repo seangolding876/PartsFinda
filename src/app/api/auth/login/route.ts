@@ -3,9 +3,49 @@ import { query } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
 import { generateToken } from '@/lib/jwt';
 import { LoginRequest, AuthResponse, UserResponse } from '@/types/auth';
+import { rateLimit } from "@/lib/rateLimit";
+import { headers } from "next/headers";
+import { redis } from "@/lib/redis";
+
 
 export async function POST(request: NextRequest): Promise<NextResponse<AuthResponse>> {
   try {
+
+    // ------------------- 🔐 RATE LIMIT FOR LOGIN -------------------
+const ip =
+  request.ip ||
+  headers().get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  "unknown";
+
+// 🔁 Check if banned
+const banKey = `ban:${ip}`;
+const isBanned = await redis.get(banKey);
+if (isBanned) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Too many attempts. Try again in 5 minutes.",
+    },
+    { status: 429 }
+  );
+}
+
+// ✅ 5 attempts per minute
+const allowed = await rateLimit(ip, 5, 60);
+
+if (!allowed) {
+  // ❌ BAN for 5 mins after limit
+  await redis.set(banKey, "1", "EX", 300); // 300 sec = 5 mins
+  return NextResponse.json(
+    {
+      success: false,
+      error: "Too many attempts. You are blocked for 5 minutes.",
+    },
+    { status: 429 }
+  );
+}
+// --------------------------------------------------------------
+
     console.log('🔐 Login attempt started...');
 
     const body: LoginRequest = await request.json();

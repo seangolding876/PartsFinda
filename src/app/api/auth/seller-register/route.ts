@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid'; // ✅ Yeh import add karein
 import { sendMail } from '@/lib/mailService'; // ✅ Yeh import add karein
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,41 @@ interface SellerRegistrationData {
 export async function POST(request: NextRequest) {
   try {
     const body: SellerRegistrationData = await request.json();
+
+    const ip =
+  request.headers.get("x-forwarded-for")?.split(",")[0] ||
+  request.headers.get("x-real-ip") ||
+  "unknown";
+
+const email = body.email?.toLowerCase();
+const phone = body.phone;
+
+// IP limit
+const ipAllowed = await rateLimit(`sellerReg:ip:${ip}`, 5, 60 * 60);
+if (!ipAllowed) {
+  return NextResponse.json(
+    { success: true, message: "Registration submitted successfully. Please check your email." },
+    { status: 200 }
+  );
+}
+
+// Email limit
+const emailAllowed = await rateLimit(`sellerReg:email:${email}`, 2, 60 * 60);
+if (!emailAllowed) {
+  return NextResponse.json(
+    { success: true, message: "Registration submitted successfully. Please check your email." },
+    { status: 200 }
+  );
+}
+
+// Phone limit
+const phoneAllowed = await rateLimit(`sellerReg:phone:${phone}`, 3, 60 * 60);
+if (!phoneAllowed) {
+  return NextResponse.json(
+    { success: true, message: "Registration submitted successfully. Please check your email." },
+    { status: 200 }
+  );
+}
     
     console.log('📝 Seller registration request received');
     console.log('Received data:', {
