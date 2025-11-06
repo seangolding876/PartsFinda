@@ -102,60 +102,60 @@ function RequestPartForm() {
     urgency: 'medium',
   });
 
-// Test with your React component
-useEffect(() => {
-  const testGoDaddyEmail = async () => {
-    try {
-      console.log('🚀 Testing GoDaddy SMTP from Next.js...');
+// // Test with your React component
+// useEffect(() => {
+//   const testGoDaddyEmail = async () => {
+//     try {
+//       console.log('🚀 Testing GoDaddy SMTP from Next.js...');
       
-      const response = await fetch('/api/send-mail', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: 'adnan.shafi91@gmail.com',
-          subject: '✅ TEST: GoDaddy SMTP Working from Next.js!',
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; }
-              </style>
-            </head>
-            <body>
-              <h1>🎉 SUCCESS! GoDaddy SMTP Working</h1>
-              <div class="success">
-                <h2>Congratulations!</h2>
-                <p>Your Next.js app is now sending emails via GoDaddy SMTP!</p>
-              </div>
-              <p><strong>From:</strong> support@partsfinda.com</p>
-              <p><strong>To:</strong> adnan.shafi44@gmail.com</p>
-              <p><strong>Time:</strong> ${new Date().toString()}</p>
-              <p><strong>SMTP:</strong> smtpout.secureserver.net:587</p>
-            </body>
-            </html>
-          `
-        }),
-      });
+//       const response = await fetch('/api/send-mail', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           to: 'adnan.shafi91@gmail.com',
+//           subject: '✅ TEST: GoDaddy SMTP Working from Next.js!',
+//           html: `
+//             <!DOCTYPE html>
+//             <html>
+//             <head>
+//               <style>
+//                 body { font-family: Arial, sans-serif; padding: 20px; }
+//                 .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; }
+//               </style>
+//             </head>
+//             <body>
+//               <h1>🎉 SUCCESS! GoDaddy SMTP Working</h1>
+//               <div class="success">
+//                 <h2>Congratulations!</h2>
+//                 <p>Your Next.js app is now sending emails via GoDaddy SMTP!</p>
+//               </div>
+//               <p><strong>From:</strong> support@partsfinda.com</p>
+//               <p><strong>To:</strong> adnan.shafi44@gmail.com</p>
+//               <p><strong>Time:</strong> ${new Date().toString()}</p>
+//               <p><strong>SMTP:</strong> smtpout.secureserver.net:587</p>
+//             </body>
+//             </html>
+//           `
+//         }),
+//       });
 
-      const result = await response.json();
-      console.log('📧 GoDaddy Test Result:', result);
+//       const result = await response.json();
+//       console.log('📧 GoDaddy Test Result:', result);
 
-      if (result.success) {
-        alert('✅ GoDaddy email sent from Next.js! Check your inbox.');
-      } else {
-        alert('❌ Failed: ' + result.error);
-      }
+//       if (result.success) {
+//         alert('✅ GoDaddy email sent from Next.js! Check your inbox.');
+//       } else {
+//         alert('❌ Failed: ' + result.error);
+//       }
 
-    } catch (error) {
-      console.error('💥 GoDaddy test failed:', error);
-      alert('💥 Error: ' + error.message);
-    }
-  };
+//     } catch (error) {
+//       console.error('💥 GoDaddy test failed:', error);
+//       alert('💥 Error: ' + error.message);
+//     }
+//   };
 
-  testGoDaddyEmail();
-}, []);
+//   testGoDaddyEmail();
+// }, []);
 
 
 
