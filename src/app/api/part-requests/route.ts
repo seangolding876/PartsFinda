@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 import { sendMail } from '@/lib/mailService';
+import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -185,6 +186,8 @@ async function scheduleRequestForAllSellers(partRequestId: number, sellers: any[
 
 // Enhanced POST handler - Buyer membership check removed
 export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const clientIP = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
   try {
     // Authorization - sirf token check karen
     const authHeader = request.headers.get('authorization');
@@ -226,6 +229,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📦 Received part request data:', { userId, ...body });
+
+
+    // ✅ Global Rate Limiting - ADNAN
+    const allowed = await rateLimit(clientIP, 5, 60 * 60); // 5 req/hour
+    
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: "Too many submissions. Please try again later." },
+        { status: 429 }
+      );
+    }
 
     // Required fields validation
     const requiredFields = ['partName', 'makeId', 'modelId', 'vehicleYear', 'description', 'parish', 'condition', 'urgency'];
