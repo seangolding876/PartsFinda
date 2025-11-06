@@ -1,4 +1,4 @@
-// src/lib/mailService.ts - GODADDY VERSION
+// src/lib/mailService.ts - GODADDY VERSION (Updated as per working C# code)
 import nodemailer from "nodemailer";
 
 export async function sendMail({ 
@@ -23,34 +23,39 @@ export async function sendMail({
       throw new Error('GoDaddy SMTP configuration is missing');
     }
 
-    // GoDaddy Specific Transporter Configuration
+    // ✅ GoDaddy Transporter Configuration (Matches your working C# settings)
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST, // smtpout.secureserver.net
+      host: process.env.SMTP_HOST || "smtp.office365.com", // Using Office365 as in your C# code
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false, // ❌ MUST BE false for GoDaddy port 587
+      secure: false, // ✅ MUST BE false for port 587 (matches your C# EnableSsl=true)
       auth: {
-        user: process.env.SMTP_USER, // support@partsfinda.com
-        pass: process.env.SMTP_PASS, // Partsfinda@123
+        user: process.env.SMTP_USER || "support@partsfinda.com", 
+        pass: process.env.SMTP_PASS || "Partsfinda@123",
       },
-      // GoDaddy specific settings
+      // Office365 specific settings
       tls: {
+        ciphers: 'SSLv3',
         rejectUnauthorized: false
       },
-      connectionTimeout: 10000,
+      requireTLS: true,
+      connectionTimeout: 30000, // ✅ Matches your C# Timeout = 30000
       greetingTimeout: 10000,
-      socketTimeout: 10000,
+      socketTimeout: 30000,
       debug: true,
       logger: true
     });
 
-    console.log('🔄 Verifying GoDaddy SMTP connection...');
+    console.log('🔄 Verifying SMTP connection...');
 
     // Verify connection
     await transporter.verify();
-    console.log('✅ GoDaddy SMTP connection verified');
+    console.log('✅ SMTP connection verified');
 
-    // Use SMTP_FROM or fallback to SMTP_USER
-    const fromAddress = process.env.SMTP_FROM || `"PartsFinda Support" <${process.env.SMTP_USER}>`;
+    // ✅ Use specific FROM address format (matches your C# code)
+    const fromAddress = process.env.SMTP_FROM || `"PartsFinda Official" <support@partsfinda.com>`;
+    // Alternative FROM addresses as in your C# code:
+    // const fromAddress = `"PartsFinda System" <noreply@partsfinda.com>`;
+    // const fromAddress = `"PartsFinda Alerts" <notifications@partsfinda.com>`;
 
     const mailOptions = {
       from: fromAddress,
@@ -60,7 +65,7 @@ export async function sendMail({
       text: html.replace(/<[^>]*>/g, ''), // HTML to text
     };
 
-    console.log('📤 Sending via GoDaddy:', {
+    console.log('📤 Sending email:', {
       from: mailOptions.from,
       to: mailOptions.to,
       subject: mailOptions.subject
@@ -69,11 +74,11 @@ export async function sendMail({
     const info = await transporter.sendMail(mailOptions);
 
     // Detailed success logs
-    console.log("🎉 GODADDY EMAIL SENT SUCCESSFULLY:", {
+    console.log("🎉 EMAIL SENT SUCCESSFULLY:", {
       messageId: info.messageId,
       response: info.response,
-      accepted: info.accepted, // This should show the recipient
-      rejected: info.rejected, // This should be empty
+      accepted: info.accepted,
+      rejected: info.rejected,
       envelope: info.envelope
     });
 
@@ -85,14 +90,15 @@ export async function sendMail({
     };
 
   } catch (error: any) {
-    console.error("💥 GODADDY EMAIL FAILED:", {
+    console.error("💥 EMAIL FAILED:", {
       error: error.message,
       code: error.code,
       command: error.command,
       response: error.response,
-      responseCode: error.responseCode
+      responseCode: error.responseCode,
+      stack: error.stack
     });
     
-    throw new Error(`GoDaddy email failed: ${error.message}`);
+    throw new Error(`Email failed: ${error.message}`);
   }
 }
