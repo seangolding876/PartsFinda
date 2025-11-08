@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     console.log('📋 Fetching logs for partsfinda-worker...');
 
     // Specific worker ke logs get karein
-    const { stdout, stderr } = await execAsync('pm2 logs partsfinda-worker --lines 100 --nostream');
+    const { stdout, stderr } = await execAsync('pm2 logs partsfinda-worker --lines 50 --nostream');
     
     let logs = stdout;
     
