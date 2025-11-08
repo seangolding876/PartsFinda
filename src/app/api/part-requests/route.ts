@@ -217,17 +217,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Parse request body
-    let body: PartRequestData;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Invalid JSON in request body' 
-      }, { status: 400 });
-    }
-
     console.log('📦 Received part request data:', { userId, ...body });
 
 
