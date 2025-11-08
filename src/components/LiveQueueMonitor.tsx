@@ -244,7 +244,7 @@ export default function LiveQueueMonitor() {
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                JMD {request.budget?.toLocaleString() || 0}
+                {request.budget?.toLocaleString() || 0}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -305,7 +305,7 @@ function SuccessfulRequestsTable({ successfulRequests }) {
                   #{request.request_id} - {request.part_name}
                 </div>
                 <div className="text-sm text-gray-500">
-                  Budget: ₹{request.budget?.toLocaleString() || 0}
+                  Budget: {request.budget?.toLocaleString() || 0}
                 </div>
                 <div className="text-xs text-gray-400">
                   Buyer: {request.buyer.name}
@@ -334,7 +334,7 @@ function SuccessfulRequestsTable({ successfulRequests }) {
                       {seller.has_quote ? (
                         <div className="flex items-center space-x-2">
                           <span className="text-green-600">✅</span>
-                          <span>Quoted: ₹{seller.quoted_price}</span>
+                          <span>Quoted: {seller.quoted_price}</span>
                           <span className={`text-xs px-2 py-1 rounded ${
                             seller.quote_status === 'accepted' 
                               ? 'bg-green-100 text-green-800'
