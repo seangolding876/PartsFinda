@@ -28,6 +28,7 @@ interface QueueStats {
     seller_name: string;
     membership_plan: string;
     buyer_name: string;
+    scheduled_delivery_time: string;
   }>;
   success_rate: string;
 }
@@ -218,6 +219,9 @@ export default function LiveQueueMonitor() {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Priority
             </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Delivery At
+            </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -240,7 +244,7 @@ export default function LiveQueueMonitor() {
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                ₹{request.budget?.toLocaleString() || 0}
+                JMD {request.budget?.toLocaleString() || 0}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -252,6 +256,9 @@ export default function LiveQueueMonitor() {
                 }`}>
                   {request.priority}
                 </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                 {request.scheduled_delivery_time ? new Date(request.scheduled_delivery_time).toLocaleString() : 'N/A'}
               </td>
             </tr>
           ))}

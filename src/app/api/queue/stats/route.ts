@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
         pr.budget,
         s.name as seller_name,
         s.membership_plan,
-        u.name as buyer_name
+        u.name as buyer_name,
+		    rq.scheduled_delivery_time
       FROM request_queue rq
       JOIN part_requests pr ON rq.part_request_id = pr.id
       JOIN users s ON rq.seller_id = s.id
