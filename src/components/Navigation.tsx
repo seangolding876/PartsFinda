@@ -356,6 +356,15 @@ export default function Navigation() {
                           <Users className="w-4 h-4 text-green-600" />
                           Manage Users
                         </Link>
+
+                  <Link
+                          href="/admin/cars"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Car className="w-4 h-4 text-green-600" />
+                          Manage Cars make and models
+                        </Link>
+
                         {/* <Link
                           href="/admin/parts"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
@@ -652,6 +661,46 @@ export default function Navigation() {
                       <Users className="w-6 h-6 text-green-600" />
                       Manage Users
                     </Link>
+
+
+                  <Link
+                          href="/admin/cars"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Car className="w-4 h-4 text-green-600" />
+                          Manage Cars make and models
+                        </Link>
+
+                        {/* <Link
+                          href="/admin/parts"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-purple-600" />
+                          Manage Parts
+                        </Link> */}
+                        <Link
+                          href="/admin/payments"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <ShoppingBag className="w-4 h-4 text-orange-600" />
+                          Payments
+                        </Link>
+                        <Link
+                          href="/admin/settings"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-gray-600" />
+                          System Settings
+                        </Link>
+                        <Link
+                          href="/admin/contact-messages"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Contact className="w-4 h-4 text-gray-600" />
+                          Contact Messages
+                        </Link>
+
+
                   </div>
                 )}
               </>
