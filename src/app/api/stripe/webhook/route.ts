@@ -1,10 +1,10 @@
-// app/api/stripe/webhook/route.ts - STEP 2
+// app/api/stripe/webhook/route.ts
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
-// Simple stripe initialization yahi par
+// Stripe initialization
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 export async function POST(request: NextRequest) {
@@ -13,6 +13,9 @@ export async function POST(request: NextRequest) {
     
     const body = await request.text();
     const signature = headers().get('stripe-signature');
+
+    console.log('Body length:', body.length);
+    console.log('Signature:', signature ? 'Present' : 'Missing');
 
     if (!signature) {
       console.error('❌ No Stripe signature');
@@ -47,4 +50,14 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+}
+
+// GET method for testing
+export async function GET(request: NextRequest) {
+  return NextResponse.json({ 
+    success: true, 
+    message: 'Stripe webhook endpoint is active!',
+    timestamp: new Date().toISOString(),
+    method: 'GET'
+  });
 }
