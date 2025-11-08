@@ -365,6 +365,16 @@ export default function Navigation() {
                           Manage Cars make and models
                         </Link>
 
+                        
+                  <Link
+                          href="/queue-monitor"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-green-600" />
+                          Queue Monitor (Parts Processing)
+                        </Link>
+
+
                         {/* <Link
                           href="/admin/parts"
                           className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
@@ -670,6 +680,16 @@ export default function Navigation() {
                           <Car className="w-4 h-4 text-green-600" />
                           Manage Cars make and models
                         </Link>
+
+                                                
+                  <Link
+                          href="/queue-monitor"
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-sm font-medium text-gray-700 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 text-green-600" />
+                          Queue Monitor (Parts Processing)
+                        </Link>
+
 
                         {/* <Link
                           href="/admin/parts"
