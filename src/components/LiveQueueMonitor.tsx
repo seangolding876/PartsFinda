@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import WorkerLogs from '@/components/admin/WorkerLogs';
+import { getAuthData } from '@/lib/auth';
 
 // Type definitions
 interface QueueStats {
@@ -46,6 +48,8 @@ export default function LiveQueueMonitor() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const authData = getAuthData();
 
   // Fetch data function
   const fetchData = async () => {
@@ -410,6 +414,16 @@ export default function LiveQueueMonitor() {
             </button>
           </div>
         </div> */}
+
+
+        <div className="grid grid-cols-1 gap-6">
+          {/* Worker Logs Section */}
+          <div className="col-span-1">
+            <WorkerLogs authToken={authData} />
+          </div>
+
+          {/* Other sections... */}
+        </div>
       </div>
     </div>
   );
