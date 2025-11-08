@@ -162,7 +162,7 @@ export default function LiveQueueMonitor() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Live Queue Monitor</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Live Queue Monitor ( Sending Parts to Seller ) </h1>
             <p className="text-gray-600">Real-time PartsFinda Worker Monitoring</p>
           </div>
           <div className="flex items-center gap-4">
