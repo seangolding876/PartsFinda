@@ -1,7 +1,7 @@
 // components/admin/WorkerLogs.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // ✅ useRef import karein
 import { RefreshCw, Trash2, Download, Play, Square } from 'lucide-react';
 
 interface WorkerLogsProps {
@@ -13,6 +13,9 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [workerStatus, setWorkerStatus] = useState<'running' | 'stopped' | 'unknown'>('unknown');
+  
+  // ✅ Scroll ke liye ref add karein
+  const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchWorkerLogs = async () => {
     try {
@@ -103,6 +106,13 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
     URL.revokeObjectURL(url);
   };
 
+  // ✅ Scroll to bottom function
+  const scrollToBottom = () => {
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
+    }
+  };
+
   useEffect(() => {
     fetchWorkerLogs();
     fetchWorkerStatus();
@@ -111,9 +121,14 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(fetchWorkerLogs, 5000); // 5 seconds for worker logs
+    const interval = setInterval(fetchWorkerLogs, 15000); // ✅ 15 seconds kar diya
     return () => clearInterval(interval);
   }, [autoRefresh]);
+
+  // ✅ Jab bhi logs update ho, automatically scroll to bottom karo
+  useEffect(() => {
+    scrollToBottom();
+  }, [logs]); // ✅ logs change hone par scroll karo
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -129,40 +144,6 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
         <div>
           <h2 className="text-xl font-bold text-gray-900">Worker Process Logs</h2>
           <p className="text-sm text-gray-600">partsfinda-worker</p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          {/* Worker Status */}
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(workerStatus)}`}>
-            Status: {workerStatus}
-          </div>
-          
-          {/* Control Buttons */}
-          <div className="flex space-x-2">
-            <button
-              onClick={() => controlWorker('start')}
-              className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-            >
-              <Play className="w-3 h-3" />
-              <span>Start</span>
-            </button>
-            
-            <button
-              onClick={() => controlWorker('stop')}
-              className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-            >
-              <Square className="w-3 h-3" />
-              <span>Stop</span>
-            </button>
-            
-            <button
-              onClick={() => controlWorker('restart')}
-              className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Restart</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -203,12 +184,15 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
             onChange={(e) => setAutoRefresh(e.target.checked)}
             className="rounded border-gray-300"
           />
-          <span className="text-sm text-gray-700">Auto-refresh (5s)</span>
+          <span className="text-sm text-gray-700">Auto-refresh (15s)</span> {/* ✅ 15s update kiya */}
         </label>
       </div>
 
-      {/* Logs Display */}
-      <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-96 overflow-auto">
+      {/* Logs Display - REF add kiya */}
+      <div 
+        ref={logsContainerRef} // ✅ REF yahan add kiya
+        className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-96 overflow-auto"
+      >
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <RefreshCw className="w-6 h-6 animate-spin" />
