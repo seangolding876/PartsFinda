@@ -41,6 +41,35 @@ interface WorkerStatus {
   restarts: number;
   pid: number;
 }
+interface SuccessfulRequest {
+  request_id: number;
+  part_name: string;
+  budget: number;
+  request_created: string;
+  request_status: string;
+  buyer: {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+  };
+  sellers: Array<{
+    seller_id: number;
+    seller_name: string;
+    business_name: string;
+    membership_plan: string;
+    queue_status: string;
+    processed_at: string;
+    has_quote: boolean;
+    quoted_price: number;
+    quote_status: string;
+    quote_created: string;
+    has_conversation: boolean;
+    has_messages: boolean;
+    last_message_time: string;
+  }>;
+}
+
 
 export default function LiveQueueMonitor() {
   const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
@@ -48,6 +77,8 @@ export default function LiveQueueMonitor() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successfulRequests, setSuccessfulRequests] = useState<SuccessfulRequest[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'successful'>('pending');
 
   const authData = getAuthData();
 
@@ -56,17 +87,18 @@ export default function LiveQueueMonitor() {
     try {
       setError(null);
       
-      const [statsResponse, workerResponse] = await Promise.all([
+      const [statsResponse, workerResponse, successfulResponse] = await Promise.all([
         fetch('/api/queue/stats'),
-        fetch('/api/worker/status')
+        fetch('/api/worker/status'),
+        fetch('/api/admin/successful-requests')
       ]);
-
-      if (!statsResponse.ok || !workerResponse.ok) {
+            if (!statsResponse.ok || !workerResponse.ok) {
         throw new Error('Failed to fetch data from server');
       }
 
       const statsData = await statsResponse.json();
       const workerData = await workerResponse.json();
+      const successfulData = await successfulResponse.json();
 
       if (statsData.success) {
         setQueueStats(statsData.data);
@@ -77,6 +109,11 @@ export default function LiveQueueMonitor() {
       if (workerData.success && workerData.worker) {
         setWorkerStatus(workerData.worker);
       }
+
+      if (successfulData.success) {
+        setSuccessfulRequests(successfulData.data);
+      }
+
     } catch (error) {
       console.error('❌ Error fetching data:', error);
       setError(error.message || 'Failed to load data');
@@ -135,6 +172,7 @@ export default function LiveQueueMonitor() {
     );
   }
 
+
   // Error state
   if (error) {
     return (
@@ -155,6 +193,206 @@ export default function LiveQueueMonitor() {
       </div>
     );
   }
+
+  function PendingRequestsTable({ queueStats }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Request ID
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Part Name
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Buyer
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Seller
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Budget
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Priority
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {queueStats?.pending_requests?.map((request) => (
+            <tr key={request.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                #{request.id}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {request.part_name}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {request.buyer_name}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div>
+                  {request.seller_name}
+                  <br />
+                  <span className="text-xs text-gray-500 capitalize">{request.membership_plan}</span>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                ₹{request.budget?.toLocaleString() || 0}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  request.priority === 'high' 
+                    ? 'bg-red-100 text-red-800'
+                    : request.priority === 'medium'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {request.priority}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {(!queueStats?.pending_requests || queueStats.pending_requests.length === 0) && (
+        <div className="text-center py-8 text-gray-500">
+          No pending requests in queue
+        </div>
+      )}
+    </div>
+  );
+}
+
+// New Successful Requests Component
+function SuccessfulRequestsTable({ successfulRequests }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Request & Buyer
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Sellers Contacted
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Responses
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Chat Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Sent Time
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {successfulRequests.map((request) => (
+            <tr key={request.request_id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-6 py-4">
+                <div className="text-sm font-medium text-gray-900">
+                  #{request.request_id} - {request.part_name}
+                </div>
+                <div className="text-sm text-gray-500">
+                  Budget: ₹{request.budget?.toLocaleString() || 0}
+                </div>
+                <div className="text-xs text-gray-400">
+                  Buyer: {request.buyer.name}
+                </div>
+              </td>
+              
+              <td className="px-6 py-4">
+                <div className="space-y-2">
+                  {request.sellers.map((seller) => (
+                    <div key={seller.seller_id} className="text-sm">
+                      <div className="font-medium text-gray-900">
+                        {seller.seller_name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {seller.business_name} • {seller.membership_plan}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </td>
+              
+              <td className="px-6 py-4">
+                <div className="space-y-2">
+                  {request.sellers.map((seller) => (
+                    <div key={seller.seller_id} className="text-sm">
+                      {seller.has_quote ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-green-600">✅</span>
+                          <span>Quoted: ₹{seller.quoted_price}</span>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            seller.quote_status === 'accepted' 
+                              ? 'bg-green-100 text-green-800'
+                              : seller.quote_status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {seller.quote_status}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 text-gray-500">
+                          <span className="text-gray-400">⏳</span>
+                          <span>No response yet</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </td>
+              
+              <td className="px-6 py-4">
+                <div className="space-y-2">
+                  {request.sellers.map((seller) => (
+                    <div key={seller.seller_id} className="text-sm">
+                      {seller.has_messages ? (
+                        <div className="flex items-center space-x-2 text-green-600">
+                          <span>💬</span>
+                          <span>Chat active</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(seller.last_message_time).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ) : seller.has_conversation ? (
+                        <div className="flex items-center space-x-2 text-blue-600">
+                          <span>📩</span>
+                          <span>Chat ready</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 text-gray-500">
+                          <span>📭</span>
+                          <span>No chat</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </td>
+              
+              <td className="px-6 py-4 text-sm text-gray-500">
+                {new Date(request.request_created).toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      {successfulRequests.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No successfully sent requests yet
+        </div>
+      )}
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -315,81 +553,42 @@ export default function LiveQueueMonitor() {
         </div>
 
         {/* Pending Requests Table */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Pending Requests ({queueStats?.pending_requests?.length || 0})
-            </h2>
+  <div className="bg-white rounded-lg shadow mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'pending'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Pending Requests ({queueStats?.pending_requests?.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveTab('successful')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'successful'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Successfully Sent ({successfulRequests.length || 0})
+              </button>
+            </nav>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Request ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Part Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Buyer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Seller
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Budget
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Priority
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {queueStats?.pending_requests?.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{request.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {request.part_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {request.buyer_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        {request.seller_name}
-                        <br />
-                        <span className="text-xs text-gray-500 capitalize">{request.membership_plan}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{request.budget?.toLocaleString() || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        request.priority === 'high' 
-                          ? 'bg-red-100 text-red-800'
-                          : request.priority === 'medium'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {request.priority}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {(!queueStats?.pending_requests || queueStats.pending_requests.length === 0) && (
-              <div className="text-center py-8 text-gray-500">
-                No pending requests in queue
-              </div>
+
+          <div className="p-6">
+            {activeTab === 'pending' && (
+              <PendingRequestsTable queueStats={queueStats} />
+            )}
+
+            {activeTab === 'successful' && (
+              <SuccessfulRequestsTable successfulRequests={successfulRequests} />
             )}
           </div>
         </div>
-
         {/* Quick Actions */}
         {/* <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
