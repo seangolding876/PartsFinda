@@ -64,7 +64,7 @@ export default function SellerDetailsModal({ seller, onClose }: SellerDetailsMod
     
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${seller.id}/stats`);
+      const response = await fetch(`/api/admin/users/${seller.id}/stats?role=seller`);
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
