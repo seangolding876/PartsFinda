@@ -131,3 +131,111 @@ export async function GET(
     );
   }
 }
+
+
+
+// DELETE - Delete user by ID
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    console.log('🗑️ DELETE User API Called');
+    
+    const userId = parseInt(params.id);
+    console.log('🔢 User ID to delete:', userId);
+
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid user ID',
+          details: `Provided ID: ${params.id} is not a valid number`
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if user exists
+    const userCheck = await query(
+      'SELECT id, email, role FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'User not found',
+          details: `User with ID ${userId} does not exist`
+        },
+        { status: 404 }
+      );
+    }
+
+    const user = userCheck.rows[0];
+    console.log('👤 User to delete:', user.email, 'Role:', user.role);
+
+    // Start a transaction for safe deletion
+    await query('BEGIN');
+
+    try {
+      // Based on user role, handle related data
+      if (user.role === 'seller') {
+        // Delete seller related data
+        await query(
+          'DELETE FROM request_quotes WHERE seller_id = $1',
+          [userId]
+        );
+        await query(
+          'DELETE FROM supplier_subscription WHERE user_id = $1',
+          [userId]
+        );
+        // Add other seller-related tables if needed
+      } else if (user.role === 'buyer') {
+        // Delete buyer related data
+        await query(
+          'DELETE FROM part_requests WHERE user_id = $1',
+          [userId]
+        );
+        // Add other buyer-related tables if needed
+      }
+
+      // Delete user from main users table
+      const deleteResult = await query(
+        'DELETE FROM users WHERE id = $1 RETURNING id, email',
+        [userId]
+      );
+
+      await query('COMMIT');
+
+      console.log('✅ User deleted successfully:', deleteResult.rows[0]);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          deletedUser: deleteResult.rows[0],
+          message: 'User deleted successfully'
+        }
+      });
+
+    } catch (transactionError: any) {
+      await query('ROLLBACK');
+      console.error('❌ Transaction failed:', transactionError);
+      throw transactionError;
+    }
+
+  } catch (error: any) {
+    console.error('💥 Error deleting user:', error);
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to delete user',
+        details: error.message,
+        type: 'DELETE_ERROR'
+      },
+      { status: 500 }
+    );
+  }
+}
