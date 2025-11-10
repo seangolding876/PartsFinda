@@ -45,23 +45,53 @@ export default function BuyerDetailsModal({ buyer, onClose }: BuyerDetailsModalP
     }
   }, [buyer]);
 
-  const fetchBuyerStats = async () => {
-    if (!buyer) return;
+// Client component
+const fetchBuyerStats = async () => {
+  if (!buyer) return;
+  
+  setLoading(true);
+  try {
+    console.log(`🔄 Fetching stats for buyer ID: ${buyer.id}`);
     
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/admin/users/${buyer.id}/stats?role=buyer`);
-      const data = await response.json();
-      if (data.success) {
-        setStats(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching buyer stats:', error);
-    } finally {
-      setLoading(false);
+    const response = await fetch(`/api/admin/users/${buyer.id}/stats?role=buyer`);
+    
+    // Check if response is OK
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ HTTP Error: ${response.status}`, errorText);
+      throw new Error(`Server returned ${response.status}: ${errorText}`);
     }
-  };
 
+    // Check content type
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('❌ Expected JSON, got:', contentType, text);
+      throw new Error(`Server returned non-JSON response: ${contentType}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ API Response:', data);
+
+    if (data.success) {
+      setStats(data.data);
+    } else {
+      console.error('❌ API returned error:', data);
+      throw new Error(data.error || 'Unknown API error');
+    }
+  } catch (error: any) {
+    console.error('💥 Error fetching buyer stats:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // You can show a user-friendly error message here
+    alert(`Failed to load buyer stats: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
   if (!buyer) return null;
 
   return (
