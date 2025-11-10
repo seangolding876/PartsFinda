@@ -45,13 +45,16 @@ export default function BuyerDetailsModal({ buyer, onClose }: BuyerDetailsModalP
     }
   }, [buyer]);
 
-// Client component
 const fetchBuyerStats = async () => {
-  if (!buyer) return;
+  if (!buyer || !buyer.id) {
+    console.error('❌ Buyer or buyer.id is undefined:', buyer);
+    return;
+  }
   
   setLoading(true);
   try {
-    console.log(`🔄 Fetching stats for buyer ID: ${buyer.id}`);
+    console.log(`🔄 Fetching stats for buyer:`, buyer);
+    console.log(`🔢 Buyer ID: ${buyer.id}, Type: ${typeof buyer.id}`);
     
     const response = await fetch(`/api/admin/users/${buyer.id}/stats?role=buyer`);
     
@@ -85,13 +88,11 @@ const fetchBuyerStats = async () => {
       name: error.name,
       stack: error.stack
     });
-    
-    // You can show a user-friendly error message here
-    alert(`Failed to load buyer stats: ${error.message}`);
   } finally {
     setLoading(false);
   }
 };
+
   if (!buyer) return null;
 
   return (
