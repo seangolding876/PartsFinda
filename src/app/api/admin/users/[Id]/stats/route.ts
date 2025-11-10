@@ -8,7 +8,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  let userId: string | number | null = null;
+  let userId: number;
   
   try {
     console.log('🚀 API Route Started ======================');
