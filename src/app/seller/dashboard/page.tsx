@@ -66,7 +66,7 @@ interface SellerSubscription {
 interface SellerProfile {
   name: string;
   email: string;
-  rating: number | string;  // <-- FIX
+  rating: number;  // <-- FIX
   reviews: number;
   subscription: SellerSubscription | null;
 }
@@ -84,7 +84,13 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-    const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
+  const [sellerProfile, setSellerProfile] = useState<SellerProfile>({
+  name: 'Your Business',
+  email: '',
+  rating: 0,
+  reviews: 0,
+  subscription: null
+});
   const [sellerLoading, setSellerLoading] = useState(true);
 
   // ✅ Toast hook use karein
@@ -420,14 +426,19 @@ const fetchSellerProfile = async () => {
       }
     });
 
-    console.log('📡 API Response status:', response.status);
-
     if (response.ok) {
       const result = await response.json();
-      console.log('✅ API Result:', result);
-
+      
       if (result.success) {
-        setSellerProfile(result.data);
+        // Ensure rating is a number
+        const profileData = {
+          ...result.data,
+          rating: typeof result.data.rating === 'string' 
+            ? parseFloat(result.data.rating) 
+            : result.data.rating
+        };
+        
+        setSellerProfile(profileData);
         console.log('🎉 Seller profile set successfully');
       } else {
         console.error('❌ API Error:', result.error);
@@ -442,7 +453,6 @@ const fetchSellerProfile = async () => {
     errormsg('Error loading seller profile');
   } finally {
     setSellerLoading(false);
-    console.log('🏁 Seller loading completed');
   }
 };
 
