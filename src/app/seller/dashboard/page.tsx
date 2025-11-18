@@ -403,6 +403,7 @@ function SellerDashboard() {
 const fetchSellerProfile = async () => {
   try {
     console.log('🔍 Fetching seller profile...');
+
     const authData = getAuthData();
     if (!authData?.token) {
       console.log('❌ No auth token');
@@ -410,20 +411,20 @@ const fetchSellerProfile = async () => {
       return;
     }
 
-const response = await fetch('/api/profile/seller', {
-  method: 'GET',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${authData.token}`
-  }
-});
+    const response = await fetch('/api/profile/seller', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      }
+    });
 
     console.log('📡 API Response status:', response.status);
 
     if (response.ok) {
       const result = await response.json();
       console.log('✅ API Result:', result);
-      
+
       if (result.success) {
         setSellerProfile(result.data);
         console.log('🎉 Seller profile set successfully');
