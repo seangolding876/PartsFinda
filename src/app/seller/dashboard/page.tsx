@@ -639,7 +639,7 @@ const handleReject = async (request: SellerRequest) => {
 
 <button
   onClick={() => handleReject(request)}
-  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
 >
   <Send className="w-4 h-4" />
   I don't have this part (Reject)
