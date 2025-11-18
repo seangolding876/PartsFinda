@@ -5,42 +5,32 @@ import { headers } from 'next/headers';
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// ✅ FIX 1: Pool top level par - Connection pooling
+// ✅ Connection Pool
 const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
 });
 
-// ✅ FIX 2: Simple query function without pool.end()
+// ✅ Simple query function
 async function query(text: string, params?: any[]) {
   try {
-    console.log('🛢️ Executing query:', text);
     const result = await pool.query(text, params);
-    console.log('✅ Query successful, rows:', result.rowCount);
     return result;
   } catch (error: any) {
     console.error('❌ Database error:', error.message);
     throw error;
   }
-  // ❌ NO pool.end() - Connection reuse
 }
 
 export async function POST(request: NextRequest) {
-  let event;
-  
   try {
     console.log('🎯 WEBHOOK STARTED - partsfinda.com');
     
     const body = await request.text();
     const signature = headers().get('stripe-signature');
-
-    // ✅ FIX 3: Better logging for debugging
-    console.log('📦 Webhook body received');
-    console.log('🔐 Signature:', signature ? 'Present' : 'Missing');
 
     if (!signature) {
       console.error('❌ No Stripe signature');
@@ -52,8 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
     }
 
-    // ✅ Verify webhook signature
-    event = stripe.webhooks.constructEvent(
+    const event = stripe.webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -61,33 +50,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔔 Webhook Event: ${event.type}`);
     console.log('🎯 Event ID:', event.id);
-    console.log('🌐 Live Mode:', event.livemode);
 
-    // ✅ FIX 4: Test database immediately
-    console.log('🛢️ Testing database connection...');
-    const dbTest = await query('SELECT NOW() as time');
-    console.log('✅ Database connected:', dbTest.rows[0].time);
-
-    // ✅ Process specific events
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object);
-        break;
-
-      case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object);
-        break;
-
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(event.data.object);
-        break;
-
-      default:
-        console.log(`⚡ Unhandled event: ${event.type}`);
+    // ✅ Test database immediately
+    try {
+      const dbTest = await query('SELECT NOW() as time');
+      console.log('✅ Database connected:', dbTest.rows[0].time);
+    } catch (dbError) {
+      console.error('❌ Database connection failed:', dbError);
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    console.log('✅ WEBHOOK COMPLETED SUCCESSFULLY');
-    
+    // ✅ ONLY PROCESS CHECKOUT SESSION
+    if (event.type === 'checkout.session.completed') {
+      await handleCheckoutSessionCompleted(event.data.object);
+    } else {
+      console.log(`⚡ Other event (ignored): ${event.type}`);
+    }
+
     return NextResponse.json({ 
       success: true,
       received: true, 
@@ -97,145 +76,162 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ WEBHOOK FAILED:', error.message);
-    
+    console.error('❌ Webhook error:', error.message);
     return NextResponse.json(
       { 
         success: false,
         error: 'Webhook processing failed',
-        details: error.message 
+        message: error.message 
       },
       { status: 400 }
     );
   }
 }
 
-// ✅ FIX 5: Simplified checkout handler
+// ✅ ONLY CHECKOUT SESSION HANDLER
 async function handleCheckoutSessionCompleted(session: any) {
-  console.log('💰 CHECKOUT SESSION COMPLETED HANDLER');
+  console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
   console.log('💳 Payment Status:', session.payment_status);
+  console.log('📋 Full Metadata:', session.metadata);
   
   try {
-    // ✅ FIX 6: Better metadata extraction
+    // ✅ Extract metadata safely
     const metadata = session.metadata || {};
     const plan_id = metadata.plan_id;
     const user_id = metadata.user_id;
     const plan_name = metadata.plan_name;
 
-    console.log('📋 Metadata received:', { plan_id, user_id, plan_name });
+    console.log('📋 Extracted Metadata:', { plan_id, user_id, plan_name });
 
-    // ✅ FIX 7: Check metadata properly
+    // ✅ Check if metadata exists
     if (!plan_id || !user_id) {
       console.error('❌ MISSING METADATA - Cannot process subscription');
-      console.log('📦 Full metadata:', metadata);
-      
-      // Log the issue but don't stop execution
-      await query(
-        'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
-        ['checkout.session.completed', session.id, 'Missing plan_id or user_id in metadata']
-      );
       return;
     }
 
-    console.log(`🔄 Processing subscription - User: ${user_id}, Plan: ${plan_id}`);
+    console.log(`🔄 Activating subscription - User: ${user_id}, Plan: ${plan_id}`);
 
-    // ✅ FIX 8: Simple immediate database update
-    // First, log that we received the webhook
-    await query(
-      'INSERT INTO webhook_logs (event_type, session_id, user_id, plan_id, status) VALUES ($1, $2, $3, $4, $5)',
-      ['checkout.session.completed', session.id, user_id, plan_id, 'received']
+    // ✅ STEP 1: Update stripe_sessions status to 'completed'
+    const sessionUpdateResult = await query(
+      'UPDATE stripe_sessions SET status = $1, amount_total = $2 WHERE session_id = $3 RETURNING id',
+      ['completed', session.amount_total ? session.amount_total / 100 : 0, session.id]
     );
+    
+    if (sessionUpdateResult.rows.length > 0) {
+      console.log('✅ Stripe session updated to completed:', sessionUpdateResult.rows[0].id);
+    } else {
+      console.log('⚠️ Stripe session not found for update:', session.id);
+    }
 
-    // ✅ Get plan details
+    // ✅ STEP 2: Get plan details
     const planResult = await query(
       'SELECT * FROM subscription_plans WHERE plan_id = $1',
       [plan_id]
     );
 
     if (planResult.rows.length === 0) {
-      console.error('❌ Plan not found in database');
-      await query(
-        'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
-        ['plan_not_found', session.id]
-      );
+      console.error(`❌ Plan not found: ${plan_id}`);
       return;
     }
 
     const plan = planResult.rows[0];
-    console.log('🎯 Plan found:', plan.plan_name);
+    console.log('🎯 Plan found:', plan.plan_name, 'Price:', plan.price);
 
-    // ✅ Deactivate existing subscriptions
-    await query(
+    // ✅ STEP 3: Deactivate existing subscriptions
+    const deactivateResult = await query(
       'UPDATE supplier_subscription SET is_active = false WHERE user_id = $1',
       [user_id]
     );
+    console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ Calculate dates - SIMPLE VERSION
+    // ✅ STEP 4: Calculate dates
     const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + (plan.duration_days || 30));
+    let endDate = new Date();
+    
+    if (session.subscription) {
+      // Recurring subscription - get end date from Stripe
+      try {
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        endDate = new Date(subscription.current_period_end * 1000);
+        console.log('📅 Subscription end date from Stripe:', endDate);
+      } catch (error) {
+        console.error('❌ Error retrieving subscription:', error);
+        // Fallback to plan duration
+        endDate.setDate(endDate.getDate() + (plan.duration_days || 30));
+      }
+    } else {
+      // One-time payment - use plan duration
+      endDate.setDate(endDate.getDate() + (plan.duration_days || 30));
+      console.log('📅 Using plan duration days:', plan.duration_days);
+    }
 
-    // ✅ Create new subscription
-    await query(
+    // ✅ STEP 5: Create new subscription in supplier_subscription
+    const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
-        user_id, plan_name, start_date, end_date, is_active,
-        stripe_subscription_id, stripe_session_id, price
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        user_id, plan_name, start_date, end_date, is_active, renewal_count,
+        stripe_subscription_id, stripe_session_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [
         user_id, 
         plan.plan_name, 
         startDate, 
         endDate, 
-        true,
+        true, 
+        0,
         session.subscription || null,
-        session.id,
-        plan.price
+        session.id
       ]
     );
+    console.log('✅ Subscription created with ID:', subscriptionResult.rows[0]?.id);
 
-    // ✅ Update user membership
-    await query(
-      'UPDATE users SET membership_plan = $1 WHERE id = $2',
+    // ✅ STEP 6: Update user membership_plan
+    const userUpdateResult = await query(
+      'UPDATE users SET membership_plan = $1 WHERE id = $2 RETURNING id',
       [plan.plan_name, user_id]
     );
+    console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
-    // ✅ Update webhook log
-    await query(
-      'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
-      ['completed', session.id]
-    );
-
-    console.log(`✅ SUBSCRIPTION ACTIVATED: User ${user_id}, Plan ${plan.plan_name}`);
-
-  } catch (error: any) {
-    console.error('❌ ERROR in checkout handler:', error.message);
+    // ✅ STEP 7: Create record in subscription_payments table
+    const amountPaid = session.amount_total ? session.amount_total / 100 : plan.price;
     
-    // Log the error
     await query(
-      'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
-      ['checkout.session.completed', session.id, error.message]
+      `INSERT INTO subscription_payments (
+        user_id, subscription_plan_id, stripe_payment_intent_id, stripe_subscription_id,
+        amount, currency, status, payment_method,
+        billing_cycle_start, billing_cycle_end
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        user_id,
+        plan_id,
+        session.payment_intent || session.id, // Use payment_intent if available, else session.id
+        session.subscription || null,
+        amountPaid,
+        session.currency?.toUpperCase() || 'USD',
+        'completed',
+        'card', // Default payment method
+        startDate,
+        endDate
+      ]
     );
-  }
-}
+    console.log('💰 Subscription payment recorded');
 
-// Other handlers (simplified)
-async function handleSubscriptionUpdated(subscription: any) {
-  console.log('🔄 Subscription updated:', subscription.id);
-  
-  try {
-    const endDate = new Date(subscription.current_period_end * 1000);
+    // ✅ STEP 8: Create notification
     await query(
-      'UPDATE supplier_subscription SET end_date = $1 WHERE stripe_subscription_id = $2',
-      [endDate, subscription.id]
+      `INSERT INTO notification_queue (user_id, type, message, status) VALUES ($1, $2, $3, $4)`,
+      [user_id, 'subscription_activated', `Your ${plan.plan_name} subscription has been activated!`, 'pending']
     );
+
+    console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${plan.plan_name}`);
+    console.log('💰 Payment details:', {
+      amount: amountPaid,
+      currency: session.currency
+    });
+
   } catch (error: any) {
-    console.error('❌ Error updating subscription:', error.message);
+    console.error('❌ CRITICAL ERROR in checkout handler:', error.message);
+    console.error('🔍 Error stack:', error.stack);
   }
-}
-
-async function handleInvoicePaymentSucceeded(invoice: any) {
-  console.log('💰 Invoice paid:', invoice.id);
 }
 
 // ✅ GET method for testing
@@ -262,7 +258,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ 
     success: true, 
-    message: 'Stripe webhook endpoint active',
+    message: 'Stripe webhook endpoint active - partsfinda.com',
     domain: 'partsfinda.com',
     timestamp: new Date().toISOString()
   });
