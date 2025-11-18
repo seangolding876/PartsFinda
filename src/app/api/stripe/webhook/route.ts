@@ -10,6 +10,7 @@ async function query(text: string, params?: any[]) {
   const { Pool } = require('pg');
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
   const result = await pool.query(text, params);
   await pool.end();
@@ -18,7 +19,7 @@ async function query(text: string, params?: any[]) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔔 Webhook received');
+    console.log('🔔 Production Webhook Received');
     
     const body = await request.text();
     const signature = headers().get('stripe-signature');
@@ -28,15 +29,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No signature' }, { status: 400 });
     }
 
-    const event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET missing in production');
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
 
-    console.log(`🔄 Processing: ${event.type}`);
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err: any) {
+      console.error(`❌ Webhook signature verification failed:`, err.message);
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    }
 
-    // ✅ SUBSCRIPTION EVENTS - Yeh important hain
+    console.log(`🔄 Production Event: ${event.type}`);
+
+    // ✅ Process the event
     switch (event.type) {
       case 'checkout.session.completed':
         await handleCheckoutSessionCompleted(event.data.object);
@@ -62,23 +74,14 @@ export async function POST(request: NextRequest) {
         await handleInvoicePaymentFailed(event.data.object);
         break;
 
-      // ✅ One-time payment events (backup ke liye)
-      case 'payment_intent.succeeded':
-        await handlePaymentIntentSucceeded(event.data.object);
-        break;
-
-      case 'payment_intent.payment_failed':
-        await handlePaymentIntentFailed(event.data.object);
-        break;
-
       default:
-        console.log(`⚡ Unhandled: ${event.type}`);
+        console.log(`⚡ Unhandled event: ${event.type}`);
     }
 
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true, processed: event.type });
 
   } catch (error: any) {
-    console.error('❌ Webhook error:', error);
+    console.error('❌ Production Webhook error:', error);
     return NextResponse.json(
       { error: 'Webhook failed: ' + error.message },
       { status: 400 }
@@ -86,19 +89,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ SUBSCRIPTION: Checkout Session Completed
+// ✅ SUBSCRIPTION: Checkout Session Completed - PRODUCTION
 async function handleCheckoutSessionCompleted(session: any) {
-  console.log(`💰 Checkout session completed: ${session.id}`);
+  console.log(`💰 PRODUCTION: Checkout session completed: ${session.id}`);
   
   try {
     const { plan_id, user_id, plan_name } = session.metadata;
     
     if (!plan_id || !user_id) {
-      console.error('❌ Missing metadata in session:', session.id);
+      console.error('❌ Missing metadata in production session');
       return;
     }
 
-    console.log(`🔄 Activating subscription - User: ${user_id}, Plan: ${plan_id}`);
+    console.log(`🔄 PRODUCTION: Activating subscription - User: ${user_id}, Plan: ${plan_id}`);
 
     // Get plan details
     const planResult = await query(
@@ -107,7 +110,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
 
     if (planResult.rows.length === 0) {
-      console.error(`❌ Plan not found: ${plan_id}`);
+      console.error(`❌ Plan not found in production: ${plan_id}`);
       return;
     }
 
@@ -178,13 +181,12 @@ async function handleCheckoutSessionCompleted(session: any) {
       ]
     );
 
-    console.log(`✅ Subscription activated: ${plan.plan_name} for user ${user_id}`);
+    console.log(`✅ PRODUCTION SUCCESS: Subscription activated for user ${user_id}`);
 
   } catch (error) {
-    console.error('❌ Error handling checkout session:', error);
+    console.error('❌ PRODUCTION ERROR handling checkout session:', error);
   }
 }
-
 // ✅ SUBSCRIPTION: Subscription Created
 async function handleSubscriptionCreated(subscription: any) {
   console.log(`📝 Subscription created: ${subscription.id}`);

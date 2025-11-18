@@ -60,33 +60,32 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Stripe Checkout Session Configuration
-    const sessionConfig: any = {
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      customer_email: user.email,
-      metadata: {
-        plan_id: planId.toString(),
-        user_id: userInfo.userId.toString(),
-        plan_name: plan.plan_name
-      },
-      success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
-      subscription_data: {
-        metadata: {
-          plan_id: planId.toString(),
-          user_id: userInfo.userId.toString(),
-          plan_name: plan.plan_name
-        }
-      },
-      // ✅ YEH EK HI LINE ADD KARO - Promotion code button dikhayega
-      allow_promotion_codes: true
-    };
+const sessionConfig: any = {
+  mode: 'subscription',
+  payment_method_types: ['card'],
+  line_items: [
+    {
+      price: priceId,
+      quantity: 1,
+    },
+  ],
+  customer_email: user.email,
+  metadata: {
+    plan_id: planId.toString(),
+    user_id: userInfo.userId.toString(),
+    plan_name: plan.plan_name
+  },
+  success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+  cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
+  subscription_data: {
+    metadata: {
+      plan_id: planId.toString(),
+      user_id: userInfo.userId.toString(), 
+      plan_name: plan.plan_name
+    }
+  },
+  allow_promotion_codes: true
+};
 
     // ❌ YEH SAB REMOVE KARO - No pre-apply, no coupon validation
     // ❌ No discounts array
