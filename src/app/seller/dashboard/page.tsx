@@ -411,9 +411,11 @@ const fetchSellerProfile = async () => {
     }
 
     const response = await fetch('/api/profile/seller', {
-      headers: {
-        'Authorization': `Bearer ${authData.token}`
-      }
+          headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({ request_id: authData.userId })
     });
 
     console.log('📡 API Response status:', response.status);
