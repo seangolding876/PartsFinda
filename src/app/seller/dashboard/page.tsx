@@ -498,28 +498,54 @@ useEffect(() => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-                  <User className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">Kingston Auto Parts</h3>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm text-gray-600">4.8 (127 reviews)</span>
-                  </div>
-                </div>
-              </div>
+<div className="lg:col-span-1">
+  <div className="bg-white rounded-lg shadow-lg p-6">
+    <div className="flex items-center gap-3 mb-6">
+      <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
+        <User className="w-6 h-6 text-green-600" />
+      </div>
+      <div>
+        <h3 className="font-semibold text-gray-800">
+          {sellerLoading ? 'Loading...' : sellerProfile.name}
+        </h3>
+        {!sellerLoading && (
+          <div className="flex items-center gap-1">
+            <Star className="w-4 h-4 text-yellow-400 fill-current" />
+            <span className="text-sm text-gray-600">
+              {sellerProfile.rating.toFixed(1)} ({sellerProfile.reviews} reviews)
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
 
-              <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800 text-sm font-semibold">
-                  <CheckCircle className="w-4 h-4" />
-                  Premium Member
-                </div>
-                <p className="text-green-700 text-xs mt-1">Your plan expires in 23 days</p>
-              </div>
+    {/* Subscription Status */}
+    {sellerProfile.subscription && (
+      <div className={`mb-6 p-3 border rounded-lg ${
+        sellerProfile.subscription.status === 'active' 
+          ? 'bg-green-50 border-green-200 text-green-800'
+          : sellerProfile.subscription.status === 'expired'
+          ? 'bg-red-50 border-red-200 text-red-800'
+          : 'bg-gray-50 border-gray-200 text-gray-800'
+      }`}>
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          {sellerProfile.subscription.status === 'active' ? (
+            <CheckCircle className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          {sellerProfile.subscription.plan_name} Member
+        </div>
+        <p className="text-xs mt-1">
+          {sellerProfile.subscription.status === 'active' 
+            ? `Your plan expires in ${Math.ceil((new Date(sellerProfile.subscription.end_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days`
+            : sellerProfile.subscription.status === 'expired'
+            ? 'Your plan has expired'
+            : 'No active subscription'
+          }
+        </p>
+      </div>
+    )}
 
               <nav className="space-y-2">
                 <button
