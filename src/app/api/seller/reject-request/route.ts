@@ -43,20 +43,41 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Update request_queue
-    let result;
-    try {
-      result = await query(
-        `UPDATE request_queue
-         SET "isReject" = true, "RejectOn" = NOW()
-         WHERE id = $1 AND seller_id = $2
-         RETURNING id, "isReject", "RejectOn"`,
-        [true, request_id, sellerId]
-      );
-      console.log('🟢 Update result:', result.rows);
-    } catch (dbError) {
-      console.log('🔴 Database update error:', dbError);
-      return NextResponse.json({ success: false, error: 'Failed to update request' }, { status: 500 });
+// ✅ Update request_queue
+let result;
+try {
+  result = await query(
+    `UPDATE request_queue
+     SET "isReject" = true, "RejectOn" = NOW()
+     WHERE id = $1 AND seller_id = $2
+     RETURNING id, "isReject", "RejectOn"`,
+    [request_id, sellerId]
+  );
+  console.log('🟢 Update result:', result.rows);
+} catch (dbError: any) {
+  console.error('🔴 Database update error:', dbError);
+  console.error('🔴 Error stack:', dbError.stack);
+  console.error('🔴 Error details:', {
+    message: dbError.message,
+    code: dbError.code,
+    detail: dbError.detail,
+    constraint: dbError.constraint,
+    hint: dbError.hint,
+  });
+
+  return NextResponse.json({
+    success: false,
+    error: 'Failed to update request',
+    debug: {
+      message: dbError.message,
+      code: dbError.code,
+      detail: dbError.detail,
+      constraint: dbError.constraint,
+      hint: dbError.hint
     }
+  }, { status: 500 });
+}
+
 
     if (result.rows.length === 0) {
       console.log('🔴 No matching request found or already rejected');
