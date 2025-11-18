@@ -45,18 +45,49 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // ✅ Stripe Price IDs - Yeh aapke Stripe dashboard se lena hai
+    // ✅ Stripe Price IDs
     const stripePriceIds: { [key: string]: string } = {
-      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T', // Replace with actual price ID
-      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m', // Replace with actual price ID
-      'basic': 'price_1NxxxBasic', // Replace with actual price ID
-      'standard': 'price_1NxxxStandard' // Replace with actual price ID
+      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T',
+      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m',
+      'basic': 'price_1NxxxBasic',
+      'standard': 'price_1NxxxStandard'
     };
 
     const priceId = stripePriceIds[plan.plan_name.toLowerCase()];
     
     if (!priceId) {
       return NextResponse.json({ error: 'Stripe price not configured for this plan' }, { status: 400 });
+    }
+
+    // ✅ Validate PROMOTION CODE if provided
+    let validPromoCode = null;
+    if (couponCode) {
+      try {
+        // Promotion codes retrieve karo
+        const promoCodes = await stripe.promotionCodes.list({
+          code: couponCode,
+          active: true,
+          limit: 1
+        });
+
+        if (promoCodes.data.length === 0) {
+          console.log('❌ Promotion code not found or inactive:', couponCode);
+          return NextResponse.json(
+            { error: `Invalid promotion code: ${couponCode}` }, 
+            { status: 400 }
+          );
+        }
+
+        validPromoCode = promoCodes.data[0];
+        console.log('✅ Promotion code found:', validPromoCode.id);
+        
+      } catch (error) {
+        console.log('❌ Error validating promotion code:', couponCode, error);
+        return NextResponse.json(
+          { error: `Invalid promotion code: ${couponCode}` }, 
+          { status: 400 }
+        );
+      }
     }
 
     // ✅ Stripe Checkout Session Configuration
@@ -73,7 +104,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         plan_id: planId.toString(),
         user_id: userInfo.userId.toString(),
-        plan_name: plan.plan_name
+        plan_name: plan.plan_name,
+        ...(couponCode && { coupon_applied: couponCode })
       },
       success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
@@ -81,16 +113,18 @@ export async function POST(request: NextRequest) {
         metadata: {
           plan_id: planId.toString(),
           user_id: userInfo.userId.toString(),
-          plan_name: plan.plan_name
+          plan_name: plan.plan_name,
+          ...(couponCode && { coupon_applied: couponCode })
         }
       }
     };
 
-    // ✅ Apply coupon if provided
-    if (couponCode) {
+    // ✅ Apply PROMOTION CODE only if valid
+    if (couponCode && validPromoCode) {
       sessionConfig.discounts = [{
-        coupon: couponCode // coupon_XXXXXXXX format
+        promotion_code: validPromoCode.id  // YEH IMPORTANT CHANGE HAI
       }];
+      console.log('🎫 Promotion code applied to session:', couponCode);
     }
 
     // ✅ Create Stripe Checkout Session
@@ -101,20 +135,22 @@ export async function POST(request: NextRequest) {
     // Save session info in database
     await query(
       `INSERT INTO stripe_sessions (
-        user_id, session_id, plan_id, status, amount_total
-      ) VALUES ($1, $2, $3, $4, $5)`,
+        user_id, session_id, plan_id, status, amount_total, coupon_code
+      ) VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         userInfo.userId,
         session.id,
         planId,
         'pending',
-        session.amount_total ? session.amount_total / 100 : plan.price
+        session.amount_total ? session.amount_total / 100 : plan.price,
+        couponCode || null
       ]
     );
 
     return NextResponse.json({
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      couponApplied: !!couponCode
     });
 
   } catch (error: any) {
