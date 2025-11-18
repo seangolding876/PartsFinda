@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
 
     // ✅ Stripe Price IDs - Yeh aapke Stripe dashboard se lena hai
     const stripePriceIds: { [key: string]: string } = {
-      'premium': 'prod_TRhq6NZ0CcnPLP', // Replace with actual price ID
-      'enterprise': 'prod_TRhqBgCsy1Jhsi', // Replace with actual price ID
+      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T', // Replace with actual price ID
+      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m', // Replace with actual price ID
       'basic': 'price_1NxxxBasic', // Replace with actual price ID
       'standard': 'price_1NxxxStandard' // Replace with actual price ID
     };
