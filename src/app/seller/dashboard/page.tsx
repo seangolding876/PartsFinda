@@ -55,6 +55,21 @@ interface SellerStats {
   acceptanceRate: number;
   avgResponseTime: number;
 }
+interface SellerSubscription {
+  plan_name: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  status: string;
+}
+
+interface SellerProfile {
+  name: string;
+  email: string;
+  rating: number;
+  reviews: number;
+  subscription: SellerSubscription | null;
+}
 
 function SellerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -68,6 +83,8 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
+  const [sellerLoading, setSellerLoading] = useState(true);
 
   // ✅ Toast hook use karein
   const { successmsg, errormsg, infomsg } = useToast();
@@ -382,7 +399,53 @@ function SellerDashboard() {
       setLoading(false);
     }
   };
+// Add this function to fetch seller profile - UPDATED VERSION
+const fetchSellerProfile = async () => {
+  try {
+    console.log('🔍 Fetching seller profile...');
+    const authData = getAuthData();
+    if (!authData?.token) {
+      console.log('❌ No auth token');
+      setSellerLoading(false);
+      return;
+    }
 
+    const response = await fetch('/api/seller/profile', {
+      headers: {
+        'Authorization': `Bearer ${authData.token}`
+      }
+    });
+
+    console.log('📡 API Response status:', response.status);
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ API Result:', result);
+      
+      if (result.success) {
+        setSellerProfile(result.data);
+        console.log('🎉 Seller profile set successfully');
+      } else {
+        console.error('❌ API Error:', result.error);
+        errormsg(result.error || 'Failed to load seller profile');
+      }
+    } else {
+      console.error('❌ Fetch failed with status:', response.status);
+      errormsg('Failed to fetch seller profile');
+    }
+  } catch (error) {
+    console.error('❌ Error fetching seller profile:', error);
+    errormsg('Error loading seller profile');
+  } finally {
+    setSellerLoading(false);
+    console.log('🏁 Seller loading completed');
+  }
+};
+
+// Add this useEffect to fetch seller profile on component mount
+useEffect(() => {
+  fetchSellerProfile();
+}, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
