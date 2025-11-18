@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         u.email,
         u.avg_rating,
         u.total_ratings,
-        COALESCE(s.membership_plan, 'Basic') as plan_name,
+        COALESCE(u.membership_plan, 'Basic') as plan_name,
         ss.start_date,
         ss.end_date,
         ss.is_active,
