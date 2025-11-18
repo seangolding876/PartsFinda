@@ -570,7 +570,7 @@ function SellerDashboard() {
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                       <span className="text-sm text-gray-600">
-                        {sellerProfile.rating.toFixed(1)} ({sellerProfile.reviews} reviews)
+          {(sellerProfile.rating || 0).toFixed(1)} ({sellerProfile.reviews || 0} reviews)
                       </span>
                     </div>
                   )}
