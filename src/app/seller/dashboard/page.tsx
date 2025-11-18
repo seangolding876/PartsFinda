@@ -404,11 +404,13 @@ const [sellerLoading, setSellerLoading] = useState(true);
     }
   };
 
-// Add this function to fetch seller profile
+// Add this function to fetch seller profile - UPDATED VERSION
 const fetchSellerProfile = async () => {
   try {
+    console.log('🔍 Fetching seller profile...');
     const authData = getAuthData();
     if (!authData?.token) {
+      console.log('❌ No auth token');
       setSellerLoading(false);
       return;
     }
@@ -419,21 +421,29 @@ const fetchSellerProfile = async () => {
       }
     });
 
+    console.log('📡 API Response status:', response.status);
+
     if (response.ok) {
       const result = await response.json();
+      console.log('✅ API Result:', result);
+      
       if (result.success) {
         setSellerProfile(result.data);
+        console.log('🎉 Seller profile set successfully');
       } else {
+        console.error('❌ API Error:', result.error);
         errormsg(result.error || 'Failed to load seller profile');
       }
     } else {
+      console.error('❌ Fetch failed with status:', response.status);
       errormsg('Failed to fetch seller profile');
     }
   } catch (error) {
-    console.error('Error fetching seller profile:', error);
+    console.error('❌ Error fetching seller profile:', error);
     errormsg('Error loading seller profile');
   } finally {
     setSellerLoading(false);
+    console.log('🏁 Seller loading completed');
   }
 };
 
@@ -442,9 +452,12 @@ useEffect(() => {
   fetchSellerProfile();
 }, []);
 
-// Add helper functions for subscription
+// Add helper functions for subscription - UPDATED VERSION
 const getSubscriptionBadge = (subscription: SellerSubscription | null) => {
-  if (!subscription || subscription.plan_name === 'Basic') {
+  // Normalize plan name first
+  const planName = subscription?.plan_name?.toLowerCase() || 'basic';
+  
+  if (planName === 'basic') {
     return {
       bgColor: 'bg-gray-50 border-gray-200',
       textColor: 'text-gray-800',
@@ -453,8 +466,8 @@ const getSubscriptionBadge = (subscription: SellerSubscription | null) => {
     };
   }
 
-  const status = subscription.status;
-  const endDate = subscription.end_date ? new Date(subscription.end_date) : null;
+  const status = subscription?.status;
+  const endDate = subscription?.end_date ? new Date(subscription.end_date) : null;
   const today = new Date();
   
   if (status === 'expired' || (endDate && endDate < today)) {
@@ -469,6 +482,15 @@ const getSubscriptionBadge = (subscription: SellerSubscription | null) => {
   if (endDate) {
     const diffTime = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 7) {
+      return {
+        bgColor: 'bg-orange-50 border-orange-200',
+        textColor: 'text-orange-800',
+        icon: AlertCircle,
+        message: `Your plan expires in ${diffDays} days`
+      };
+    }
     
     return {
       bgColor: 'bg-green-50 border-green-200',
@@ -492,8 +514,10 @@ const getPlanDisplayName = (planName: string | null) => {
   const plan = planName.toLowerCase();
   if (plan === 'premium') return 'Premium';
   if (plan === 'enterprise') return 'Enterprise';
+  if (plan === 'basic') return 'Basic';
   return 'Basic';
 };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -528,7 +552,7 @@ const getPlanDisplayName = (planName: string | null) => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
- <div className="lg:col-span-1">
+<div className="lg:col-span-1">
   <div className="bg-white rounded-lg shadow-lg p-6">
     {/* Seller Profile */}
     <div className="flex items-center gap-3 mb-6">
@@ -549,7 +573,7 @@ const getPlanDisplayName = (planName: string | null) => {
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 text-yellow-400 fill-current" />
               <span className="text-sm text-gray-600">
-                {sellerProfile?.rating?.toFixed(1) || '4.8'} ({sellerProfile?.reviews || '0'} reviews)
+                {parseFloat(sellerProfile?.rating as any || '4.8').toFixed(1)} ({sellerProfile?.reviews || '0'} reviews)
               </span>
             </div>
           </>
@@ -586,7 +610,7 @@ const getPlanDisplayName = (planName: string | null) => {
       </div>
     )}
 
-    {/* Navigation - Same as before */}
+    {/* Navigation */}
     <nav className="space-y-2">
       <button
         onClick={() => {
@@ -616,7 +640,6 @@ const getPlanDisplayName = (planName: string | null) => {
     </nav>
   </div>
 </div>
-
           {/* Main Content */}
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
