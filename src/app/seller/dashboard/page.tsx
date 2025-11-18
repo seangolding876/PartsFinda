@@ -59,17 +59,18 @@ interface SellerSubscription {
   plan_name: string;
   start_date: string | null;
   end_date: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   status: string;
 }
 
 interface SellerProfile {
   name: string;
   email: string;
-  rating: number;
+  rating: number | string;  // <-- FIX
   reviews: number;
   subscription: SellerSubscription | null;
 }
+
 
 function SellerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
