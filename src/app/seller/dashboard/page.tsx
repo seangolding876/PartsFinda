@@ -43,6 +43,7 @@ interface SellerRequest {
   totalQuotes: number;
   hasQuoted: boolean;
   quoted: boolean;
+  isReject: boolean;
 }
 
 interface SellerStats {

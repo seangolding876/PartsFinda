@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
         rq.processed_at,
         rq.status as queue_status,
         rq.scheduled_delivery_time,
+        rq.isReject,
         EXISTS(
           SELECT 1 FROM request_quotes rq2 
           WHERE rq2.request_id = pr.id AND rq2.seller_id = $1
