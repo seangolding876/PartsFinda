@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
+import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send, Crown, Zap, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
@@ -55,22 +55,24 @@ interface SellerStats {
   acceptanceRate: number;
   avgResponseTime: number;
 }
+
 interface SellerSubscription {
   plan_name: string;
   start_date: string | null;
   end_date: string | null;
   is_active: boolean | null;
   status: string;
+  request_delay_hours?: number;
+  features?: string[];
 }
 
 interface SellerProfile {
   name: string;
   email: string;
-  rating: number;  // <-- FIX
+  rating: number;
   reviews: number;
   subscription: SellerSubscription | null;
 }
-
 
 function SellerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -85,13 +87,14 @@ function SellerDashboard() {
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [sellerProfile, setSellerProfile] = useState<SellerProfile>({
-  name: 'Your Business',
-  email: '',
-  rating: 0,
-  reviews: 0,
-  subscription: null
-});
+    name: 'Your Business',
+    email: '',
+    rating: 0,
+    reviews: 0,
+    subscription: null
+  });
   const [sellerLoading, setSellerLoading] = useState(true);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
 
   // ✅ Toast hook use karein
   const { successmsg, errormsg, infomsg } = useToast();
@@ -103,61 +106,60 @@ function SellerDashboard() {
   const [lastRequestCount, setLastRequestCount] = useState(0);
   const [lastStats, setLastStats] = useState<SellerStats | null>(null);
 
-  // Add this useEffect to fetch seller profile
-useEffect(() => {
-  const fetchSellerProfile = async () => {
-    try {
-      console.log('🔍 Fetching seller profile...');
+  // Fetch seller profile with subscription details
+  useEffect(() => {
+    const fetchSellerProfile = async () => {
+      try {
+        console.log('🔍 Fetching seller profile...');
 
-      const authData = getAuthData();
-      if (!authData?.token) {
-        console.log('❌ No auth token');
-        setSellerLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/profile/seller', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
+        const authData = getAuthData();
+        if (!authData?.token) {
+          console.log('❌ No auth token');
+          setSellerLoading(false);
+          return;
         }
-      });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ API Result:', result);
+        const response = await fetch('/api/profile/seller', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
 
-        if (result.success) {
-          // Ensure rating is a number
-          const profileData = {
-            ...result.data,
-            rating: typeof result.data.rating === 'string' 
-              ? parseFloat(result.data.rating) 
-              : result.data.rating
-          };
-          
-          setSellerProfile(profileData);
-          console.log('🎉 Seller profile set successfully');
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ API Result:', result);
+
+          if (result.success) {
+            // Ensure rating is a number
+            const profileData = {
+              ...result.data,
+              rating: typeof result.data.rating === 'string' 
+                ? parseFloat(result.data.rating) 
+                : result.data.rating
+            };
+            
+            setSellerProfile(profileData);
+            console.log('🎉 Seller profile set successfully');
+          } else {
+            console.error('❌ API Error:', result.error);
+            errormsg(result.error || 'Failed to load seller profile');
+          }
         } else {
-          console.error('❌ API Error:', result.error);
-          errormsg(result.error || 'Failed to load seller profile');
+          console.error('❌ Fetch failed with status:', response.status);
+          errormsg('Failed to fetch seller profile');
         }
-      } else {
-        console.error('❌ Fetch failed with status:', response.status);
-        errormsg('Failed to fetch seller profile');
+      } catch (error) {
+        console.error('❌ Error fetching seller profile:', error);
+        errormsg('Error loading seller profile');
+      } finally {
+        setSellerLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Error fetching seller profile:', error);
-      errormsg('Error loading seller profile');
-    } finally {
-      setSellerLoading(false);
-    }
-  };
+    };
 
-  fetchSellerProfile();
-}, []);
-
+    fetchSellerProfile();
+  }, []);
 
   // Fetch data based on active tab
   useEffect(() => {
@@ -235,38 +237,133 @@ useEffect(() => {
     fetchData();
   }, [activeTab, filterStatus]);
 
-  // ✅ Real-time polling for new requests (every 30 seconds)
-  useEffect(() => {
-    if (activeTab === 'requests' || activeTab === 'overview') {
-      const interval = setInterval(async () => {
-        const authData = getAuthData();
-        if (!authData?.token) return;
+  // ✅ Handle subscription cancellation
+  const handleCancelSubscription = async () => {
+    if (cancellingSubscription || !sellerProfile.subscription?.is_active) return;
 
-        try {
-          const response = await fetch(`/api/seller/requests?action=getRequests&status=pending`, {
+    const confirmCancel = window.confirm(
+      'Are you sure you want to cancel your subscription? You will lose access to premium features immediately.'
+    );
+
+    if (!confirmCancel) return;
+
+    try {
+      setCancellingSubscription(true);
+      const authData = getAuthData();
+
+      const response = await fetch('/api/stripe/cancel-subscription', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        successmsg('Subscription canceled successfully!');
+        
+        // Update local state
+        setSellerProfile(prev => ({
+          ...prev,
+          subscription: prev.subscription ? {
+            ...prev.subscription,
+            is_active: false,
+            status: 'cancelled'
+          } : null
+        }));
+
+        // Refresh data
+        const fetchSellerProfile = async () => {
+          const authData = getAuthData();
+          const response = await fetch('/api/profile/seller', {
             headers: {
               'Authorization': `Bearer ${authData.token}`
             }
           });
-
           if (response.ok) {
             const result = await response.json();
-            if (result.success && result.data.length > requests.length) {
-              const newCount = result.data.length - requests.length;
-              infomsg(`🆕 ${newCount} new request${newCount > 1 ? 's' : ''} available!`);
-              setRequests(result.data);
+            if (result.success) {
+              setSellerProfile(result.data);
             }
           }
-        } catch (error) {
-          console.error('Error polling for new requests:', error);
-        }
-      }, 30000); // 30 seconds
+        };
+        fetchSellerProfile();
 
-      return () => clearInterval(interval);
+      } else {
+        throw new Error(result.error || 'Failed to cancel subscription');
+      }
+
+    } catch (error: any) {
+      console.error('Cancel subscription error:', error);
+      errormsg(error.message || 'Failed to cancel subscription');
+    } finally {
+      setCancellingSubscription(false);
     }
-  }, [activeTab, requests.length]);
+  };
 
-  // ✅ Handle quote submission with toast messages
+  // ✅ Get subscription benefits based on plan
+  const getSubscriptionBenefits = () => {
+    const subscription = sellerProfile.subscription;
+    
+    if (!subscription || !subscription.is_active) {
+      return {
+        icon: <Zap className="w-5 h-5" />,
+        color: 'text-gray-600',
+        bg: 'bg-gray-100',
+        benefits: ['Early access to part requests', 'Standard response time', 'Basic seller features'],
+        upgradeMessage: 'Upgrade for premium benefits'
+      };
+    }
+
+    switch (subscription.plan_name?.toLowerCase()) {
+      case 'premium':
+        return {
+          icon: <Crown className="w-5 h-5 text-yellow-600" />,
+          color: 'text-yellow-600',
+          bg: 'bg-yellow-100',
+          benefits: ['First access to all part requests', '1-hour early access', 'Premium badge', 'Priority support'],
+          upgradeMessage: null
+        };
+      case 'pro':
+        return {
+          icon: <Zap className="w-5 h-5 text-purple-600" />,
+          color: 'text-purple-600',
+          bg: 'bg-purple-100',
+          benefits: ['Early access to part requests', '4-hour early access', 'Pro badge', 'Enhanced visibility'],
+          upgradeMessage: null
+        };
+      default:
+        return {
+          icon: <CreditCard className="w-5 h-5 text-blue-600" />,
+          color: 'text-blue-600',
+          bg: 'bg-blue-100',
+          benefits: ['Standard access to part requests', 'Regular response time', 'Basic features'],
+          upgradeMessage: null
+        };
+    }
+  };
+
+  // ✅ Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-JM', {
+      style: 'currency',
+      currency: 'JMD'
+    }).format(amount);
+  };
+
+  // ✅ Time ago utility
+  const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${Math.floor(diffInHours / 24)}d ago`;
+  };
+
+  // Rest of your existing functions (handleSubmitQuote, openQuoteModal, etc.)
   const handleSubmitQuote = async (quoteData: any) => {
     const authData = getAuthData();
     if (!authData?.token) {
@@ -289,7 +386,6 @@ useEffect(() => {
       const result = await response.json();
 
       if (result.success) {
-        // Update local state
         setRequests(prev => prev.map(req =>
           req.id === quoteData.requestId ? {
             ...req,
@@ -301,8 +397,6 @@ useEffect(() => {
 
         setShowQuoteModal(false);
         setSelectedRequest(null);
-
-        // ✅ Success message with quote details
         successmsg(`Quote submitted successfully for ${quoteData.price}! Buyer notified.`);
       } else {
         errormsg(result.error || 'Failed to submit quote');
@@ -315,14 +409,12 @@ useEffect(() => {
     }
   };
 
-  // ✅ Open quote modal with info message
   const openQuoteModal = (request: SellerRequest) => {
     setSelectedRequest(request);
     setShowQuoteModal(true);
     infomsg(`Preparing quote for ${request.partName}`);
   };
 
-  // ✅ View details with info message
   const openDetailsModal = (request: SellerRequest) => {
     setSelectedRequestForDetails(request);
     setShowDetailsModal(true);
@@ -337,23 +429,6 @@ useEffect(() => {
       case 'low': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  const timeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-JM', {
-      style: 'currency',
-      currency: 'JMD'
-    }).format(amount);
   };
 
   // Filter requests based on search and filter
@@ -385,7 +460,6 @@ useEffect(() => {
       value: filteredRequests.filter(r => !r.hasQuoted && !r.isReject).length.toString(),
       color: 'text-orange-600',
       bg: 'bg-orange-100'
-      // trend: `${filteredRequests.filter(r => !r.hasQuoted).length} urgent` 
     },
     {
       icon: <CheckCircle className="w-6 h-6" />,
@@ -405,16 +479,9 @@ useEffect(() => {
     }
   ];
 
-  if (loading && activeTab === 'overview') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const subscriptionBenefits = getSubscriptionBenefits();
+
+
 
   const handleReject = async (request: SellerRequest) => {
     setLoading(true);
@@ -462,8 +529,6 @@ useEffect(() => {
       setLoading(false);
     }
   };
-
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -475,19 +540,12 @@ useEffect(() => {
               <p className="text-gray-600 mt-1">Manage your inventory, quotes, and orders</p>
             </div>
             <div className="flex gap-3">
-             {/*  <Link
-                href="/seller/add-part"
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                onClick={() => infomsg('Opening add part form...')}
-              >
-                <Plus className="w-5 h-5" />
-                Add Part
-              </Link>*/}
               <Link
                 href="/seller/subscription"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 onClick={() => infomsg('Checking subscription options...')}
               >
+                <Crown className="w-5 h-5" />
                 Upgrade Plan
               </Link>
             </div>
@@ -498,54 +556,105 @@ useEffect(() => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-<div className="lg:col-span-1">
-  <div className="bg-white rounded-lg shadow-lg p-6">
-    <div className="flex items-center gap-3 mb-6">
-      <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-        <User className="w-6 h-6 text-green-600" />
-      </div>
-      <div>
-        <h3 className="font-semibold text-gray-800">
-          {sellerLoading ? 'Loading...' : sellerProfile.name}
-        </h3>
-        {!sellerLoading && (
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-            <span className="text-sm text-gray-600">
-              {sellerProfile.rating.toFixed(1)} ({sellerProfile.reviews} reviews)
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
+                  <User className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">
+                    {sellerLoading ? 'Loading...' : sellerProfile.name}
+                  </h3>
+                  {!sellerLoading && (
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm text-gray-600">
+                        {sellerProfile.rating.toFixed(1)} ({sellerProfile.reviews} reviews)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-    {/* Subscription Status */}
-    {sellerProfile.subscription && (
-      <div className={`mb-6 p-3 border rounded-lg ${
-        sellerProfile.subscription.status === 'active' 
-          ? 'bg-green-50 border-green-200 text-green-800'
-          : sellerProfile.subscription.status === 'expired'
-          ? 'bg-red-50 border-red-200 text-red-800'
-          : 'bg-gray-50 border-gray-200 text-gray-800'
-      }`}>
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          {sellerProfile.subscription.status === 'active' ? (
-            <CheckCircle className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
-          )}
-          {sellerProfile.subscription.plan_name} Member
-        </div>
-        <p className="text-xs mt-1">
-          {sellerProfile.subscription.status === 'active' 
-            ? `Your plan expires in ${Math.ceil((new Date(sellerProfile.subscription.end_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days`
-            : sellerProfile.subscription.status === 'expired'
-            ? 'Your plan has expired'
-            : 'No active subscription'
-          }
-        </p>
-      </div>
-    )}
+              {/* ✅ SUBSCRIPTION STATUS SECTION - Yahan Add Kiya Hai */}
+              <div className="mb-6">
+                <div className={`p-4 rounded-lg border ${
+                  sellerProfile.subscription?.is_active 
+                    ? 'bg-gradient-to-r from-green-50 to-blue-50 border-green-200'
+                    : 'bg-gradient-to-r from-gray-50 to-orange-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-full ${subscriptionBenefits.bg}`}>
+                      <div className={subscriptionBenefits.color}>
+                        {subscriptionBenefits.icon}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-800 text-sm">
+                        {sellerProfile.subscription?.is_active 
+                          ? `${sellerProfile.subscription.plan_name} Plan`
+                          : 'Free Plan'
+                        }
+                      </h4>
+                      <p className="text-xs text-gray-600">
+                        {sellerProfile.subscription?.is_active 
+                          ? `Active • Cancel anytime`
+                          : 'Upgrade for early access'
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Subscription Benefits */}
+                  <ul className="space-y-2 mb-4">
+                    {subscriptionBenefits.benefits.map((benefit, index) => (
+                      <li key={index} className="flex items-center gap-2 text-xs text-gray-700">
+                        <CheckCircle className="w-3 h-3 text-green-500 flex-shrink-0" />
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {sellerProfile.subscription?.is_active ? (
+                      <button
+                        onClick={handleCancelSubscription}
+                        disabled={cancellingSubscription}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-xs font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        {cancellingSubscription ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-1 border-white"></div>
+                            Cancelling...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3" />
+                            Cancel Plan
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <Link
+                        href="/seller/subscription"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-xs font-semibold transition-colors text-center flex items-center justify-center gap-1"
+                      >
+                        <Zap className="w-3 h-3" />
+                        Upgrade Now
+                      </Link>
+                    )}
+                    
+                    <Link
+                      href="/seller/subscription"
+                      className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-3 rounded text-xs font-semibold transition-colors text-center"
+                    >
+                      View Plans
+                    </Link>
+                  </div>
+                </div>
+              </div>
 
               <nav className="space-y-2">
                 <button
@@ -657,6 +766,7 @@ useEffect(() => {
               </div>
             )}
 
+            {/* Rest of your existing requests tab code remains the same */}
             {activeTab === 'requests' && (
               <div className="space-y-6">
                 {/* Search and Filter */}
@@ -753,7 +863,6 @@ useEffect(() => {
                                 <Send className="w-4 h-4" />
                                 Submit Quote
                               </button>
-
                               <button
                                 onClick={() => handleReject(request)}
                                 disabled={loading}
@@ -772,9 +881,6 @@ useEffect(() => {
                                 )}
                               </button>
                             </>
-
-
-
                           ) : (
                             <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
                               <Edit className="w-4 h-4" />
