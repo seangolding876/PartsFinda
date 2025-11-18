@@ -1,16 +1,14 @@
-// app/api/seller/profile/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -23,7 +21,7 @@ export async function GET(request: NextRequest) {
         u.email,
         u.avg_rating,
         u.total_ratings,
-        s.membership_plan as plan_name,
+        COALESCE(s.membership_plan, 'Basic') as plan_name,
         ss.start_date,
         ss.end_date,
         ss.is_active,
@@ -46,12 +44,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          name: seller.name,
+          name: seller.name || 'Your Business',
           email: seller.email,
           rating: seller.avg_rating || 4.8,
-          reviews: seller.total_ratings || 127,
+          reviews: seller.total_ratings || 0,
           subscription: {
-            plan_name: seller.plan_name || 'Basic',
+            plan_name: seller.plan_name,
             start_date: seller.start_date,
             end_date: seller.end_date,
             is_active: seller.is_active,

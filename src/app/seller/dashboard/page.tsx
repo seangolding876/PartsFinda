@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import {   Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, 
-  MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, 
-  BarChart3, Truck, AlertCircle, Edit, Send, Crown, Zap  } from 'lucide-react';
+import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, Star, MapPin, Calendar, Package, TrendingUp, User, Settings, Bell, Heart, DollarSign, BarChart3, Truck, AlertCircle, Edit, Send } from 'lucide-react';
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
@@ -415,7 +413,7 @@ const fetchSellerProfile = async () => {
       return;
     }
 
-    const response = await fetch('/api/profile/seller', {
+    const response = await fetch('/api/seller/profile', {
       headers: {
         'Authorization': `Bearer ${authData.token}`
       }
