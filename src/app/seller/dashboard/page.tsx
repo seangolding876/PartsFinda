@@ -442,11 +442,6 @@ const fetchSellerProfile = async () => {
   }
 };
 
-// Add this useEffect to fetch seller profile on component mount
-useEffect(() => {
-  fetchSellerProfile();
-}, []);
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
