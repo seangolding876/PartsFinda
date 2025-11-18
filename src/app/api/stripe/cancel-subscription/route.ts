@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Update user membership to free
     await query(
       'UPDATE users SET membership_plan = $1 WHERE id = $2',
-      ['free', userInfo.userId]
+      ['basic', userInfo.userId]
     );
 
     // Create cancellation notification
