@@ -346,7 +346,7 @@ const handleReject = async (request: SellerRequest) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authData.token}`
       },
-      body: JSON.stringify({ request_id: request.id })
+      body: JSON.stringify({ request_id: request.queueId })
     });
 
     const result = await res.json();
