@@ -357,6 +357,19 @@ const handleReject = async (request: SellerRequest) => {
       setRequests(prev =>
         prev.map(r => r.id === request.id ? { ...r, isReject: true } : r)
       );
+
+            const fetchData = async () => {
+        const authData = getAuthData();
+        const response = await fetch(`/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`, {
+          headers: { 'Authorization': `Bearer ${authData.token}` }
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) setRequests(result.data);
+        }
+      };
+      fetchData();
+      
     } else {
       // alert(result.error || 'Failed to reject request');
       errormsg(result.error || 'Failed to reject request');
