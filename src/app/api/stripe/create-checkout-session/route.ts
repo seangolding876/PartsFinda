@@ -3,6 +3,17 @@ import { stripe } from '@/lib/stripe';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
+async function validateCoupon(couponCode) {
+  try {
+    const coupon = await stripe.coupons.retrieve(couponCode);
+    return { valid: true, coupon };
+  } catch (error) {
+    console.log('❌ Coupon not found:', couponCode);
+    return { valid: false, error: error.message };
+  }
+}
+
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -59,32 +70,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stripe price not configured for this plan' }, { status: 400 });
     }
 
-    // ✅ Validate PROMOTION CODE if provided
-    let validPromoCode = null;
+    // ✅ Validate coupon if provided
+    let validCoupon = null;
     if (couponCode) {
       try {
-        // Promotion codes retrieve karo
-        const promoCodes = await stripe.promotionCodes.list({
-          code: couponCode,
-          active: true,
-          limit: 1
-        });
-
-        if (promoCodes.data.length === 0) {
-          console.log('❌ Promotion code not found or inactive:', couponCode);
-          return NextResponse.json(
-            { error: `Invalid promotion code: ${couponCode}` }, 
-            { status: 400 }
-          );
-        }
-
-        validPromoCode = promoCodes.data[0];
-        console.log('✅ Promotion code found:', validPromoCode.id);
-        
+        validCoupon = await stripe.coupons.retrieve(couponCode);
+        console.log('✅ Coupon found:', validCoupon.id);
       } catch (error) {
-        console.log('❌ Error validating promotion code:', couponCode, error);
+        console.log('❌ Invalid coupon:', couponCode);
         return NextResponse.json(
-          { error: `Invalid promotion code: ${couponCode}` }, 
+          { error: `Invalid coupon code: ${couponCode}` }, 
           { status: 400 }
         );
       }
@@ -119,12 +114,12 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // ✅ Apply PROMOTION CODE only if valid
-    if (couponCode && validPromoCode) {
+    // ✅ Apply coupon only if valid
+    if (couponCode && validCoupon) {
       sessionConfig.discounts = [{
-        promotion_code: validPromoCode.id  // YEH IMPORTANT CHANGE HAI
+        coupon: couponCode
       }];
-      console.log('🎫 Promotion code applied to session:', couponCode);
+      console.log('🎫 Coupon applied to session:', couponCode);
     }
 
     // ✅ Create Stripe Checkout Session
