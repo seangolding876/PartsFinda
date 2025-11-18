@@ -406,59 +406,7 @@ function SellerDashboard() {
       setLoading(false);
     }
   };
-// Add this function to fetch seller profile - UPDATED VERSION
-const fetchSellerProfile = async () => {
-  try {
-    console.log('🔍 Fetching seller profile...');
 
-    const authData = getAuthData();
-    if (!authData?.token) {
-      console.log('❌ No auth token');
-      setSellerLoading(false);
-      return;
-    }
-
-    const response = await fetch('/api/profile/seller', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      }
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      
-      if (result.success) {
-        // Ensure rating is a number
-        const profileData = {
-          ...result.data,
-          rating: typeof result.data.rating === 'string' 
-            ? parseFloat(result.data.rating) 
-            : result.data.rating
-        };
-        
-        setSellerProfile(profileData);
-        console.log('🎉 Seller profile set successfully');
-      } else {
-        console.error('❌ API Error:', result.error);
-        errormsg(result.error || 'Failed to load seller profile');
-      }
-    } else {
-      console.error('❌ Fetch failed with status:', response.status);
-      errormsg('Failed to fetch seller profile');
-    }
-  } catch (error) {
-    console.error('❌ Error fetching seller profile:', error);
-    errormsg('Error loading seller profile');
-  } finally {
-    setSellerLoading(false);
-  }
-};
-
-useEffect(() => {
-  fetchSellerProfile();
-}, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
