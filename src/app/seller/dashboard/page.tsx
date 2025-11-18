@@ -410,13 +410,13 @@ const fetchSellerProfile = async () => {
       return;
     }
 
-    const response = await fetch('/api/profile/seller', {
-          headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({ request_id: authData.userId })
-    });
+const response = await fetch('/api/profile/seller', {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authData.token}`
+  }
+});
 
     console.log('📡 API Response status:', response.status);
 
@@ -443,6 +443,10 @@ const fetchSellerProfile = async () => {
     console.log('🏁 Seller loading completed');
   }
 };
+
+useEffect(() => {
+  fetchSellerProfile();
+}, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
