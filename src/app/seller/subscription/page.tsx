@@ -2,18 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2 } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
-import {
-  Elements,
-  useStripe,
-  useElements,
-  PaymentElement,
-} from '@stripe/react-stripe-js';
+import { Check, Loader2, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
-
-// Stripe promise initialize karen
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface SubscriptionPlan {
   id: number;
@@ -38,152 +28,19 @@ interface CurrentSubscription {
   duration_days: number;
 }
 
-// Stripe Checkout Form Component
-function StripeCheckoutForm({ 
-  plan, 
-  clientSecret, 
-  onSuccess, 
-  onCancel 
-}: { 
-  plan: SubscriptionPlan;
-  clientSecret: string;
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { successmsg, errormsg } = useToast();
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    
-    if (!stripe || !elements) {
-      errormsg('Payment system not ready. Please try again.');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { 
-          return_url: window.location.origin + '/seller/subscription/success' 
-        },
-        redirect: 'if_required',
-      });
-
-      if (stripeError) {
-        console.error('Stripe Error:', stripeError);
-        setError(stripeError.message || 'Payment failed. Please try again.');
-        errormsg(stripeError.message || 'Payment failed. Please try again.');
-      } else {
-        console.log('Payment successful:', paymentIntent);
-        successmsg('Payment processed successfully! Activating your subscription...');
-        onSuccess();
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || 'An unexpected error occurred.';
-      setError(errorMessage);
-      errormsg(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-900">Complete Payment</h3>
-          <p className="text-gray-600 mt-2">
-            Subscribe to <span className="font-semibold capitalize">{plan.name}</span> plan
-          </p>
-          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Total Amount:</span>
-         <span className="text-2xl font-bold text-green-600">
-  {new Intl.NumberFormat('en-JM', { 
-    style: 'currency', 
-    currency: 'JMD' 
-  }).format(plan.price)}
-</span>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="mb-6">
-            <PaymentElement 
-              options={{
-                layout: 'tabs'
-              }}
-            />
-          </div>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!stripe || loading}
-              className="flex-1 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Processing Payment...
-                </>
-              ) : (
-                `Pay ${new Intl.NumberFormat('en-JM', { 
-  style: 'currency', 
-  currency: 'JMD' 
-}).format(plan.price)}`
-              )}
-            </button>
-          </div>
-        </form>
-
-        <div className="px-6 pb-6">
-          <div className="text-center text-xs text-gray-500">
-            <p>Secure payment powered by Stripe</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Main Subscription Component
+// ✅ MAIN SUBSCRIPTION COMPONENT - STRIPE CHECKOUT VERSION
 export default function SubscriptionPage() {
   const router = useRouter();
   const { successmsg, infomsg, errormsg } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showStripeCheckout, setShowStripeCheckout] = useState(false);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [couponCode, setCouponCode] = useState(''); // ✅ New coupon field
 
-  // Auth utility - pure localStorage based
+  // Auth utility
   const getAuthData = () => {
     if (typeof window === 'undefined') return null;
     try {
@@ -200,7 +57,6 @@ export default function SubscriptionPage() {
   };
 
   useEffect(() => {
-    // Check authentication on component mount
     const checkAuth = () => {
       const authData = getAuthData();
       
@@ -280,6 +136,7 @@ export default function SubscriptionPage() {
     }
   };
 
+  // ✅ UPDATED: Stripe Checkout Session for Subscriptions
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (processing) return;
 
@@ -305,7 +162,7 @@ export default function SubscriptionPage() {
 
       console.log('Processing subscription for plan:', plan.name);
 
-      // For FREE plan - direct activate
+      // For FREE plan - direct activate (same as before)
       if (plan.price === 0) {
         infomsg('Activating free plan...');
         
@@ -331,32 +188,31 @@ export default function SubscriptionPage() {
         return;
       }
 
-      // For PAID plans - Stripe payment
-      console.log('Creating Stripe payment intent for plan ID:', plan.id);
-      infomsg('Preparing payment...');
+      // ✅ CHANGED: For PAID plans - Stripe Checkout Session (NEW APPROACH)
+      console.log('Creating Stripe checkout session for plan ID:', plan.id);
+      infomsg('Redirecting to secure payment...');
 
-      const paymentResponse = await fetch('/api/stripe/create-payment-intent', {
+      const checkoutResponse = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({ 
-          planId: plan.id
+          planId: plan.id,
+          couponCode: couponCode // Optional coupon
         })
       });
 
-      const paymentResult = await paymentResponse.json();
-      console.log('Stripe payment intent result:', paymentResult);
+      const checkoutResult = await checkoutResponse.json();
+      console.log('Stripe checkout session result:', checkoutResult);
 
-      // Check if clientSecret properly mil raha hai
-      if (paymentResult.clientSecret) {
-        successmsg('Payment form loaded successfully');
-        setClientSecret(paymentResult.clientSecret);
-        setShowStripeCheckout(true);
+      if (checkoutResult.url) {
+        // ✅ Redirect user to Stripe Checkout page
+        successmsg('Redirecting to secure payment gateway...');
+        window.location.href = checkoutResult.url;
       } else {
-        console.error('No clientSecret received:', paymentResult);
-        throw new Error(paymentResult.error || 'Failed to create payment. Please try again.');
+        throw new Error(checkoutResult.error || 'Failed to create checkout session');
       }
 
     } catch (error: any) {
@@ -364,75 +220,39 @@ export default function SubscriptionPage() {
       errormsg(error.message || 'Failed to process subscription');
     } finally {
       setProcessing(false);
+      setSelectedPlan(null);
     }
   };
 
-  const handlePaymentSuccess = async () => {
-    if (!selectedPlan) return;
-
-    try {
-      setPaymentProcessing(true);
-      const authData = getAuthData();
-      
-      // Extract payment intent ID from client secret
-      const paymentIntentId = clientSecret.split('_secret')[0];
-      
-      console.log('Confirming payment with ID:', paymentIntentId);
-      infomsg('Finalizing your subscription...');
-
-      // Confirm payment and activate subscription
-      const response = await fetch('/api/stripe/confirm-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        },
-        body: JSON.stringify({ 
-          planId: selectedPlan.id,
-          paymentIntentId: paymentIntentId
-        })
-      });
-
-      const result = await response.json();
-      console.log('Payment confirmation result:', result);
-
-      if (result.success) {
-        successmsg('🎉 Subscription activated successfully! Welcome emails and confirmation have been sent.');
-        setShowStripeCheckout(false);
-        setSelectedPlan(null);
-        setClientSecret('');
-        setCurrentSubscription(result.data);
-        fetchSubscriptionData();
-      } else {
-        throw new Error(result.error || 'Payment confirmation failed');
-      }
-    } catch (error: any) {
-      console.error('Payment confirmation error:', error);
-      errormsg(error.message || 'Failed to activate subscription');
-    } finally {
-      setPaymentProcessing(false);
-    }
-  };
-
-  const handlePaymentCancel = () => {
-    infomsg('Payment cancelled');
-    setShowStripeCheckout(false);
-    setSelectedPlan(null);
-    setClientSecret('');
-    setProcessing(false);
-  };
+  // ✅ REMOVED: All the old payment intent related functions
+  // - handlePaymentSuccess
+  // - handlePaymentCancel  
+  // - StripeCheckoutForm component
+  // - clientSecret state
+  // - showStripeCheckout state
+  // - paymentProcessing state
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-JM', { // ✅ Jamaican locale
-    style: 'currency',
-    currency: 'JMD'
-  }).format(price);
-};
+    return new Intl.NumberFormat('en-JM', {
+      style: 'currency',
+      currency: 'JMD'
+    }).format(price);
+  };
 
   const getPlanPeriod = (durationDays: number) => {
     if (durationDays === 30) return '/month';
     if (durationDays === 365) return '/year';
     return `/${durationDays} days`;
+  };
+
+  // ✅ New function to apply coupon
+  const handleApplyCoupon = () => {
+    if (!couponCode.trim()) {
+      errormsg('Please enter a coupon code');
+      return;
+    }
+    infomsg('Coupon applied! Discount will be reflected at checkout.');
+    // Actual validation Stripe side hoga checkout session mein
   };
 
   // Show loading until auth is checked
@@ -471,6 +291,28 @@ export default function SubscriptionPage() {
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Upgrade your seller account to get more visibility, faster response times, and premium features.
           </p>
+          
+          {/* ✅ Coupon Code Section */}
+          <div className="mt-6 max-w-md mx-auto">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                onClick={handleApplyCoupon}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mt-2">
+              Have a coupon? Enter it above and the discount will be applied at checkout.
+            </p>
+          </div>
         </div>
 
         {/* Current Subscription Banner */}
@@ -520,25 +362,6 @@ export default function SubscriptionPage() {
           </div>
         )}
 
-        {/* Payment Processing Overlay */}
-        {paymentProcessing && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Your Subscription</h3>
-              <p className="text-gray-600 mb-4">
-                Please wait while we activate your {selectedPlan?.name} plan...
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>✓ Payment verified successfully</p>
-                <p>⏳ Activating subscription features</p>
-                <p>⏳ Sending confirmation email</p>
-                <p>⏳ Updating your account</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Subscription Plans Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {plans.map(plan => (
@@ -574,6 +397,9 @@ export default function SubscriptionPage() {
                       {getPlanPeriod(plan.duration_days)}
                     </span>
                   </div>
+                  {plan.duration_days === 30 && (
+                    <p className="text-sm text-gray-500 mt-1">Billed monthly</p>
+                  )}
                 </div>
 
                 {/* Features List */}
@@ -590,7 +416,7 @@ export default function SubscriptionPage() {
                 <button
                   onClick={() => handleSubscribe(plan)}
                   disabled={processing || (currentSubscription?.plan_name === plan.name)}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
+                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center ${
                     currentSubscription?.plan_name === plan.name
                       ? 'bg-green-500 text-white cursor-default'
                       : plan.recommended
@@ -598,37 +424,39 @@ export default function SubscriptionPage() {
                       : plan.name === 'free'
                       ? 'bg-gray-600 hover:bg-gray-700 text-white'
                       : 'bg-green-600 hover:bg-green-700 text-white'
-                  } disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {processing && selectedPlan?.id === plan.id ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Preparing...
+                      Redirecting...
                     </>
                   ) : currentSubscription?.plan_name === plan.name ? (
                     'Current Plan'
                   ) : plan.price === 0 ? (
                     'Get Started Free'
                   ) : (
-                    `Subscribe Now`
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Subscribe Now
+                    </>
                   )}
                 </button>
+
+                {/* Secure Payment Note */}
+                {plan.price > 0 && (
+                  <div className="mt-3 text-center">
+                    <p className="text-xs text-gray-500">
+                      🔒 Secure payment powered by Stripe
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Stripe Checkout Modal */}
-        {showStripeCheckout && clientSecret && selectedPlan && (
-          <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <StripeCheckoutForm
-              plan={selectedPlan}
-              clientSecret={clientSecret}
-              onSuccess={handlePaymentSuccess}
-              onCancel={handlePaymentCancel}
-            />
-          </Elements>
-        )}
+        {/* ✅ REMOVED: Stripe Checkout Modal - Ab redirect hoga Stripe ki taraf */}
 
         {/* Features Comparison Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -663,15 +491,47 @@ export default function SubscriptionPage() {
                   ))}
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="py-4 font-medium text-gray-700">Duration</td>
+                  <td className="py-4 font-medium text-gray-700">Billing Cycle</td>
                   {plans.map(plan => (
                     <td key={plan.id} className="text-center py-4">
-                      {plan.duration_days} days
+                      {plan.duration_days === 30 ? 'Monthly' : 
+                       plan.duration_days === 365 ? 'Yearly' : 
+                       `${plan.duration_days} days`}
                     </td>
                   ))}
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Additional Information */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">How Subscription Works</h3>
+          <div className="grid md:grid-cols-3 gap-6 text-sm text-gray-600">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CreditCard className="w-6 h-6 text-blue-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Secure Payment</h4>
+              <p>You'll be redirected to Stripe for secure payment processing</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Check className="w-6 h-6 text-green-600" />
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Instant Activation</h4>
+              <p>Your subscription activates immediately after successful payment</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <h4 className="font-semibold text-gray-900 mb-2">Cancel Anytime</h4>
+              <p>You can cancel your subscription anytime from your account</p>
+            </div>
           </div>
         </div>
       </div>
