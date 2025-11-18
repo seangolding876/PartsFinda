@@ -415,7 +415,7 @@ const fetchSellerProfile = async () => {
       return;
     }
 
-    const response = await fetch('/api/seller/profile', {
+    const response = await fetch('/api/profile/seller', {
       headers: {
         'Authorization': `Bearer ${authData.token}`
       }
