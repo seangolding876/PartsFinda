@@ -56,33 +56,18 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // ✅ Stripe Price IDs
+    // ✅ Stripe Price IDs - Yeh aapke Stripe dashboard se lena hai
     const stripePriceIds: { [key: string]: string } = {
-      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T',
-      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m',
-      'basic': 'price_1NxxxBasic',
-      'standard': 'price_1NxxxStandard'
+      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T', // Replace with actual price ID
+      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m', // Replace with actual price ID
+      'basic': 'price_1NxxxBasic', // Replace with actual price ID
+      'standard': 'price_1NxxxStandard' // Replace with actual price ID
     };
 
     const priceId = stripePriceIds[plan.plan_name.toLowerCase()];
     
     if (!priceId) {
       return NextResponse.json({ error: 'Stripe price not configured for this plan' }, { status: 400 });
-    }
-
-    // ✅ Validate coupon if provided
-    let validCoupon = null;
-    if (couponCode) {
-      try {
-        validCoupon = await stripe.coupons.retrieve(couponCode);
-        console.log('✅ Coupon found:', validCoupon.id);
-      } catch (error) {
-        console.log('❌ Invalid coupon:', couponCode);
-        return NextResponse.json(
-          { error: `Invalid coupon code: ${couponCode}` }, 
-          { status: 400 }
-        );
-      }
     }
 
     // ✅ Stripe Checkout Session Configuration
@@ -99,8 +84,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         plan_id: planId.toString(),
         user_id: userInfo.userId.toString(),
-        plan_name: plan.plan_name,
-        ...(couponCode && { coupon_applied: couponCode })
+        plan_name: plan.plan_name
       },
       success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
@@ -108,18 +92,16 @@ export async function POST(request: NextRequest) {
         metadata: {
           plan_id: planId.toString(),
           user_id: userInfo.userId.toString(),
-          plan_name: plan.plan_name,
-          ...(couponCode && { coupon_applied: couponCode })
+          plan_name: plan.plan_name
         }
       }
     };
 
-    // ✅ Apply coupon only if valid
-    if (couponCode && validCoupon) {
+    // ✅ Apply coupon if provided
+    if (couponCode) {
       sessionConfig.discounts = [{
-        coupon: couponCode
+        coupon: couponCode // coupon_XXXXXXXX format
       }];
-      console.log('🎫 Coupon applied to session:', couponCode);
     }
 
     // ✅ Create Stripe Checkout Session
@@ -130,22 +112,20 @@ export async function POST(request: NextRequest) {
     // Save session info in database
     await query(
       `INSERT INTO stripe_sessions (
-        user_id, session_id, plan_id, status, amount_total, coupon_code
-      ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        user_id, session_id, plan_id, status, amount_total
+      ) VALUES ($1, $2, $3, $4, $5)`,
       [
         userInfo.userId,
         session.id,
         planId,
         'pending',
-        session.amount_total ? session.amount_total / 100 : plan.price,
-        couponCode || null
+        session.amount_total ? session.amount_total / 100 : plan.price
       ]
     );
 
     return NextResponse.json({
       sessionId: session.id,
-      url: session.url,
-      couponApplied: !!couponCode
+      url: session.url
     });
 
   } catch (error: any) {
