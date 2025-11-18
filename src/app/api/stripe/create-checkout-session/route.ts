@@ -3,17 +3,6 @@ import { stripe } from '@/lib/stripe';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-async function validateCoupon(couponCode) {
-  try {
-    const coupon = await stripe.coupons.retrieve(couponCode);
-    return { valid: true, coupon };
-  } catch (error) {
-    console.log('❌ Coupon not found:', couponCode);
-    return { valid: false, error: error.message };
-  }
-}
-
-
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -56,12 +45,12 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // ✅ Stripe Price IDs - Yeh aapke Stripe dashboard se lena hai
+    // ✅ Stripe Price IDs
     const stripePriceIds: { [key: string]: string } = {
-      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T', // Replace with actual price ID
-      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m', // Replace with actual price ID
-      'basic': 'price_1NxxxBasic', // Replace with actual price ID
-      'standard': 'price_1NxxxStandard' // Replace with actual price ID
+      'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T',
+      'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m',
+      'basic': 'price_1NxxxBasic',
+      'standard': 'price_1NxxxStandard'
     };
 
     const priceId = stripePriceIds[plan.plan_name.toLowerCase()];
@@ -94,15 +83,14 @@ export async function POST(request: NextRequest) {
           user_id: userInfo.userId.toString(),
           plan_name: plan.plan_name
         }
-      }
+      },
+      // ✅ YEH EK HI LINE ADD KARO - Promotion code button dikhayega
+      allow_promotion_codes: true
     };
 
-    // ✅ Apply coupon if provided
-    if (couponCode) {
-      sessionConfig.discounts = [{
-        coupon: couponCode // coupon_XXXXXXXX format
-      }];
-    }
+    // ❌ YEH SAB REMOVE KARO - No pre-apply, no coupon validation
+    // ❌ No discounts array
+    // ❌ No coupon validation
 
     // ✅ Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create(sessionConfig);
