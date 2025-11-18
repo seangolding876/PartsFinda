@@ -56,24 +56,6 @@ interface SellerStats {
   avgResponseTime: number;
 }
 
-// Add these interfaces at the top
-interface SellerSubscription {
-  plan_name: string;
-  start_date: string | null;
-  end_date: string | null;
-  is_active: boolean;
-  status: string;
-}
-
-interface SellerProfile {
-  name: string;
-  email: string;
-  rating: number;
-  reviews: number;
-  subscription: SellerSubscription | null;
-}
-
-
 function SellerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,9 +68,6 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
-const [sellerLoading, setSellerLoading] = useState(true);
-
 
   // ✅ Toast hook use karein
   const { successmsg, errormsg, infomsg } = useToast();
@@ -404,119 +383,6 @@ const [sellerLoading, setSellerLoading] = useState(true);
     }
   };
 
-// Add this function to fetch seller profile - UPDATED VERSION
-const fetchSellerProfile = async () => {
-  try {
-    console.log('🔍 Fetching seller profile...');
-    const authData = getAuthData();
-    if (!authData?.token) {
-      console.log('❌ No auth token');
-      setSellerLoading(false);
-      return;
-    }
-
-    const response = await fetch('/api/seller/profile', {
-      headers: {
-        'Authorization': `Bearer ${authData.token}`
-      }
-    });
-
-    console.log('📡 API Response status:', response.status);
-
-    if (response.ok) {
-      const result = await response.json();
-      console.log('✅ API Result:', result);
-      
-      if (result.success) {
-        setSellerProfile(result.data);
-        console.log('🎉 Seller profile set successfully');
-      } else {
-        console.error('❌ API Error:', result.error);
-        errormsg(result.error || 'Failed to load seller profile');
-      }
-    } else {
-      console.error('❌ Fetch failed with status:', response.status);
-      errormsg('Failed to fetch seller profile');
-    }
-  } catch (error) {
-    console.error('❌ Error fetching seller profile:', error);
-    errormsg('Error loading seller profile');
-  } finally {
-    setSellerLoading(false);
-    console.log('🏁 Seller loading completed');
-  }
-};
-
-// Add this useEffect to fetch seller profile on component mount
-useEffect(() => {
-  fetchSellerProfile();
-}, []);
-
-// Add helper functions for subscription - UPDATED VERSION
-const getSubscriptionBadge = (subscription: SellerSubscription | null) => {
-  // Normalize plan name first
-  const planName = subscription?.plan_name?.toLowerCase() || 'basic';
-  
-  if (planName === 'basic') {
-    return {
-      bgColor: 'bg-gray-50 border-gray-200',
-      textColor: 'text-gray-800',
-      icon: CheckCircle,
-      message: 'Basic Plan - Upgrade for premium features'
-    };
-  }
-
-  const status = subscription?.status;
-  const endDate = subscription?.end_date ? new Date(subscription.end_date) : null;
-  const today = new Date();
-  
-  if (status === 'expired' || (endDate && endDate < today)) {
-    return {
-      bgColor: 'bg-red-50 border-red-200',
-      textColor: 'text-red-800',
-      icon: AlertCircle,
-      message: 'Subscription expired'
-    };
-  }
-
-  if (endDate) {
-    const diffTime = endDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays <= 7) {
-      return {
-        bgColor: 'bg-orange-50 border-orange-200',
-        textColor: 'text-orange-800',
-        icon: AlertCircle,
-        message: `Your plan expires in ${diffDays} days`
-      };
-    }
-    
-    return {
-      bgColor: 'bg-green-50 border-green-200',
-      textColor: 'text-green-800',
-      icon: CheckCircle,
-      message: `Your plan expires in ${diffDays} days`
-    };
-  }
-
-  return {
-    bgColor: 'bg-green-50 border-green-200',
-    textColor: 'text-green-800',
-    icon: CheckCircle,
-    message: 'Active subscription'
-  };
-};
-
-const getPlanDisplayName = (planName: string | null) => {
-  if (!planName) return 'Basic';
-  
-  const plan = planName.toLowerCase();
-  if (plan === 'premium') return 'Premium';
-  if (plan === 'enterprise') return 'Enterprise';
-  if (plan === 'basic') return 'Basic';
-  return 'Basic';
-};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -552,94 +418,57 @@ const getPlanDisplayName = (planName: string | null) => {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-<div className="lg:col-span-1">
-  <div className="bg-white rounded-lg shadow-lg p-6">
-    {/* Seller Profile */}
-    <div className="flex items-center gap-3 mb-6">
-      <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-        <User className="w-6 h-6 text-green-600" />
-      </div>
-      <div>
-        {sellerLoading ? (
-          <div className="space-y-2">
-            <div className="w-32 h-4 bg-gray-200 rounded animate-pulse"></div>
-            <div className="w-24 h-3 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-        ) : (
-          <>
-            <h3 className="font-semibold text-gray-800">
-              {sellerProfile?.name || 'Your Business'}
-            </h3>
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-              <span className="text-sm text-gray-600">
-                {parseFloat(sellerProfile?.rating as any || '4.8').toFixed(1)} ({sellerProfile?.reviews || '0'} reviews)
-              </span>
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
+                  <User className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">Kingston Auto Parts</h3>
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                    <span className="text-sm text-gray-600">4.8 (127 reviews)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 text-green-800 text-sm font-semibold">
+                  <CheckCircle className="w-4 h-4" />
+                  Premium Member
+                </div>
+                <p className="text-green-700 text-xs mt-1">Your plan expires in 23 days</p>
+              </div>
+
+              <nav className="space-y-2">
+                <button
+                  onClick={() => {
+                    setActiveTab('overview');
+                    infomsg('Loading overview...');
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
+                    }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('requests');
+                    infomsg('Loading part requests...');
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
+                    }`}
+                >
+                  <span>Part Requests</span>
+                  <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    {requests.filter(r => !r.hasQuoted).length}
+                  </span>
+                </button>
+              </nav>
             </div>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
 
-    {/* Subscription Status */}
-    {sellerLoading ? (
-      <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-lg animate-pulse">
-        <div className="w-3/4 h-4 bg-gray-200 rounded mb-2"></div>
-        <div className="w-1/2 h-3 bg-gray-200 rounded"></div>
-      </div>
-    ) : (
-      <div className={`mb-6 p-3 rounded-lg border ${
-        getSubscriptionBadge(sellerProfile?.subscription || null).bgColor
-      }`}>
-        <div className={`flex items-center gap-2 text-sm font-semibold ${
-          getSubscriptionBadge(sellerProfile?.subscription || null).textColor
-        }`}>
-          {(() => {
-            const IconComponent = getSubscriptionBadge(sellerProfile?.subscription || null).icon;
-            return <IconComponent className="w-4 h-4" />;
-          })()}
-          <span>
-            {getPlanDisplayName(sellerProfile?.subscription?.plan_name || 'Basic')} Member
-          </span>
-        </div>
-        <p className={`text-xs mt-1 ${
-          getSubscriptionBadge(sellerProfile?.subscription || null).textColor
-        }`}>
-          {getSubscriptionBadge(sellerProfile?.subscription || null).message}
-        </p>
-      </div>
-    )}
-
-    {/* Navigation */}
-    <nav className="space-y-2">
-      <button
-        onClick={() => {
-          setActiveTab('overview');
-          infomsg('Loading overview...');
-        }}
-        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-          activeTab === 'overview' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-        }`}
-      >
-        Overview
-      </button>
-      <button
-        onClick={() => {
-          setActiveTab('requests');
-          infomsg('Loading part requests...');
-        }}
-        className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
-          activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-        }`}
-      >
-        <span>Part Requests</span>
-        <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-          {requests.filter(r => !r.hasQuoted).length}
-        </span>
-      </button>
-    </nav>
-  </div>
-</div>
           {/* Main Content */}
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
