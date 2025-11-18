@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const statsResult = await query(
       `SELECT 
         (SELECT COUNT(*) FROM parts WHERE seller_id = $1 AND status = 'active') as active_listings,
-        (SELECT COUNT(*) FROM request_queue WHERE seller_id = $1 AND status = 'processed') as pending_quotes,
+        (SELECT COUNT(*) FROM request_queue WHERE seller_id = $1 AND status = 'processed'  AND ("isReject" = false OR "isReject" IS NULL)) as pending_quotes,
        -- (SELECT COUNT(*) FROM orders WHERE seller_id = $1 AND status = 'completed') as completed_orders,
        -- (SELECT COALESCE(SUM(amount), 0) FROM orders WHERE seller_id = $1 AND status = 'completed' AND created_at >= NOW() - INTERVAL '30 days') as monthly_revenue,
         (SELECT COUNT(*) FROM request_quotes WHERE seller_id = $1) as total_quotes,

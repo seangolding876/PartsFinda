@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Eye, MessageCircle, Clock, CheckCircle, XCircle, 
 import Link from 'next/link';
 import RequestDetailsModal from '@/components/RequestDetailsModal';
 import QuoteModal from '@/components/QuoteModal';
-import { useToast } from '@/hooks/useToast'; 
+import { useToast } from '@/hooks/useToast';
 import { useWelcomeMessage } from '@/hooks/useWelcomeMessage';
 
 // Auth utility
@@ -68,7 +68,7 @@ function SellerDashboard() {
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState<SellerRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  
+
   // ✅ Toast hook use karein
   const { successmsg, errormsg, infomsg } = useToast();
 
@@ -84,7 +84,7 @@ function SellerDashboard() {
     const fetchData = async () => {
       setLoading(true);
       const authData = getAuthData();
-      
+
       if (!authData?.token) {
         errormsg('No authentication token found');
         setLoading(false);
@@ -108,7 +108,7 @@ function SellerDashboard() {
                 const newRequests = requestsResult.data.length - requests.length;
                 infomsg(`${newRequests} new request${newRequests > 1 ? 's' : ''} available`);
               }
-              
+
               setRequests(requestsResult.data);
             } else {
               errormsg(requestsResult.error || 'Failed to load requests');
@@ -133,7 +133,7 @@ function SellerDashboard() {
                   const increase = statsResult.data.monthlyRevenue - lastStats.monthlyRevenue;
                   successmsg(`Revenue increased by ${formatCurrency(increase)} this month!`);
                 }
-                
+
                 setStats(statsResult.data);
                 setLastStats(statsResult.data);
               } else {
@@ -210,18 +210,18 @@ function SellerDashboard() {
 
       if (result.success) {
         // Update local state
-        setRequests(prev => prev.map(req => 
-          req.id === quoteData.requestId ? { 
-            ...req, 
-            hasQuoted: true, 
+        setRequests(prev => prev.map(req =>
+          req.id === quoteData.requestId ? {
+            ...req,
+            hasQuoted: true,
             quoted: true,
             totalQuotes: req.totalQuotes + 1
           } : req
         ));
-        
+
         setShowQuoteModal(false);
         setSelectedRequest(null);
-        
+
         // ✅ Success message with quote details
         successmsg(`Quote submitted successfully for ${quoteData.price}! Buyer notified.`);
       } else {
@@ -279,49 +279,49 @@ function SellerDashboard() {
   // Filter requests based on search and filter
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.makeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.modelName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesFilter = filterStatus === 'all' || 
-                         (filterStatus === 'unquoted' && !request.hasQuoted) ||
-                         (filterStatus === 'quoted' && request.hasQuoted);
-    
+      request.makeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      request.modelName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesFilter = filterStatus === 'all' ||
+      (filterStatus === 'unquoted' && !request.hasQuoted) ||
+      (filterStatus === 'quoted' && request.hasQuoted);
+
     return matchesSearch && matchesFilter;
   });
 
   // Stats for display
   const displayStats = [
-    { 
-      icon: <Package className="w-6 h-6" />, 
-      label: 'Active Listings', 
-      value: stats?.activeListings.toString() || '0', 
-      color: 'text-blue-600', 
-      bg: 'bg-blue-100', 
-      trend: '+5 this week' 
+    {
+      icon: <Package className="w-6 h-6" />,
+      label: 'Active Listings',
+      value: stats?.activeListings.toString() || '0',
+      color: 'text-blue-600',
+      bg: 'bg-blue-100',
+      trend: '+5 this week'
     },
-    { 
-      icon: <MessageCircle className="w-6 h-6" />, 
-      label: 'Pending Quotes', 
-      value: stats?.pendingQuotes.toString() || '0', 
-      color: 'text-orange-600', 
-      bg: 'bg-orange-100', 
-      trend: `${filteredRequests.filter(r => !r.hasQuoted).length} urgent` 
+    {
+      icon: <MessageCircle className="w-6 h-6" />,
+      label: 'Pending Quotes',
+      value: filteredRequests.filter(r => !r.hasQuoted && !r.isReject).length.toString(),
+      color: 'text-orange-600',
+      bg: 'bg-orange-100'
+      // trend: `${filteredRequests.filter(r => !r.hasQuoted).length} urgent` 
     },
-    { 
-      icon: <CheckCircle className="w-6 h-6" />, 
-      label: 'Completed Orders', 
-      value: stats?.completedOrders.toString() || '0', 
-      color: 'text-green-600', 
-      bg: 'bg-green-100', 
-      trend: '+8 this month' 
+    {
+      icon: <CheckCircle className="w-6 h-6" />,
+      label: 'Completed Orders',
+      value: stats?.completedOrders.toString() || '0',
+      color: 'text-green-600',
+      bg: 'bg-green-100',
+      trend: '+8 this month'
     },
-    { 
-      icon: <DollarSign className="w-6 h-6" />, 
-      label: 'Monthly Revenue', 
-      value: formatCurrency(stats?.monthlyRevenue || 0), 
-      color: 'text-purple-600', 
-      bg: 'bg-purple-100', 
-      trend: '+15% vs last month' 
+    {
+      icon: <DollarSign className="w-6 h-6" />,
+      label: 'Monthly Revenue',
+      value: formatCurrency(stats?.monthlyRevenue || 0),
+      color: 'text-purple-600',
+      bg: 'bg-purple-100',
+      trend: '+15% vs last month'
     }
   ];
 
@@ -336,52 +336,52 @@ function SellerDashboard() {
     );
   }
 
-const handleReject = async (request: SellerRequest) => {
-  setLoading(true);
+  const handleReject = async (request: SellerRequest) => {
+    setLoading(true);
 
-  try {
-    const authData = getAuthData(); // From localStorage
-    const res = await fetch('/api/seller/reject-request', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      },
-      body: JSON.stringify({ request_id: request.queueId })
-    });
+    try {
+      const authData = getAuthData(); // From localStorage
+      const res = await fetch('/api/seller/reject-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({ request_id: request.queueId })
+      });
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (result.success) {
-      successmsg('You have rejected the request successfully.');
-      setRequests(prev =>
-        prev.map(r => r.id === request.id ? { ...r, isReject: true } : r)
-      );
+      if (result.success) {
+        successmsg('You have rejected the request successfully.');
+        setRequests(prev =>
+          prev.map(r => r.id === request.id ? { ...r, isReject: true } : r)
+        );
 
-            const fetchData = async () => {
-        const authData = getAuthData();
-        const response = await fetch(`/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`, {
-          headers: { 'Authorization': `Bearer ${authData.token}` }
-        });
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) setRequests(result.data);
-        }
-      };
-      fetchData();
-      
-    } else {
-      // alert(result.error || 'Failed to reject request');
-      errormsg(result.error || 'Failed to reject request');
+        const fetchData = async () => {
+          const authData = getAuthData();
+          const response = await fetch(`/api/seller/requests?action=getRequests&status=${filterStatus === 'all' ? 'all' : 'pending'}`, {
+            headers: { 'Authorization': `Bearer ${authData.token}` }
+          });
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) setRequests(result.data);
+          }
+        };
+        fetchData();
+
+      } else {
+        // alert(result.error || 'Failed to reject request');
+        errormsg(result.error || 'Failed to reject request');
+      }
+
+    } catch (err) {
+      console.error(err);
+      errormsg("something went wrong while rejecting the request.");
+    } finally {
+      setLoading(false);
     }
-
-  } catch (err) {
-    console.error(err);
-    errormsg("something went wrong while rejecting the request.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
 
   return (
@@ -447,9 +447,8 @@ const handleReject = async (request: SellerRequest) => {
                     setActiveTab('overview');
                     infomsg('Loading overview...');
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === 'overview' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
+                    }`}
                 >
                   Overview
                 </button>
@@ -458,9 +457,8 @@ const handleReject = async (request: SellerRequest) => {
                     setActiveTab('requests');
                     infomsg('Loading part requests...');
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
-                    activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${activeTab === 'requests' ? 'bg-blue-100 text-blue-600 font-semibold' : 'hover:bg-gray-100'
+                    }`}
                 >
                   <span>Part Requests</span>
                   <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
@@ -642,23 +640,33 @@ const handleReject = async (request: SellerRequest) => {
                         <div className="flex gap-3">
                           {!request.hasQuoted ? (
                             <>
-                            <button 
-                              onClick={() => openQuoteModal(request)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                            >
-                              <Send className="w-4 h-4" />
-                              Submit Quote
-                            </button>
+                              <button
+                                onClick={() => openQuoteModal(request)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                              >
+                                <Send className="w-4 h-4" />
+                                Submit Quote
+                              </button>
 
-<button
-  onClick={() => handleReject(request)}
-  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
->
-  <Send className="w-4 h-4" />
-  I don't have this part (Reject)
-</button>
+                              <button
+                                onClick={() => handleReject(request)}
+                                disabled={loading}
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:bg-gray-400"
+                              >
+                                {loading ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-1 border-white"></div>
+                                    Rejecting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-4 h-4" />
+                                    I don't have this part (Reject)
+                                  </>
+                                )}
+                              </button>
                             </>
-                    
+
 
 
                           ) : (
@@ -667,7 +675,7 @@ const handleReject = async (request: SellerRequest) => {
                               View Quote
                             </button>
                           )}
-                          <button 
+                          <button
                             onClick={() => openDetailsModal(request)}
                             className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                           >
@@ -677,13 +685,13 @@ const handleReject = async (request: SellerRequest) => {
                         </div>
                       </div>
                     ))}
-                    
+
                     {filteredRequests.length === 0 && (
                       <div className="text-center py-12 bg-white rounded-lg shadow-lg">
                         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                         <h4 className="text-lg font-semibold text-gray-800 mb-2">No Requests Found</h4>
                         <p className="text-gray-600">
-                          {searchQuery || filterStatus !== 'all' 
+                          {searchQuery || filterStatus !== 'all'
                             ? 'Try adjusting your search or filter criteria'
                             : 'No part requests available at the moment'
                           }
