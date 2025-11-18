@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
     try {
       result = await query(
         `UPDATE request_queue
-         SET "isReject" = $1, "RejectOn" = NOW()
-         WHERE id = $2 AND seller_id = $3
+         SET "isReject" = true, "RejectOn" = NOW()
+         WHERE id = $1 AND seller_id = $2
          RETURNING id, "isReject", "RejectOn"`,
         [true, request_id, sellerId]
       );
