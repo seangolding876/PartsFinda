@@ -354,7 +354,7 @@ const handleReject = async (request: SellerRequest) => {
     if (result.success) {
       successmsg('You have rejected the request successfully.');
       setRequests(prev =>
-        prev.map(r => r.id === request.id ? { ...r, queueStatus: 'rejected', isReject: true } : r)
+        prev.map(r => r.id === request.id ? { ...r, isReject: true } : r)
       );
     } else {
       // alert(result.error || 'Failed to reject request');

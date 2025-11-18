@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Update request_queue
-// ✅ Update request_queue
 let result;
 try {
   result = await query(
