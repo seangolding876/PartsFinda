@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ ONLY CHECKOUT SESSION HANDLER
+// ✅ ONLY CHECKOUT SESSION HANDLER - FIXED TIMESTAMP
 async function handleCheckoutSessionCompleted(session: any) {
   console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
@@ -196,26 +196,47 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
     console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ STEP 4: Calculate dates
+    // ✅ STEP 4: Calculate dates - FIXED VERSION
     const startDate = new Date();
     let endDate = new Date();
+    
+    // ✅ FIX: Validate and calculate end date safely
+    let validEndDate = endDate;
     
     if (session.subscription) {
       // Recurring subscription - get end date from Stripe
       try {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
-        endDate = new Date(subscription.current_period_end * 1000);
-        console.log('📅 Subscription end date from Stripe:', endDate);
+        
+        // ✅ FIX: Check if current_period_end is valid
+        if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
+          validEndDate = new Date(subscription.current_period_end * 1000);
+          console.log('📅 Subscription end date from Stripe:', validEndDate);
+        } else {
+          throw new Error('Invalid current_period_end from Stripe');
+        }
       } catch (error) {
         console.error('❌ Error retrieving subscription:', error);
-        // Fallback to plan duration
-        endDate.setDate(endDate.getDate() + (plan.duration_days || 30));
+        // Fallback to plan duration - SAFE CALCULATION
+        const durationDays = parseInt(plan.duration_days) || 30;
+        validEndDate.setDate(validEndDate.getDate() + durationDays);
+        console.log('📅 Using fallback plan duration days:', durationDays);
       }
     } else {
-      // One-time payment - use plan duration
-      endDate.setDate(endDate.getDate() + (plan.duration_days || 30));
-      console.log('📅 Using plan duration days:', plan.duration_days);
+      // One-time payment - use plan duration - SAFE CALCULATION
+      const durationDays = parseInt(plan.duration_days) || 30;
+      validEndDate.setDate(validEndDate.getDate() + durationDays);
+      console.log('📅 Using plan duration days:', durationDays);
     }
+
+    // ✅ FIX: Final validation of dates
+    if (isNaN(validEndDate.getTime())) {
+      console.error('❌ Invalid end date calculated, using 30 days default');
+      validEndDate = new Date();
+      validEndDate.setDate(validEndDate.getDate() + 30);
+    }
+
+    console.log('✅ Final dates - Start:', startDate, 'End:', validEndDate);
 
     // ✅ STEP 5: Create new subscription in supplier_subscription
     const subscriptionResult = await query(
@@ -227,7 +248,7 @@ async function handleCheckoutSessionCompleted(session: any) {
         user_id, 
         plan.plan_name, 
         startDate, 
-        endDate, 
+        validEndDate,  // ✅ FIX: Use validated end date
         true, 
         0,
         session.subscription || null,
@@ -262,7 +283,7 @@ async function handleCheckoutSessionCompleted(session: any) {
         'completed',
         'card',
         startDate,
-        endDate
+        validEndDate  // ✅ FIX: Use validated end date
       ]
     );
     console.log('💰 Subscription payment recorded');
@@ -305,7 +326,6 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
   }
 }
-
 // ✅ GET method for testing
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
