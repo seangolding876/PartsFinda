@@ -344,7 +344,7 @@ const handleReject = async (request: SellerRequest) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         request_id: request.id,      
-        seller_id: getAuthData()?.id 
+        seller_id: getAuthData()?.userId 
       }),
     });
     const result = await res.json();
