@@ -296,7 +296,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     // ✅ STEP 6: Update user membership_plan
     const userUpdateResult = await query(
       'UPDATE users SET membership_plan = $1 WHERE id = $2 RETURNING id',
-      [plan.plan_name, user_id]
+      [plan.plan_name.toLowerCase(), user_id]
     );
     console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
