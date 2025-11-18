@@ -17,7 +17,9 @@ const pool = new Pool({
 // ✅ Simple query function
 async function query(text: string, params?: any[]) {
   try {
+    console.log('🛢️ Executing query:', text.substring(0, 100));
     const result = await pool.query(text, params);
+    console.log('✅ Query successful, rows:', result.rowCount);
     return result;
   } catch (error: any) {
     console.error('❌ Database error:', error.message);
@@ -31,6 +33,9 @@ export async function POST(request: NextRequest) {
     
     const body = await request.text();
     const signature = headers().get('stripe-signature');
+
+    console.log('📦 Webhook body received');
+    console.log('🔐 Signature:', signature ? 'Present' : 'Missing');
 
     if (!signature) {
       console.error('❌ No Stripe signature');
@@ -50,6 +55,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔔 Webhook Event: ${event.type}`);
     console.log('🎯 Event ID:', event.id);
+    console.log('🌐 Live Mode:', event.livemode);
 
     // ✅ Test database immediately
     try {
@@ -67,6 +73,8 @@ export async function POST(request: NextRequest) {
       console.log(`⚡ Other event (ignored): ${event.type}`);
     }
 
+    console.log('✅ WEBHOOK COMPLETED SUCCESSFULLY');
+    
     return NextResponse.json({ 
       success: true,
       received: true, 
@@ -76,12 +84,23 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Webhook error:', error.message);
+    console.error('❌ WEBHOOK FAILED:', error.message);
+    
+    // ✅ Log error to webhook_errors table
+    try {
+      await query(
+        'INSERT INTO webhook_errors (event_type, error_message) VALUES ($1, $2)',
+        ['webhook_failed', error.message]
+      );
+    } catch (logError) {
+      console.error('❌ Failed to log error:', logError);
+    }
+    
     return NextResponse.json(
       { 
         success: false,
         error: 'Webhook processing failed',
-        message: error.message 
+        details: error.message 
       },
       { status: 400 }
     );
@@ -96,6 +115,12 @@ async function handleCheckoutSessionCompleted(session: any) {
   console.log('📋 Full Metadata:', session.metadata);
   
   try {
+    // ✅ STEP 0: Log webhook receipt
+    await query(
+      'INSERT INTO webhook_logs (event_type, session_id, status) VALUES ($1, $2, $3)',
+      ['checkout.session.completed', session.id, 'received']
+    );
+
     // ✅ Extract metadata safely
     const metadata = session.metadata || {};
     const plan_id = metadata.plan_id;
@@ -107,10 +132,26 @@ async function handleCheckoutSessionCompleted(session: any) {
     // ✅ Check if metadata exists
     if (!plan_id || !user_id) {
       console.error('❌ MISSING METADATA - Cannot process subscription');
+      
+      await query(
+        'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
+        ['checkout.session.completed', session.id, 'Missing plan_id or user_id in metadata']
+      );
+      
+      await query(
+        'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
+        ['metadata_missing', session.id]
+      );
       return;
     }
 
-    console.log(`🔄 Activating subscription - User: ${user_id}, Plan: ${plan_id}`);
+    console.log(`🔄 Processing subscription - User: ${user_id}, Plan: ${plan_id}`);
+
+    // ✅ Update webhook log to processing
+    await query(
+      'UPDATE webhook_logs SET user_id = $1, plan_id = $2, status = $3 WHERE session_id = $4',
+      [user_id, plan_id, 'processing', session.id]
+    );
 
     // ✅ STEP 1: Update stripe_sessions status to 'completed'
     const sessionUpdateResult = await query(
@@ -132,6 +173,16 @@ async function handleCheckoutSessionCompleted(session: any) {
 
     if (planResult.rows.length === 0) {
       console.error(`❌ Plan not found: ${plan_id}`);
+      
+      await query(
+        'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
+        ['checkout.session.completed', session.id, `Plan not found: ${plan_id}`]
+      );
+      
+      await query(
+        'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
+        ['plan_not_found', session.id]
+      );
       return;
     }
 
@@ -204,12 +255,12 @@ async function handleCheckoutSessionCompleted(session: any) {
       [
         user_id,
         plan_id,
-        session.payment_intent || session.id, // Use payment_intent if available, else session.id
+        session.payment_intent || session.id,
         session.subscription || null,
         amountPaid,
         session.currency?.toUpperCase() || 'USD',
         'completed',
-        'card', // Default payment method
+        'card',
         startDate,
         endDate
       ]
@@ -222,6 +273,12 @@ async function handleCheckoutSessionCompleted(session: any) {
       [user_id, 'subscription_activated', `Your ${plan.plan_name} subscription has been activated!`, 'pending']
     );
 
+    // ✅ STEP 9: Update webhook log to completed
+    await query(
+      'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
+      ['completed', session.id]
+    );
+
     console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${plan.plan_name}`);
     console.log('💰 Payment details:', {
       amount: amountPaid,
@@ -231,6 +288,21 @@ async function handleCheckoutSessionCompleted(session: any) {
   } catch (error: any) {
     console.error('❌ CRITICAL ERROR in checkout handler:', error.message);
     console.error('🔍 Error stack:', error.stack);
+    
+    // ✅ Log error to webhook_errors table
+    try {
+      await query(
+        'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
+        ['checkout.session.completed', session.id, error.message]
+      );
+      
+      await query(
+        'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
+        ['failed', session.id]
+      );
+    } catch (logError) {
+      console.error('❌ Failed to log error:', logError);
+    }
   }
 }
 
