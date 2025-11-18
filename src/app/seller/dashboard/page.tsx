@@ -335,6 +335,37 @@ function SellerDashboard() {
     );
   }
 
+const handleReject = async (request: SellerRequest) => {
+  setLoading(true);
+
+  try {
+    const res = await fetch("/api/seller/reject-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: request.id,      
+        seller_id: getAuthData()?.id 
+      }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      alert(result.message || "Failed to reject the request");
+    } else {
+      alert("Request rejected successfully");
+      // Optionally update state
+      setRequests(prev =>
+        prev.map(r => r.id === request.id ? { ...r, queueStatus: 'rejected' } : r)
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong.");
+  }
+
+  setLoading(false);
+};
+
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -601,13 +632,13 @@ function SellerDashboard() {
                               Submit Quote
                             </button>
 
-                            <button 
-                              onClick={() => openQuoteModal(request)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                            >
-                              <Send className="w-4 h-4" />
-                              I dont have this part (Reject)
-                            </button>
+<button
+  onClick={() => handleReject(request)}
+  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+>
+  <Send className="w-4 h-4" />
+  I don't have this part (Reject)
+</button>
                             </>
                     
 
