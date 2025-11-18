@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
        JOIN users u ON pr.user_id = u.id
        JOIN makes mk ON pr.make_id = mk.id
        JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
-       WHERE rq.seller_id = $1 AND ${statusCondition}
+       WHERE rq.seller_id = $1 AND ${statusCondition} AND (IsReject=0 OR IsReject IS NULL)
        ORDER BY 
          CASE pr.urgency 
            WHEN 'high' THEN 1

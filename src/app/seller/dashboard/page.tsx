@@ -592,6 +592,7 @@ function SellerDashboard() {
 
                         <div className="flex gap-3">
                           {!request.hasQuoted ? (
+                            <>
                             <button 
                               onClick={() => openQuoteModal(request)}
                               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
@@ -599,6 +600,18 @@ function SellerDashboard() {
                               <Send className="w-4 h-4" />
                               Submit Quote
                             </button>
+
+                            <button 
+                              onClick={() => openQuoteModal(request)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                            >
+                              <Send className="w-4 h-4" />
+                              I dont have this part (Reject)
+                            </button>
+                            </>
+                    
+
+
                           ) : (
                             <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
                               <Edit className="w-4 h-4" />
