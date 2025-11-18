@@ -339,30 +339,34 @@ const handleReject = async (request: SellerRequest) => {
   setLoading(true);
 
   try {
-    const res = await fetch("/api/seller/reject-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        request_id: request.id,      
-        seller_id: getAuthData()?.userId 
-      }),
+    const authData = getAuthData(); // From localStorage
+    const res = await fetch('/api/seller/reject-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({ request_id: request.id })
     });
+
     const result = await res.json();
-    if (!res.ok) {
-      alert(result.message || "Failed to reject the request");
-    } else {
-      alert("Request rejected successfully");
-      // Optionally update state
+
+    if (result.success) {
+      successmsg('You have rejected the request successfully.');
       setRequests(prev =>
-        prev.map(r => r.id === request.id ? { ...r, queueStatus: 'rejected' } : r)
+        prev.map(r => r.id === request.id ? { ...r, queueStatus: 'rejected', isReject: true } : r)
       );
+    } else {
+      // alert(result.error || 'Failed to reject request');
+      errormsg(result.error || 'Failed to reject request');
     }
+
   } catch (err) {
     console.error(err);
-    alert("Something went wrong.");
+    errormsg("something went wrong while rejecting the request.");
+  } finally {
+    setLoading(false);
   }
-
-  setLoading(false);
 };
 
 
