@@ -95,6 +95,15 @@ export default function Navigation() {
 
   // Get plan icon and color
   const getPlanDetails = (planName) => {
+    // Simple normalization
+    let normalizedPlan = 'Basic';
+    
+    if (planName) {
+      const plan = planName.toString().toLowerCase();
+      if (plan === 'premium') normalizedPlan = 'Premium';
+      else if (plan === 'enterprise') normalizedPlan = 'Enterprise';
+      else if (plan === 'basic') normalizedPlan = 'Basic';
+    }
     const plans = {
       'Basic': { 
         icon: Star, 
@@ -122,7 +131,7 @@ export default function Navigation() {
       }
     };
     
-    return plans[planName] || plans['Basic'];
+    return plans[normalizedPlan] || plans['Basic'];
   };
 
   // Format date
