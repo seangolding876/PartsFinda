@@ -66,12 +66,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    // ✅ ONLY PROCESS CHECKOUT SESSION
-    if (event.type === 'checkout.session.completed') {
-      await handleCheckoutSessionCompleted(event.data.object);
-    } else {
-      console.log(`⚡ Other event (ignored): ${event.type}`);
+    // ✅ Log webhook receipt
+    await query(
+      'INSERT INTO webhook_logs (event_type, status) VALUES ($1, $2)',
+      [event.type, 'received']
+    );
+
+    // ✅ PROCESS ALL SUBSCRIPTION EVENTS
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event.data.object);
+        break;
+
+      case 'customer.subscription.created':
+        await handleSubscriptionCreated(event.data.object);
+        break;
+
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdated(event.data.object);
+        break;
+
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object);
+        break;
+
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object);
+        break;
+
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object);
+        break;
+
+      default:
+        console.log(`⚡ Unhandled: ${event.type}`);
     }
+
+    // ✅ Update webhook log to completed
+    await query(
+      'UPDATE webhook_logs SET status = $1 WHERE event_type = $2 AND created_at > NOW() - INTERVAL \'1 minute\'',
+      ['completed', event.type]
+    );
 
     console.log('✅ WEBHOOK COMPLETED SUCCESSFULLY');
     
@@ -107,7 +142,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ ONLY CHECKOUT SESSION HANDLER - FIXED TIMESTAMP
+// ✅ CHECKOUT SESSION COMPLETED - SAFE VERSION
 async function handleCheckoutSessionCompleted(session: any) {
   console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
@@ -196,19 +231,18 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
     console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ STEP 4: Calculate dates - FIXED VERSION
+    // ✅ STEP 4: Calculate dates - SAFE VERSION
     const startDate = new Date();
-    let endDate = new Date();
     
-    // ✅ FIX: Validate and calculate end date safely
-    let validEndDate = endDate;
+    // ✅ SAFE: Initialize validEndDate properly
+    let validEndDate = new Date();
     
     if (session.subscription) {
       // Recurring subscription - get end date from Stripe
       try {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
         
-        // ✅ FIX: Check if current_period_end is valid
+        // ✅ SAFE: Check if current_period_end is valid
         if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
           validEndDate = new Date(subscription.current_period_end * 1000);
           console.log('📅 Subscription end date from Stripe:', validEndDate);
@@ -219,17 +253,19 @@ async function handleCheckoutSessionCompleted(session: any) {
         console.error('❌ Error retrieving subscription:', error);
         // Fallback to plan duration - SAFE CALCULATION
         const durationDays = parseInt(plan.duration_days) || 30;
+        validEndDate = new Date(); // ✅ Reset to current date
         validEndDate.setDate(validEndDate.getDate() + durationDays);
         console.log('📅 Using fallback plan duration days:', durationDays);
       }
     } else {
       // One-time payment - use plan duration - SAFE CALCULATION
       const durationDays = parseInt(plan.duration_days) || 30;
+      validEndDate = new Date(); // ✅ Reset to current date
       validEndDate.setDate(validEndDate.getDate() + durationDays);
       console.log('📅 Using plan duration days:', durationDays);
     }
 
-    // ✅ FIX: Final validation of dates
+    // ✅ SAFE: Final validation of dates
     if (isNaN(validEndDate.getTime())) {
       console.error('❌ Invalid end date calculated, using 30 days default');
       validEndDate = new Date();
@@ -248,7 +284,7 @@ async function handleCheckoutSessionCompleted(session: any) {
         user_id, 
         plan.plan_name, 
         startDate, 
-        validEndDate,  // ✅ FIX: Use validated end date
+        validEndDate,  // ✅ SAFE: Use validated end date
         true, 
         0,
         session.subscription || null,
@@ -283,7 +319,7 @@ async function handleCheckoutSessionCompleted(session: any) {
         'completed',
         'card',
         startDate,
-        validEndDate  // ✅ FIX: Use validated end date
+        validEndDate  // ✅ SAFE: Use validated end date
       ]
     );
     console.log('💰 Subscription payment recorded');
@@ -326,6 +362,162 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
   }
 }
+
+// ✅ SUBSCRIPTION CREATED
+async function handleSubscriptionCreated(subscription: any) {
+  console.log(`📝 Subscription created: ${subscription.id}`);
+  console.log('📊 Subscription status:', subscription.status);
+  
+  try {
+    // Update subscription status in database
+    await query(
+      'UPDATE supplier_subscription SET is_active = $1 WHERE stripe_subscription_id = $2',
+      [subscription.status === 'active', subscription.id]
+    );
+    
+    console.log(`✅ Subscription ${subscription.id} status updated to: ${subscription.status}`);
+  } catch (error) {
+    console.error('❌ Error handling subscription created:', error);
+  }
+}
+
+// ✅ SUBSCRIPTION UPDATED
+async function handleSubscriptionUpdated(subscription: any) {
+  console.log(`🔄 Subscription updated: ${subscription.id}`);
+  console.log('📊 New status:', subscription.status);
+  
+  try {
+    // ✅ SAFE: Calculate end date
+    let validEndDate = new Date();
+    if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
+      validEndDate = new Date(subscription.current_period_end * 1000);
+    } else {
+      // Fallback: add 30 days
+      validEndDate.setDate(validEndDate.getDate() + 30);
+    }
+    
+    await query(
+      'UPDATE supplier_subscription SET end_date = $1, is_active = $2 WHERE stripe_subscription_id = $3',
+      [validEndDate, subscription.status === 'active', subscription.id]
+    );
+
+    console.log(`✅ Subscription updated: ${subscription.id}`);
+  } catch (error) {
+    console.error('❌ Error updating subscription:', error);
+  }
+}
+
+// ✅ SUBSCRIPTION DELETED/CANCELED
+async function handleSubscriptionDeleted(subscription: any) {
+  console.log(`🗑️ Subscription deleted: ${subscription.id}`);
+  
+  try {
+    // Deactivate subscription
+    const result = await query(
+      'UPDATE supplier_subscription SET is_active = false WHERE stripe_subscription_id = $1 RETURNING user_id',
+      [subscription.id]
+    );
+
+    if (result.rows.length > 0) {
+      const userId = result.rows[0].user_id;
+      
+      // Reset user plan to free
+      await query(
+        'UPDATE users SET membership_plan = $1 WHERE id = $2',
+        ['free', userId]
+      );
+
+      // Create notification
+      await query(
+        `INSERT INTO notification_queue (user_id, type, message, status) VALUES ($1, $2, $3, $4)`,
+        [userId, 'subscription_canceled', 'Your subscription has been canceled', 'pending']
+      );
+
+      console.log(`✅ Subscription deactivated for user: ${userId}`);
+    }
+  } catch (error) {
+    console.error('❌ Error handling subscription deletion:', error);
+  }
+}
+
+// ✅ SUBSCRIPTION: Recurring Payment Succeeded
+async function handleInvoicePaymentSucceeded(invoice: any) {
+  console.log(`💰 Recurring payment succeeded: ${invoice.id}`);
+  console.log('💳 Amount paid:', invoice.amount_paid / 100);
+  
+  try {
+    if (invoice.subscription) {
+      // ✅ SAFE: Calculate new end date
+      let newEndDate = new Date();
+      try {
+        const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+        if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
+          newEndDate = new Date(subscription.current_period_end * 1000);
+        }
+      } catch (error) {
+        console.error('❌ Error retrieving subscription for renewal:', error);
+        // Fallback: add 30 days
+        newEndDate.setDate(newEndDate.getDate() + 30);
+      }
+
+      // Extend subscription end date
+      await query(
+        `UPDATE supplier_subscription 
+         SET end_date = $1, renewal_count = renewal_count + 1 
+         WHERE stripe_subscription_id = $2`,
+        [newEndDate, invoice.subscription]
+      );
+
+      // Create renewal notification
+      const subResult = await query(
+        'SELECT user_id, plan_name FROM supplier_subscription WHERE stripe_subscription_id = $1',
+        [invoice.subscription]
+      );
+
+      if (subResult.rows.length > 0) {
+        const { user_id, plan_name } = subResult.rows[0];
+        
+        await query(
+          `INSERT INTO notification_queue (user_id, type, message, status) VALUES ($1, $2, $3, $4)`,
+          [user_id, 'subscription_renewed', `Your ${plan_name} subscription has been renewed`, 'pending']
+        );
+      }
+
+      console.log(`✅ Subscription renewed: ${invoice.subscription}`);
+    }
+  } catch (error) {
+    console.error('❌ Error handling invoice payment:', error);
+  }
+}
+
+// ✅ SUBSCRIPTION: Recurring Payment Failed
+async function handleInvoicePaymentFailed(invoice: any) {
+  console.log(`❌ Recurring payment failed: ${invoice.id}`);
+  
+  try {
+    // Send notification to user
+    if (invoice.subscription) {
+      const subResult = await query(
+        'SELECT user_id, plan_name FROM supplier_subscription WHERE stripe_subscription_id = $1',
+        [invoice.subscription]
+      );
+
+      if (subResult.rows.length > 0) {
+        const { user_id, plan_name } = subResult.rows[0];
+        
+        await query(
+          `INSERT INTO notification_queue (user_id, type, message, status) VALUES ($1, $2, $3, $4)`,
+          [user_id, 'payment_failed', `Payment failed for your ${plan_name} subscription. Please update your payment method.`, 'pending']
+        );
+
+        console.log(`⚠️ Payment failed notification sent to user: ${user_id}`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error handling failed invoice:', error);
+  }
+}
+
 // ✅ GET method for testing
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
