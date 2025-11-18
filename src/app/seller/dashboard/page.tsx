@@ -475,14 +475,14 @@ useEffect(() => {
               <p className="text-gray-600 mt-1">Manage your inventory, quotes, and orders</p>
             </div>
             <div className="flex gap-3">
-              <Link
+             {/*  <Link
                 href="/seller/add-part"
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 onClick={() => infomsg('Opening add part form...')}
               >
                 <Plus className="w-5 h-5" />
                 Add Part
-              </Link>
+              </Link>*/}
               <Link
                 href="/seller/subscription"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"

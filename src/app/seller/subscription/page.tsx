@@ -292,27 +292,7 @@ export default function SubscriptionPage() {
             Upgrade your seller account to get more visibility, faster response times, and premium features.
           </p>
           
-          {/* ✅ Coupon Code Section */}
-          <div className="mt-6 max-w-md mx-auto">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Enter coupon code"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                onClick={handleApplyCoupon}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              Have a coupon? Enter it above and the discount will be applied at checkout.
-            </p>
-          </div>
+
         </div>
 
         {/* Current Subscription Banner */}
