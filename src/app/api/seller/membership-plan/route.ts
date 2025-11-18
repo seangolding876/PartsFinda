@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     // Get current active subscription
     const subscriptionResult = await query(
       `SELECT 
-        ss.plan_name,
+        s.membership_plan as plan_name,
+        --ss.plan_name,
         ss.start_date,
         ss.end_date,
         ss.is_active,
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
           WHEN ss.end_date > NOW() THEN 'active'
           ELSE 'expired'
         END as subscription_status
-       FROM supplier_subscription ss
+       FROM supplier_subscription ss LEFT JOIN 
+	     users s ON s.id = ss.user_id
        WHERE ss.user_id = $1 
        ORDER BY ss.created_at DESC 
        LIMIT 1`,
