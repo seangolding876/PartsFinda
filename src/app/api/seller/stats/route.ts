@@ -46,15 +46,14 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error fetching stats:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch stats',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    );
-  }
+  console.error("Exact error:", error);   // Console me full error
+  return NextResponse.json(
+    {
+      success: false,
+      error: error.message || "Unknown error",
+      stack: error.stack    // ← Yeh add karo temporary
+    },
+    { status: 500 }
+  );
+}
 }
