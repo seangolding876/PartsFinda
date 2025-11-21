@@ -222,12 +222,23 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Amount & Billing</h3>
                   <dl className="space-y-3">
+
+
                     <div>
+                      <dt className="text-sm font-medium text-gray-500"></dt>
+                      <dd className="text-2xl font-bold text-gray-900">
+                      </dd>
+                    </div>
+
+
+                      <div>
                       <dt className="text-sm font-medium text-gray-500">Amount</dt>
                       <dd className="text-2xl font-bold text-gray-900">
                         ${formatCurrency(payment.amount)} {payment.currency}
                       </dd>
                     </div>
+
+                    
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Billing Cycle Start</dt>
                       <dd className="text-sm text-gray-900">
