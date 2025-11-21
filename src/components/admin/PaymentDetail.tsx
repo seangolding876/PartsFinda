@@ -195,7 +195,14 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                   <dl className="space-y-3">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Payment Intent ID</dt>
-                      <dd className="text-sm text-gray-900 font-mono">{payment.stripe_payment_intent_id || 'N/A'}</dd>
+                    {(payment.stripe_payment_intent_id || 'N/A')
+    .match(/.{1,30}/g)
+    ?.map((chunk, i) => (
+      <span key={i}>
+        {chunk}
+        <br />
+      </span>
+    ))}
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Subscription ID</dt>
@@ -225,9 +232,9 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
 
 
                     <div>
-                      <dt className="text-sm font-medium text-gray-500"></dt>
+                      <dt className="text-sm font-medium text-gray-500"> </dt>
                       <dd className="text-2xl font-bold text-gray-900">
-                      </dd>
+                        </dd>
                     </div>
 
 
