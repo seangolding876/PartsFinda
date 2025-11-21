@@ -120,7 +120,6 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
     );
   }
 
-  // Rest of the component remains the same as before...
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
@@ -200,19 +199,19 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Bill To</h3>
               <p className="font-semibold text-gray-900">{receipt.customer.name}</p>
-              {receipt.customer.business && (
+              {receipt.customer.business !== 'N/A' && (
                 <p className="text-gray-600">{receipt.customer.business}</p>
               )}
-              {receipt.customer.address && (
+              {receipt.customer.address !== 'N/A' && (
                 <p className="text-gray-600">{receipt.customer.address}</p>
               )}
               <p className="text-gray-600">
                 {[receipt.customer.city, receipt.customer.parish, receipt.customer.postal_code]
-                  .filter(Boolean)
+                  .filter(item => item !== 'N/A')
                   .join(', ')}
               </p>
               <p className="text-gray-600">{receipt.customer.email}</p>
-              {receipt.customer.phone && (
+              {receipt.customer.phone !== 'N/A' && (
                 <p className="text-gray-600">{receipt.customer.phone}</p>
               )}
             </div>
@@ -225,7 +224,7 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
             </div>
             
             <div className="p-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium text-gray-500">Payment ID:</span>
                   <span className="ml-2 text-gray-900 font-mono">{receipt.payment.id}</span>
@@ -235,14 +234,16 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
                   <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
                     receipt.payment.status === 'completed' 
                       ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      : receipt.payment.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
                   }`}>
                     {receipt.payment.status.toUpperCase()}
                   </span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Payment Method:</span>
-                  <span className="ml-2 text-gray-900">{receipt.payment.method || 'Credit Card'}</span>
+                  <span className="ml-2 text-gray-900">{receipt.payment.method}</span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Currency:</span>
@@ -261,7 +262,7 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
             <div className="p-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="font-semibold text-gray-900">{receipt.subscription.plan_name} Plan</h4>
+                  <h4 className="font-semibold text-gray-900">{receipt.subscription.plan_name}</h4>
                   <p className="text-sm text-gray-600">
                     Duration: {receipt.subscription.duration_days} days
                   </p>
@@ -288,20 +289,20 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">${receipt.breakdown.subtotal}</span>
+                  <span className="text-gray-900">${receipt.breakdown.subtotal.toFixed(2)}</span>
                 </div>
                 
                 {receipt.breakdown.tax > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax:</span>
-                    <span className="text-gray-900">${receipt.breakdown.tax}</span>
+                    <span className="text-gray-900">${receipt.breakdown.tax.toFixed(2)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between border-t border-gray-200 pt-3">
                   <span className="text-lg font-semibold text-gray-900">Total:</span>
                   <span className="text-lg font-bold text-gray-900">
-                    ${receipt.breakdown.total} {receipt.payment.currency}
+                    ${receipt.breakdown.total.toFixed(2)} {receipt.payment.currency}
                   </span>
                 </div>
               </div>
