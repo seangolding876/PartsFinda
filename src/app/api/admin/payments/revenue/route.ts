@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         COUNT(*) AS transaction_count,
         COALESCE(SUM(amount), 0) AS revenue,
         COUNT(DISTINCT user_id) AS unique_customers
-      FROM payments
+      FROM subscription_payments
       WHERE status = 'completed'
         AND created_at >= NOW() - INTERVAL '${interval}'
       GROUP BY period

@@ -17,10 +17,10 @@ export async function GET(
         sp.plan_name,
         sp.price as plan_price,
         sp.duration_days
-      FROM payments p
+      FROM subscription_payments p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN subscription_plans sp ON p.subscription_plan_id = sp.plan_id
-      WHERE p.payment_id = $1 
+      WHERE p.id = $1 
     `;
 //OR p.stripe_payment_id = $1
     const result = await query(paymentQuery, [paymentId]);
