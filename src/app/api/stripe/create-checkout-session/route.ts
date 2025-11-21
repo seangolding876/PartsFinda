@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // ✅ STEP 1: Check if user has existing active subscription
+    // ✅ Check if user has existing active subscription
     const existingSubResult = await query(
       `SELECT ss.stripe_subscription_id, sp.plan_name, ss.end_date 
        FROM supplier_subscription ss
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stripe price not configured for this plan' }, { status: 400 });
     }
 
-    // ✅ Stripe Checkout Session Configuration
+    // ✅ Stripe Checkout Session Configuration - FIXED
     const sessionConfig: any = {
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         plan_id: planId.toString(),
         user_id: userInfo.userId.toString(),
         plan_name: plan.plan_name,
-        is_upgrade: hasActiveSubscription.toString() // ✅ Track if this is an upgrade
+        is_upgrade: hasActiveSubscription.toString()
       },
       success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
           plan_name: plan.plan_name,
           is_upgrade: hasActiveSubscription.toString()
         },
-        // ✅ CRITICAL: Add proration settings for upgrades
-        proration_behavior: 'create_prorations', // ✅ Proration allow karein
-        // billing_cycle_anchor: 'now' // ✅ Immediately start new billing cycle
+        // ✅ FIX: Add proper billing_cycle_anchor with proration_behavior
+        proration_behavior: 'create_prorations',
+        billing_cycle_anchor: Math.floor(Date.now() / 1000) // ✅ Current timestamp in seconds
       },
       allow_promotion_codes: true
     };
@@ -128,28 +128,27 @@ export async function POST(request: NextRequest) {
     console.log('✅ Stripe checkout session created:', session.id, {
       isUpgrade: hasActiveSubscription,
       prorationBehavior: 'create_prorations',
-      billingCycleAnchor: 'now'
+      billingCycleAnchor: Math.floor(Date.now() / 1000)
     });
 
     // Save session info in database
     await query(
       `INSERT INTO stripe_sessions (
-        user_id, session_id, plan_id, status, amount_total, is_upgrade
-      ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        user_id, session_id, plan_id, status, amount_total
+      ) VALUES ($1, $2, $3, $4, $5)`,
       [
         userInfo.userId,
         session.id,
         planId,
         'pending',
-        session.amount_total ? session.amount_total / 100 : plan.price,
-        hasActiveSubscription // ✅ Track if this was an upgrade
+        session.amount_total ? session.amount_total / 100 : plan.price
       ]
     );
 
     return NextResponse.json({
       sessionId: session.id,
       url: session.url,
-      isUpgrade: hasActiveSubscription // ✅ Frontend ko batao ki upgrade hai
+      isUpgrade: hasActiveSubscription
     });
 
   } catch (error: any) {
