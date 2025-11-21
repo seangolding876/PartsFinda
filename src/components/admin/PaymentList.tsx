@@ -69,30 +69,26 @@ export default function PaymentList() {
     router.push(`/admin/payments/${paymentId}`);
   };
 
-  const handleGenerateReceipt = async (paymentId: number) => {
-    try {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value.toString());
-      });
-      // const response = await fetch('/api/admin/payments/receipt', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ paymentId })
-      // });
-      const response = await fetch(`/api/admin/payments/receipt?${params}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        // Receipt page par redirect karen
-        router.push(data.data.receipt_url);
-      }
-    } catch (error) {
-      console.error('Error generating receipt:', error);
+const handleGenerateReceipt = async (paymentId: number) => {
+  try {
+    const response = await fetch(`/api/admin/payments/receipt?paymentId=${paymentId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      router.push(data.data.receipt_url);
+    } else {
+      console.error('Error:', data.error);
     }
-  };
+  } catch (error) {
+    console.error('Error generating receipt:', error);
+  }
+};
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
