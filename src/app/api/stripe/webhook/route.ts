@@ -143,11 +143,15 @@ export async function POST(request: NextRequest) {
 }
 
 // ✅ CHECKOUT SESSION COMPLETED - WITH COUPON SUPPORT
-// ✅ CHECKOUT SESSION COMPLETED - WITH PROPER COUPON SUPPORT
+// ✅ DEBUG VERSION - CHECKOUT SESSION COMPLETED
 async function handleCheckoutSessionCompleted(session: any) {
-  console.log('💰 CHECKOUT SESSION COMPLETED');
+  console.log('💰 CHECKOUT SESSION COMPLETED - DEBUG MODE');
   console.log('📦 Session ID:', session.id);
   console.log('💳 Payment Status:', session.payment_status);
+  
+  // ✅ COMPLETE SESSION LOGGING
+  console.log('🔍 COMPLETE SESSION OBJECT:');
+  console.log(JSON.stringify(session, null, 2));
   
   try {
     // ✅ STEP 0: Log webhook receipt
@@ -224,63 +228,134 @@ async function handleCheckoutSessionCompleted(session: any) {
     const plan = planResult.rows[0];
     console.log('🎯 Plan found:', plan.plan_name, 'Price:', plan.price);
 
-    // ✅ STEP 3: GET COUPON DETAILS FROM INVOICE
+    // ✅ STEP 3: DEEP DEBUG - FIND COUPON INFORMATION
+    console.log('🔍 DEEP COUPON DEBUG START =================================');
+    
     let discountAmount = 0;
     let couponCode = null;
     let discountPercentage = 0;
-    let invoiceDetails = null;
 
-    try {
-      // Get invoice from session
-      if (session.invoice) {
+    // Check ALL possible locations for coupon/discount info
+    console.log('1. Checking session.discount:', session.discount);
+    console.log('2. Checking session.total_details:', session.total_details);
+    console.log('3. Checking session.invoice:', session.invoice);
+    console.log('4. Checking session.subscription:', session.subscription);
+    console.log('5. Checking session.payment_intent:', session.payment_intent);
+    
+    // Method 1: Check session.discount directly
+    if (session.discount) {
+      console.log('🎫 Found session.discount:', session.discount);
+      if (session.discount.coupon) {
+        couponCode = session.discount.coupon.id;
+        console.log('🎫 Coupon code from session.discount:', couponCode);
+      }
+    }
+
+    // Method 2: Check total_details for discount amount
+    if (session.total_details && session.total_details.amount_discount) {
+      discountAmount = session.total_details.amount_discount / 100;
+      console.log('💰 Discount amount from total_details:', discountAmount);
+    }
+
+    // Method 3: Retrieve invoice if available
+    if (session.invoice) {
+      try {
+        console.log('🧾 Retrieving invoice:', session.invoice);
         const invoice = await stripe.invoices.retrieve(session.invoice);
-        console.log('🧾 Invoice details:', JSON.stringify(invoice, null, 2));
+        console.log('🧾 Invoice object:', JSON.stringify(invoice, null, 2));
         
-        invoiceDetails = invoice;
-
-        // Check for discount in invoice
+        // Check invoice discount
         if (invoice.discount) {
-          console.log('🎫 Discount found in invoice:', invoice.discount);
-          
-          if (invoice.discount.coupon) {
+          console.log('🎫 Found invoice.discount:', invoice.discount);
+          if (invoice.discount.coupon && !couponCode) {
             couponCode = invoice.discount.coupon.id;
             console.log('🎫 Coupon code from invoice:', couponCode);
           }
-          
-          // Calculate discount amount from invoice totals
-          if (invoice.total_discount_amounts && invoice.total_discount_amounts.length > 0) {
-            discountAmount = invoice.total_discount_amounts.reduce((sum: number, discount: any) => {
-              return sum + (discount.amount / 100);
-            }, 0);
-            console.log('💰 Total discount amount from invoice:', discountAmount);
-          }
         }
-
-        // Alternative: Check line items for discounts
+        
+        // Check invoice discount amounts
+        if (invoice.total_discount_amounts && invoice.total_discount_amounts.length > 0) {
+          console.log('💰 Invoice discount amounts:', invoice.total_discount_amounts);
+          discountAmount = invoice.total_discount_amounts.reduce((sum: number, discount: any) => {
+            return sum + (discount.amount / 100);
+          }, 0);
+        }
+        
+        // Check line items for discounts
         if (invoice.lines && invoice.lines.data) {
-          for (const line of invoice.lines.data) {
+          console.log('📊 Invoice line items count:', invoice.lines.data.length);
+          invoice.lines.data.forEach((line: any, index: number) => {
+            console.log(`📊 Line ${index}:`, {
+              description: line.description,
+              amount: line.amount / 100,
+              discount_amounts: line.discount_amounts
+            });
+            
             if (line.discount_amounts && line.discount_amounts.length > 0) {
               const lineDiscount = line.discount_amounts.reduce((sum: number, discount: any) => {
                 return sum + (discount.amount / 100);
               }, 0);
-              console.log('📊 Line item discount:', lineDiscount);
+              console.log(`💰 Line ${index} discount:`, lineDiscount);
               discountAmount += lineDiscount;
             }
-          }
+          });
         }
+      } catch (invoiceError) {
+        console.error('❌ Error retrieving invoice:', invoiceError);
       }
-    } catch (invoiceError) {
-      console.error('❌ Error retrieving invoice:', invoiceError);
     }
 
-    // ✅ STEP 4: Calculate payment amounts with coupon discount
-    const originalAmount = plan.price; // Original plan price
+    // Method 4: Retrieve subscription for discount info
+    if (session.subscription) {
+      try {
+        console.log('🔄 Retrieving subscription:', session.subscription);
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        console.log('🔄 Subscription object:', JSON.stringify(subscription, null, 2));
+        
+        // Check subscription discount
+        if (subscription.discount) {
+          console.log('🎫 Found subscription.discount:', subscription.discount);
+          if (subscription.discount.coupon && !couponCode) {
+            couponCode = subscription.discount.coupon.id;
+            console.log('🎫 Coupon code from subscription:', couponCode);
+          }
+        }
+      } catch (subscriptionError) {
+        console.error('❌ Error retrieving subscription:', subscriptionError);
+      }
+    }
+
+    // Method 5: Retrieve payment intent for discount info
+    if (session.payment_intent) {
+      try {
+        console.log('💳 Retrieving payment intent:', session.payment_intent);
+        const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+        console.log('💳 Payment intent object:', JSON.stringify(paymentIntent, null, 2));
+        
+        // Check payment intent for discount info
+        if (paymentIntent.invoice) {
+          try {
+            const piInvoice = await stripe.invoices.retrieve(paymentIntent.invoice);
+            console.log('🧾 Payment Intent Invoice:', JSON.stringify(piInvoice, null, 2));
+          } catch (piInvoiceError) {
+            console.error('❌ Error retrieving payment intent invoice:', piInvoiceError);
+          }
+        }
+      } catch (paymentIntentError) {
+        console.error('❌ Error retrieving payment intent:', paymentIntentError);
+      }
+    }
+
+    console.log('🔍 DEEP COUPON DEBUG END =================================');
+
+    // ✅ STEP 4: Calculate payment amounts
+    const originalAmount = plan.price;
     let finalAmount = session.amount_total ? session.amount_total / 100 : originalAmount;
 
-    // If we couldn't get discount from invoice, calculate from session amounts
-    if (discountAmount === 0 && session.total_details && session.total_details.amount_discount) {
-      discountAmount = session.total_details.amount_discount / 100;
-      console.log('🎫 Discount from session total_details:', discountAmount);
+    // If we still don't have discount amount but final amount is different from original
+    if (discountAmount === 0 && finalAmount !== originalAmount) {
+      discountAmount = originalAmount - finalAmount;
+      console.log('💰 Calculated discount amount from difference:', discountAmount);
     }
 
     // Calculate discount percentage
@@ -288,11 +363,11 @@ async function handleCheckoutSessionCompleted(session: any) {
       discountPercentage = Math.round((discountAmount / originalAmount) * 100);
     }
 
-    // If final amount is 0 but original amount has value, then discount is 100%
+    // Special case: 100% discount
     if (finalAmount === 0 && originalAmount > 0) {
       discountAmount = originalAmount;
       discountPercentage = 100;
-      console.log('💯 100% discount detected - Final amount is 0');
+      console.log('💯 100% discount detected');
     }
 
     console.log('💰 FINAL Payment Breakdown:', {
@@ -300,8 +375,7 @@ async function handleCheckoutSessionCompleted(session: any) {
       discountAmount,
       finalAmount,
       discountPercentage: discountPercentage + '%',
-      couponCode,
-      hasInvoice: !!invoiceDetails
+      couponCode: couponCode || 'NOT FOUND'
     });
 
     // ✅ STEP 5: Deactivate existing subscriptions
@@ -311,47 +385,34 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
     console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ STEP 6: Calculate dates - SAFE VERSION
+    // ✅ STEP 6: Calculate dates
     const startDate = new Date();
     let validEndDate = new Date();
     
     if (session.subscription) {
-      // Recurring subscription - get end date from Stripe
       try {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
-        
         if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
           validEndDate = new Date(subscription.current_period_end * 1000);
           console.log('📅 Subscription end date from Stripe:', validEndDate);
-        } else {
-          throw new Error('Invalid current_period_end from Stripe');
         }
       } catch (error) {
-        console.error('❌ Error retrieving subscription:', error);
-        // Fallback to plan duration
+        console.error('❌ Error retrieving subscription for dates:', error);
         const durationDays = parseInt(plan.duration_days) || 30;
-        validEndDate = new Date();
         validEndDate.setDate(validEndDate.getDate() + durationDays);
-        console.log('📅 Using fallback plan duration days:', durationDays);
       }
     } else {
-      // One-time payment - use plan duration
       const durationDays = parseInt(plan.duration_days) || 30;
-      validEndDate = new Date();
       validEndDate.setDate(validEndDate.getDate() + durationDays);
-      console.log('📅 Using plan duration days:', durationDays);
     }
 
     // ✅ Final validation of dates
     if (isNaN(validEndDate.getTime())) {
-      console.error('❌ Invalid end date calculated, using 30 days default');
       validEndDate = new Date();
       validEndDate.setDate(validEndDate.getDate() + 30);
     }
 
-    console.log('✅ Final dates - Start:', startDate, 'End:', validEndDate);
-
-    // ✅ STEP 7: Create new subscription in supplier_subscription
+    // ✅ STEP 7: Create new subscription
     const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
         user_id, plan_name, start_date, end_date, is_active, renewal_count,
@@ -377,7 +438,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
     console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
-    // ✅ STEP 9: Create record in subscription_payments table WITH COUPON DETAILS
+    // ✅ STEP 9: Create record in subscription_payments table
     await query(
       `INSERT INTO subscription_payments (
         user_id, subscription_plan_id, stripe_payment_intent_id, stripe_subscription_id,
@@ -391,32 +452,30 @@ async function handleCheckoutSessionCompleted(session: any) {
         plan_id,
         session.payment_intent || session.id,
         session.subscription || null,
-        finalAmount, // Final amount after discount
+        finalAmount,
         session.currency?.toUpperCase() || 'USD',
         'completed',
         'card',
         startDate,
         validEndDate,
-        originalAmount, // Original plan price
-        discountAmount, // Discount amount
-        finalAmount,    // Final paid amount
-        discountPercentage, // Discount percentage
-        couponCode,     // Coupon code used
-        invoiceDetails?.number || session.invoice_number || `INV-${Date.now()}` // Invoice number
+        originalAmount,
+        discountAmount,
+        finalAmount,
+        discountPercentage,
+        couponCode,
+        session.invoice_number || `INV-${Date.now()}`
       ]
     );
-    console.log('💰 Subscription payment recorded with coupon details');
+    console.log('💰 Subscription payment recorded');
 
-    // ✅ STEP 10: Create notification with discount info
+    // ✅ STEP 10: Create notification
     let notificationMessage = `Your ${plan.plan_name} subscription has been activated!`;
-    
     if (discountAmount > 0) {
-      notificationMessage += ` You saved ${discountPercentage}% (${discountAmount})`;
+      notificationMessage += ` You saved ${discountPercentage}%`;
       if (couponCode) {
-        notificationMessage += ` with coupon ${couponCode}!`;
-      } else {
-        notificationMessage += ` with discount!`;
+        notificationMessage += ` with coupon ${couponCode}`;
       }
+      notificationMessage += `!`;
     }
 
     await query(
@@ -443,7 +502,6 @@ async function handleCheckoutSessionCompleted(session: any) {
     console.error('❌ CRITICAL ERROR in checkout handler:', error.message);
     console.error('🔍 Error stack:', error.stack);
     
-    // ✅ Log error to webhook_errors table
     try {
       await query(
         'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
@@ -459,6 +517,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
   }
 }
+
 // ✅ SUBSCRIPTION CREATED
 async function handleSubscriptionCreated(subscription: any) {
   console.log(`📝 Subscription created: ${subscription.id}`);
