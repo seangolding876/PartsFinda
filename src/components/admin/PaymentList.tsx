@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface Payment {
-  payment_id: number;
+  id: number;
   stripe_payment_id: string;
   amount: number;
   currency: string;
@@ -179,13 +179,13 @@ export default function PaymentList() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {payments.map((payment) => (
-                    <tr key={payment.payment_id} className="hover:bg-gray-50">
+                    <tr key={payment.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {payment.invoice_number || `PAY-${payment.payment_id}`}
+                          {payment.invoice_number || `PAY-${payment.id}`}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {payment.stripe_payment_id}
+                          {payment.id}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -220,13 +220,13 @@ export default function PaymentList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
-                          onClick={() => handleViewDetails(payment.payment_id)}
+                          onClick={() => handleViewDetails(payment.id)}
                           className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded text-sm transition-colors"
                         >
                           View
                         </button>
                         <button
-                          onClick={() => handleGenerateReceipt(payment.payment_id)}
+                          onClick={() => handleGenerateReceipt(payment.id)}
                           className="text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100 px-3 py-1 rounded text-sm transition-colors"
                         >
                           Receipt
