@@ -71,14 +71,18 @@ export default function PaymentList() {
 
   const handleGenerateReceipt = async (paymentId: number) => {
     try {
-      const response = await fetch('/api/admin/payments/receipt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ paymentId })
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value.toString());
       });
-
+      // const response = await fetch('/api/admin/payments/receipt', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ paymentId })
+      // });
+      const response = await fetch(`/api/admin/payments/receipt?${params}`);
       const data = await response.json();
       
       if (data.success) {
