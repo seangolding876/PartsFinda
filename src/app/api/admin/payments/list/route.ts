@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic'; // Add this line
+// app/api/admin/payments/list/route.ts
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
@@ -12,11 +13,11 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * limit;
 
-    let whereConditions = [];
+    let whereConditions = ['1=1'];
     let queryParams = [];
 
     if (status && status !== 'all') {
-      whereConditions.push(`p.status = $${queryParams.length + 1}`);
+      whereConditions.push(`sp.status = $${queryParams.length + 1}`);
       queryParams.push(status);
     }
 
@@ -25,62 +26,61 @@ export async function GET(request: NextRequest) {
         u.name ILIKE $${queryParams.length + 1} OR 
         u.email ILIKE $${queryParams.length + 1} OR 
         u.business_name ILIKE $${queryParams.length + 1} OR
-        p.stripe_payment_id ILIKE $${queryParams.length + 1} OR
-        p.invoice_number ILIKE $${queryParams.length + 1}
+        sp.stripe_payment_intent_id ILIKE $${queryParams.length + 1} OR
+        sp.stripe_subscription_id ILIKE $${queryParams.length + 1}
       )`);
       queryParams.push(`%${search}%`);
     }
 
-    const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
-      : '';
+    const whereClause = whereConditions.join(' AND ');
 
     // Total count query
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM payments p
-      LEFT JOIN users u ON p.user_id = u.id
-      ${whereClause}
+      FROM subscription_payments sp
+      LEFT JOIN users u ON sp.user_id = u.id
+      WHERE ${whereClause}
     `;
 
     // Main data query
     const dataQuery = `
       SELECT 
-        p.payment_id,
-        p.stripe_payment_id,
-        p.amount,
-        p.currency,
-        p.status,
-        p.description,
-        p.created_at,
-        p.receipt_url,
-        p.customer_email,
-        p.customer_name,
-        p.invoice_number,
-        p.payment_method,
-        p.plan_details,
+        sp.id as payment_id,
+        sp.stripe_payment_intent_id,
+        sp.stripe_subscription_id,
+        sp.amount,
+        sp.currency,
+        sp.status,
+        sp.payment_method,
+        sp.created_at,
+        sp.billing_cycle_start,
+        sp.billing_cycle_end,
+        sp.invoice_number,
+        sp.receipt_url,
+        sp.customer_email,
+        sp.customer_name,
         u.id as user_id,
         u.name as user_name,
         u.email as user_email,
         u.business_name,
-        u.phone,
-        sp.plan_name as subscription_plan,
+        spl.plan_name as subscription_plan,
         ss.start_date,
         ss.end_date,
         ss.is_active as subscription_active
-      FROM payments p
-      LEFT JOIN users u ON p.user_id = u.id
-      LEFT JOIN subscription_plans sp ON p.subscription_plan_id = sp.plan_id
-      LEFT JOIN supplier_subscription ss ON p.user_id = ss.user_id AND ss.is_active = true
-      ${whereClause}
-      ORDER BY p.created_at DESC
+      FROM subscription_payments sp
+      LEFT JOIN users u ON sp.user_id = u.id
+      LEFT JOIN subscription_plans spl ON sp.subscription_plan_id = spl.plan_id
+      LEFT JOIN supplier_subscription ss ON sp.user_id = ss.user_id AND ss.is_active = true
+      WHERE ${whereClause}
+      ORDER BY sp.created_at DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
     `;
 
+    const countParams = [...queryParams];
     queryParams.push(limit, offset);
 
     const [countResult, dataResult] = await Promise.all([
-      query(countQuery, queryParams.slice(0, -2)),
+      query(countQuery, countParams),
       query(dataQuery, queryParams)
     ]);
 

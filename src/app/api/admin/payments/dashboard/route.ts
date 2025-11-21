@@ -1,7 +1,8 @@
 // app/api/admin/payments/dashboard/route.ts
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check admin authentication
@@ -10,18 +11,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get dashboard summary
+    // Get dashboard summary using subscription_payments table
     const summaryQuery = `
       SELECT 
-        -- Total revenue
-        (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed') as total_revenue,
+        -- Total revenue from subscription_payments
+        (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments WHERE status = 'completed') as total_revenue,
         
         -- Today's revenue
-        (SELECT COALESCE(SUM(amount), 0) FROM payments 
+        (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments 
          WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE) as today_revenue,
         
         -- Monthly revenue
-        (SELECT COALESCE(SUM(amount), 0) FROM payments 
+        (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments 
          WHERE status = 'completed' AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
          AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)) as monthly_revenue,
         
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
         (SELECT COUNT(*) FROM supplier_subscription WHERE is_active = true) as active_subscribers,
         
         -- Pending payments
-        (SELECT COUNT(*) FROM payments WHERE status = 'pending') as pending_payments,
+        (SELECT COUNT(*) FROM subscription_payments WHERE status = 'pending') as pending_payments,
         
         -- Users with 7 days left in subscription
         (SELECT COUNT(*) FROM supplier_subscription 
