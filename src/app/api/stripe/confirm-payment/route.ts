@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const plan = planResult.rows[0];
 
     // ✅ Validate plan name against allowed values
-    const allowedPlans = ['Basic', 'Standard', 'Premium', 'Gold', 'Pro'];
+    const allowedPlans = ['Basic', 'Premium', 'Enterprise'];
     if (!allowedPlans.includes(plan.plan_name)) {
       console.error('Invalid plan name:', plan.plan_name);
       return NextResponse.json(

@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 }
 
 // ✅ CHECKOUT SESSION COMPLETED - WITH COUPON SUPPORT
-// ✅ CHECKOUT SESSION COMPLETED - WITH PROPER COUPON SUPPORT
+// ✅ CHECKOUT SESSION COMPLETED - WITH DYNAMIC PLAN NAME VALIDATION
 async function handleCheckoutSessionCompleted(session: any) {
   console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
@@ -223,6 +223,68 @@ async function handleCheckoutSessionCompleted(session: any) {
 
     const plan = planResult.rows[0];
     console.log('🎯 Plan found:', plan.plan_name, 'Price:', plan.price);
+
+    // ✅ STEP 2.5: DYNAMIC PLAN NAME VALIDATION
+    let allowedPlanNames = ['Basic', 'Premium', 'Enterprise'];
+    
+    try {
+      // Try to get allowed plan names from database constraint dynamically
+      const constraintResult = await query(`
+        SELECT conname, pg_get_constraintdef(oid) as constraint_def
+        FROM pg_constraint 
+        WHERE conrelid = 'supplier_subscription'::regclass 
+        AND contype = 'c'
+        AND conname LIKE '%plan_name%'
+      `);
+      
+      if (constraintResult.rows.length > 0) {
+        console.log('🔍 Found constraint:', constraintResult.rows[0].conname);
+        const constraintDef = constraintResult.rows[0].constraint_def;
+        console.log('🔍 Constraint definition:', constraintDef);
+        
+        // Extract allowed values from constraint definition
+        const matches = constraintDef.match(/'([^']*)'/g);
+        if (matches) {
+          allowedPlanNames = matches.map((m: string) => m.replace(/'/g, ''));
+          console.log('✅ Dynamic allowed plan names from constraint:', allowedPlanNames);
+        }
+      } else {
+        console.log('ℹ️ No constraint found, using default allowed names');
+      }
+    } catch (error) {
+      console.log('⚠️ Could not fetch constraint, using default allowed names:', allowedPlanNames);
+    }
+
+    // Map plan name to allowed values
+    const rawPlanName = (plan.plan_name || '').trim();
+    
+    // First try exact match
+    let exactPlanNameForSubscription = allowedPlanNames.find(name => 
+      name.toLowerCase() === rawPlanName.toLowerCase()
+    );
+
+    // If not found, use intelligent mapping
+    if (!exactPlanNameForSubscription) {
+      const planNameMapping: { [key: string]: string } = {
+        'basic': 'Basic',
+        'premium': 'Premium',
+        'enterprise': 'Enterprise',
+      };
+      
+      const normalizedKey = rawPlanName.toLowerCase();
+      exactPlanNameForSubscription = planNameMapping[normalizedKey] || 
+                                   allowedPlanNames[0] || // Fallback to first allowed
+                                   'Basic';
+    }
+
+    const normalizedPlanNameForUser = rawPlanName.toLowerCase();
+
+    console.log('🔧 Dynamic Plan Name Mapping:', {
+      original: rawPlanName,
+      allowedNames: allowedPlanNames,
+      exactForSubscription: exactPlanNameForSubscription,
+      forUser: normalizedPlanNameForUser
+    });
 
     // ✅ STEP 3: GET COUPON DETAILS FROM INVOICE
     let discountAmount = 0;
@@ -351,7 +413,7 @@ async function handleCheckoutSessionCompleted(session: any) {
 
     console.log('✅ Final dates - Start:', startDate, 'End:', validEndDate);
 
-    // ✅ STEP 7: Create new subscription in supplier_subscription
+    // ✅ STEP 7: Create new subscription in supplier_subscription WITH VALIDATED PLAN NAME
     const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
         user_id, plan_name, start_date, end_date, is_active, renewal_count,
@@ -359,7 +421,7 @@ async function handleCheckoutSessionCompleted(session: any) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [
         user_id, 
-        plan.plan_name, 
+        exactPlanNameForSubscription, // ✅ DYNAMIC VALIDATED PLAN NAME
         startDate, 
         validEndDate,
         true, 
@@ -373,7 +435,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     // ✅ STEP 8: Update user membership_plan
     const userUpdateResult = await query(
       'UPDATE users SET membership_plan = $1 WHERE id = $2 RETURNING id',
-      [plan.plan_name.toLowerCase(), user_id]
+      [normalizedPlanNameForUser, user_id] // ✅ Lowercase for users table
     );
     console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
@@ -408,7 +470,7 @@ async function handleCheckoutSessionCompleted(session: any) {
     console.log('💰 Subscription payment recorded with coupon details');
 
     // ✅ STEP 10: Create notification with discount info
-    let notificationMessage = `Your ${plan.plan_name} subscription has been activated!`;
+    let notificationMessage = `Your ${exactPlanNameForSubscription} subscription has been activated!`;
     
     if (discountAmount > 0) {
       notificationMessage += ` You saved ${discountPercentage}% (${discountAmount})`;
@@ -430,7 +492,7 @@ async function handleCheckoutSessionCompleted(session: any) {
       ['completed', session.id]
     );
 
-    console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${plan.plan_name}`);
+    console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${exactPlanNameForSubscription}`);
     console.log('💰 FINAL Payment details:', {
       originalAmount,
       discountAmount,
@@ -459,6 +521,8 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
   }
 }
+
+
 // ✅ SUBSCRIPTION CREATED
 async function handleSubscriptionCreated(subscription: any) {
   console.log(`📝 Subscription created: ${subscription.id}`);
