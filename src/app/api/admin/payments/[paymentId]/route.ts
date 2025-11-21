@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'; // Add this line
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
@@ -31,13 +31,13 @@ export async function GET(
         ss.start_date as subscription_start,
         ss.end_date as subscription_end,
         ss.is_active as subscription_active
-      FROM payments p
+      FROM subscription_payments p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN subscription_plans sp ON p.subscription_plan_id = sp.plan_id
       LEFT JOIN supplier_subscription ss ON p.user_id = ss.user_id AND ss.is_active = true
-      WHERE p.payment_id = $1 OR p.stripe_payment_id = $1
+      WHERE p.id = $1 
     `;
-
+//OR p.stripe_payment_id = $1
     const result = await query(paymentQuery, [paymentId]);
 
     if (result.rows.length === 0) {
