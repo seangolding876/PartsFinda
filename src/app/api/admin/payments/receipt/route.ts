@@ -4,7 +4,7 @@ import { query } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { paymentId, email } = await request.json();
+    const { id, email } = await request.json();
 
     // Payment details get karen
     const paymentQuery = `
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
 
    // OR p.stripe_payment_id = $1
-    const result = await query(paymentQuery, [paymentId]);
+    const result = await query(paymentQuery, [id]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // For now, hum receipt data return karenge
 
     const receiptData = {
-      invoice_number: payment.invoice_number || `INV-${payment.payment_id}`,
+      invoice_number: payment.invoice_number || `INV-${payment.id}`,
       date: payment.created_at,
       customer: {
         name: payment.user_name || payment.customer_name,
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         phone: payment.phone
       },
       payment: {
-        id: payment.stripe_payment_id,
+        id: payment.stripe_id,
         amount: payment.amount,
         currency: payment.currency,
         status: payment.status,
@@ -70,14 +70,14 @@ export async function POST(request: NextRequest) {
     };
 
     // Generate receipt URL (temporary)
-    const receiptUrl = `/admin/payments/receipt/${payment.payment_id}`;
+    const receiptUrl = `/admin/payments/receipt/${payment.id}`;
 
     return NextResponse.json({
       success: true,
       data: {
         receipt: receiptData,
         receipt_url: receiptUrl,
-        download_url: `/api/admin/payments/receipt/${payment.payment_id}/download`
+        download_url: `/api/admin/payments/receipt/${payment.id}/download`
       }
     });
 
