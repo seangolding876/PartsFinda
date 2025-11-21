@@ -162,6 +162,16 @@ async function handleCheckoutSessionCompleted(session: any) {
     const user_id = metadata.user_id;
     const plan_name = metadata.plan_name;
 
+
+    // handleCheckoutSessionCompleted function ke start mein
+console.log('🔄 UPGRADE CHECK - Session Metadata:', {
+  plan_id: metadata.plan_id,
+  user_id: metadata.user_id,
+  plan_name: metadata.plan_name,
+  is_upgrade: metadata.is_upgrade, // Yeh aapne checkout session mein add kiya hai
+  existing_subscription_id: metadata.existing_subscription_id
+});
+
     console.log('📋 Extracted Metadata:', { plan_id, user_id, plan_name });
 
     // ✅ Check if metadata exists

@@ -45,6 +45,24 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
+    // ✅ STEP 1: Check if user has existing active subscription
+    const existingSubResult = await query(
+      `SELECT ss.stripe_subscription_id, sp.plan_name, ss.end_date 
+       FROM supplier_subscription ss
+       JOIN subscription_plans sp ON ss.plan_name = sp.plan_name
+       WHERE ss.user_id = $1 AND ss.is_active = true`,
+      [userInfo.userId]
+    );
+
+    const hasActiveSubscription = existingSubResult.rows.length > 0;
+    const existingSubscription = hasActiveSubscription ? existingSubResult.rows[0] : null;
+
+    console.log('📊 Existing subscription check:', {
+      hasActiveSubscription,
+      currentPlan: existingSubscription?.plan_name,
+      stripeSubscriptionId: existingSubscription?.stripe_subscription_id
+    });
+
     // ✅ Stripe Price IDs
     const stripePriceIds: { [key: string]: string } = {
       'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T',
@@ -60,59 +78,78 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Stripe Checkout Session Configuration
-const sessionConfig: any = {
-  mode: 'subscription',
-  payment_method_types: ['card'],
-  line_items: [
-    {
-      price: priceId,
-      quantity: 1,
-    },
-  ],
-  customer_email: user.email,
-  metadata: {
-    plan_id: planId.toString(),
-    user_id: userInfo.userId.toString(),
-    plan_name: plan.plan_name
-  },
-  success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-  cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
-  subscription_data: {
-    metadata: {
-      plan_id: planId.toString(),
-      user_id: userInfo.userId.toString(), 
-      plan_name: plan.plan_name
-    }
-  },
-  allow_promotion_codes: true
-};
+    const sessionConfig: any = {
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      customer_email: user.email,
+      metadata: {
+        plan_id: planId.toString(),
+        user_id: userInfo.userId.toString(),
+        plan_name: plan.plan_name,
+        is_upgrade: hasActiveSubscription.toString() // ✅ Track if this is an upgrade
+      },
+      success_url: `${process.env.NEXTAUTH_URL}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXTAUTH_URL}/seller/subscription`,
+      subscription_data: {
+        metadata: {
+          plan_id: planId.toString(),
+          user_id: userInfo.userId.toString(), 
+          plan_name: plan.plan_name,
+          is_upgrade: hasActiveSubscription.toString()
+        },
+        // ✅ CRITICAL: Add proration settings for upgrades
+        proration_behavior: 'create_prorations', // ✅ Proration allow karein
+        billing_cycle_anchor: 'now' // ✅ Immediately start new billing cycle
+      },
+      allow_promotion_codes: true
+    };
 
-    // ❌ YEH SAB REMOVE KARO - No pre-apply, no coupon validation
-    // ❌ No discounts array
-    // ❌ No coupon validation
+    // ✅ OPTIONAL: Agar existing subscription hai toh uski information add karein
+    if (hasActiveSubscription && existingSubscription.stripe_subscription_id) {
+      sessionConfig.metadata.existing_subscription_id = existingSubscription.stripe_subscription_id;
+      sessionConfig.subscription_data.metadata.existing_subscription_id = existingSubscription.stripe_subscription_id;
+      
+      console.log('🔄 Upgrade scenario detected:', {
+        from: existingSubscription.plan_name,
+        to: plan.plan_name,
+        existingStripeId: existingSubscription.stripe_subscription_id
+      });
+    }
 
     // ✅ Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
-    console.log('✅ Stripe checkout session created:', session.id);
+    console.log('✅ Stripe checkout session created:', session.id, {
+      isUpgrade: hasActiveSubscription,
+      prorationBehavior: 'create_prorations',
+      billingCycleAnchor: 'now'
+    });
 
     // Save session info in database
     await query(
       `INSERT INTO stripe_sessions (
-        user_id, session_id, plan_id, status, amount_total
-      ) VALUES ($1, $2, $3, $4, $5)`,
+        user_id, session_id, plan_id, status, amount_total, is_upgrade
+      ) VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         userInfo.userId,
         session.id,
         planId,
         'pending',
-        session.amount_total ? session.amount_total / 100 : plan.price
+        session.amount_total ? session.amount_total / 100 : plan.price,
+        hasActiveSubscription // ✅ Track if this was an upgrade
       ]
     );
 
     return NextResponse.json({
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      isUpgrade: hasActiveSubscription // ✅ Frontend ko batao ki upgrade hai
     });
 
   } catch (error: any) {
