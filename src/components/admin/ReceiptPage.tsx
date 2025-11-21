@@ -87,13 +87,22 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
   };
 
   const handleDownloadPDF = async () => {
-    // Yahan aap PDF generation service integrate kar sakte hain
-    // For now, print dialog show karenge
     handlePrint();
   };
 
   const handleBack = () => {
     router.back();
+  };
+
+  // Safe number formatting function
+  const formatCurrency = (value: any): string => {
+    if (value === null || value === undefined) return '0.00';
+    
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    
+    if (isNaN(num)) return '0.00';
+    
+    return num.toFixed(2);
   };
 
   if (loading) {
@@ -272,7 +281,7 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-gray-900">
-                    ${receipt.subscription.price}
+                    ${formatCurrency(receipt.subscription.price)}
                   </p>
                 </div>
               </div>
@@ -289,20 +298,20 @@ export default function ReceiptPage({ paymentId }: ReceiptPageProps) {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">${receipt.breakdown.subtotal.toFixed(2)}</span>
+                  <span className="text-gray-900">${formatCurrency(receipt.breakdown.subtotal)}</span>
                 </div>
                 
-                {receipt.breakdown.tax > 0 && (
+                {(receipt.breakdown.tax && receipt.breakdown.tax > 0) && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax:</span>
-                    <span className="text-gray-900">${receipt.breakdown.tax.toFixed(2)}</span>
+                    <span className="text-gray-900">${formatCurrency(receipt.breakdown.tax)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between border-t border-gray-200 pt-3">
                   <span className="text-lg font-semibold text-gray-900">Total:</span>
                   <span className="text-lg font-bold text-gray-900">
-                    ${receipt.breakdown.total.toFixed(2)} {receipt.payment.currency}
+                    ${formatCurrency(receipt.breakdown.total)} {receipt.payment.currency}
                   </span>
                 </div>
               </div>
