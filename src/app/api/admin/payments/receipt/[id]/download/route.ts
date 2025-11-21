@@ -4,10 +4,10 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { paymentId: string } }
 ) {
   try {
-    const paymentId = params.id;
+    const paymentId = params.paymentId;
 
     // Payment details get karen
     const paymentQuery = `
