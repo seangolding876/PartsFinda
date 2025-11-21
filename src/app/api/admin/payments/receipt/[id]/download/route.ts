@@ -4,11 +4,8 @@ import { query } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    // Query parameters se paymentId lein
-    const { searchParams } = new URL(request.url);
-    const paymentId = searchParams.get('paymentId');
+    const { paymentId } = await request.json();
 
-    // Validation
     if (!paymentId) {
       return NextResponse.json(
         { success: false, error: 'Payment ID is required' },
@@ -16,7 +13,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Payment details get karen
     const paymentQuery = `
       SELECT 
         p.*,
@@ -41,7 +37,6 @@ export async function POST(request: NextRequest) {
 
     const payment = result.rows[0];
 
-    // Safe data extraction with fallbacks
     const receiptData = {
       invoice_number: payment.invoice_number || `INV-${payment.payment_id}`,
       date: payment.created_at,
@@ -75,25 +70,21 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    const receiptUrl = `/admin/payments/receipt/${payment.payment_id || payment.id}`;
+    const receiptUrl = `/admin/payments/receipt/${payment.payment_id}`;
 
     return NextResponse.json({
       success: true,
       data: {
         receipt: receiptData,
         receipt_url: receiptUrl,
-        download_url: `/api/admin/payments/receipt/${payment.payment_id || payment.id}/download`
+        download_url: `/api/admin/payments/receipt/${payment.payment_id}/download`
       }
     });
 
   } catch (error: any) {
     console.error('Receipt generation error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { success: false, error: 'Server error', details: error.message },
       { status: 500 }
     );
   }
