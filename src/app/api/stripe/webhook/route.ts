@@ -142,12 +142,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ CHECKOUT SESSION COMPLETED - SAFE VERSION
+// ✅ CHECKOUT SESSION COMPLETED - WITH COUPON SUPPORT
+// ✅ CHECKOUT SESSION COMPLETED - WITH PROPER COUPON SUPPORT
 async function handleCheckoutSessionCompleted(session: any) {
   console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
   console.log('💳 Payment Status:', session.payment_status);
-  console.log('📋 Full Metadata:', session.metadata);
   
   try {
     // ✅ STEP 0: Log webhook receipt
@@ -224,17 +224,95 @@ async function handleCheckoutSessionCompleted(session: any) {
     const plan = planResult.rows[0];
     console.log('🎯 Plan found:', plan.plan_name, 'Price:', plan.price);
 
-    // ✅ STEP 3: Deactivate existing subscriptions
+    // ✅ STEP 3: GET COUPON DETAILS FROM INVOICE
+    let discountAmount = 0;
+    let couponCode = null;
+    let discountPercentage = 0;
+    let invoiceDetails = null;
+
+    try {
+      // Get invoice from session
+      if (session.invoice) {
+        const invoice = await stripe.invoices.retrieve(session.invoice);
+        console.log('🧾 Invoice details:', JSON.stringify(invoice, null, 2));
+        
+        invoiceDetails = invoice;
+
+        // Check for discount in invoice
+        if (invoice.discount) {
+          console.log('🎫 Discount found in invoice:', invoice.discount);
+          
+          if (invoice.discount.coupon) {
+            couponCode = invoice.discount.coupon.id;
+            console.log('🎫 Coupon code from invoice:', couponCode);
+          }
+          
+          // Calculate discount amount from invoice totals
+          if (invoice.total_discount_amounts && invoice.total_discount_amounts.length > 0) {
+            discountAmount = invoice.total_discount_amounts.reduce((sum: number, discount: any) => {
+              return sum + (discount.amount / 100);
+            }, 0);
+            console.log('💰 Total discount amount from invoice:', discountAmount);
+          }
+        }
+
+        // Alternative: Check line items for discounts
+        if (invoice.lines && invoice.lines.data) {
+          for (const line of invoice.lines.data) {
+            if (line.discount_amounts && line.discount_amounts.length > 0) {
+              const lineDiscount = line.discount_amounts.reduce((sum: number, discount: any) => {
+                return sum + (discount.amount / 100);
+              }, 0);
+              console.log('📊 Line item discount:', lineDiscount);
+              discountAmount += lineDiscount;
+            }
+          }
+        }
+      }
+    } catch (invoiceError) {
+      console.error('❌ Error retrieving invoice:', invoiceError);
+    }
+
+    // ✅ STEP 4: Calculate payment amounts with coupon discount
+    const originalAmount = plan.price; // Original plan price
+    let finalAmount = session.amount_total ? session.amount_total / 100 : originalAmount;
+
+    // If we couldn't get discount from invoice, calculate from session amounts
+    if (discountAmount === 0 && session.total_details && session.total_details.amount_discount) {
+      discountAmount = session.total_details.amount_discount / 100;
+      console.log('🎫 Discount from session total_details:', discountAmount);
+    }
+
+    // Calculate discount percentage
+    if (originalAmount > 0 && discountAmount > 0) {
+      discountPercentage = Math.round((discountAmount / originalAmount) * 100);
+    }
+
+    // If final amount is 0 but original amount has value, then discount is 100%
+    if (finalAmount === 0 && originalAmount > 0) {
+      discountAmount = originalAmount;
+      discountPercentage = 100;
+      console.log('💯 100% discount detected - Final amount is 0');
+    }
+
+    console.log('💰 FINAL Payment Breakdown:', {
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      discountPercentage: discountPercentage + '%',
+      couponCode,
+      hasInvoice: !!invoiceDetails
+    });
+
+    // ✅ STEP 5: Deactivate existing subscriptions
     const deactivateResult = await query(
       'UPDATE supplier_subscription SET is_active = false WHERE user_id = $1',
       [user_id]
     );
     console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ STEP 4: Calculate dates - SAFE VERSION
+    // ✅ STEP 6: Calculate dates - SAFE VERSION
     const startDate = new Date();
-    
-    // ✅ SAFE: Initialize validEndDate properly
     let validEndDate = new Date();
     
     if (session.subscription) {
@@ -242,7 +320,6 @@ async function handleCheckoutSessionCompleted(session: any) {
       try {
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
         
-        // ✅ SAFE: Check if current_period_end is valid
         if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
           validEndDate = new Date(subscription.current_period_end * 1000);
           console.log('📅 Subscription end date from Stripe:', validEndDate);
@@ -251,21 +328,21 @@ async function handleCheckoutSessionCompleted(session: any) {
         }
       } catch (error) {
         console.error('❌ Error retrieving subscription:', error);
-        // Fallback to plan duration - SAFE CALCULATION
+        // Fallback to plan duration
         const durationDays = parseInt(plan.duration_days) || 30;
-        validEndDate = new Date(); // ✅ Reset to current date
+        validEndDate = new Date();
         validEndDate.setDate(validEndDate.getDate() + durationDays);
         console.log('📅 Using fallback plan duration days:', durationDays);
       }
     } else {
-      // One-time payment - use plan duration - SAFE CALCULATION
+      // One-time payment - use plan duration
       const durationDays = parseInt(plan.duration_days) || 30;
-      validEndDate = new Date(); // ✅ Reset to current date
+      validEndDate = new Date();
       validEndDate.setDate(validEndDate.getDate() + durationDays);
       console.log('📅 Using plan duration days:', durationDays);
     }
 
-    // ✅ SAFE: Final validation of dates
+    // ✅ Final validation of dates
     if (isNaN(validEndDate.getTime())) {
       console.error('❌ Invalid end date calculated, using 30 days default');
       validEndDate = new Date();
@@ -274,7 +351,7 @@ async function handleCheckoutSessionCompleted(session: any) {
 
     console.log('✅ Final dates - Start:', startDate, 'End:', validEndDate);
 
-    // ✅ STEP 5: Create new subscription in supplier_subscription
+    // ✅ STEP 7: Create new subscription in supplier_subscription
     const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
         user_id, plan_name, start_date, end_date, is_active, renewal_count,
@@ -284,7 +361,7 @@ async function handleCheckoutSessionCompleted(session: any) {
         user_id, 
         plan.plan_name, 
         startDate, 
-        validEndDate,  // ✅ SAFE: Use validated end date
+        validEndDate,
         true, 
         0,
         session.subscription || null,
@@ -293,53 +370,73 @@ async function handleCheckoutSessionCompleted(session: any) {
     );
     console.log('✅ Subscription created with ID:', subscriptionResult.rows[0]?.id);
 
-    // ✅ STEP 6: Update user membership_plan
+    // ✅ STEP 8: Update user membership_plan
     const userUpdateResult = await query(
       'UPDATE users SET membership_plan = $1 WHERE id = $2 RETURNING id',
       [plan.plan_name.toLowerCase(), user_id]
     );
     console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
-    // ✅ STEP 7: Create record in subscription_payments table
-    const amountPaid = session.amount_total ? session.amount_total / 100 : plan.price;
-    
+    // ✅ STEP 9: Create record in subscription_payments table WITH COUPON DETAILS
     await query(
       `INSERT INTO subscription_payments (
         user_id, subscription_plan_id, stripe_payment_intent_id, stripe_subscription_id,
         amount, currency, status, payment_method,
-        billing_cycle_start, billing_cycle_end
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        billing_cycle_start, billing_cycle_end,
+        original_amount, discount_amount, final_amount, 
+        discount_percentage, coupon_code, invoice_number
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
       [
         user_id,
         plan_id,
         session.payment_intent || session.id,
         session.subscription || null,
-        amountPaid,
+        finalAmount, // Final amount after discount
         session.currency?.toUpperCase() || 'USD',
         'completed',
         'card',
         startDate,
-        validEndDate  // ✅ SAFE: Use validated end date
+        validEndDate,
+        originalAmount, // Original plan price
+        discountAmount, // Discount amount
+        finalAmount,    // Final paid amount
+        discountPercentage, // Discount percentage
+        couponCode,     // Coupon code used
+        invoiceDetails?.number || session.invoice_number || `INV-${Date.now()}` // Invoice number
       ]
     );
-    console.log('💰 Subscription payment recorded');
+    console.log('💰 Subscription payment recorded with coupon details');
 
-    // ✅ STEP 8: Create notification
+    // ✅ STEP 10: Create notification with discount info
+    let notificationMessage = `Your ${plan.plan_name} subscription has been activated!`;
+    
+    if (discountAmount > 0) {
+      notificationMessage += ` You saved ${discountPercentage}% (${discountAmount})`;
+      if (couponCode) {
+        notificationMessage += ` with coupon ${couponCode}!`;
+      } else {
+        notificationMessage += ` with discount!`;
+      }
+    }
+
     await query(
       `INSERT INTO notification_queue (user_id, type, message, status) VALUES ($1, $2, $3, $4)`,
-      [user_id, 'subscription_activated', `Your ${plan.plan_name} subscription has been activated!`, 'pending']
+      [user_id, 'subscription_activated', notificationMessage, 'pending']
     );
 
-    // ✅ STEP 9: Update webhook log to completed
+    // ✅ STEP 11: Update webhook log to completed
     await query(
       'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
       ['completed', session.id]
     );
 
     console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${plan.plan_name}`);
-    console.log('💰 Payment details:', {
-      amount: amountPaid,
-      currency: session.currency
+    console.log('💰 FINAL Payment details:', {
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      discountPercentage: discountPercentage + '%',
+      couponCode: couponCode || 'Not found'
     });
 
   } catch (error: any) {
@@ -362,7 +459,6 @@ async function handleCheckoutSessionCompleted(session: any) {
     }
   }
 }
-
 // ✅ SUBSCRIPTION CREATED
 async function handleSubscriptionCreated(subscription: any) {
   console.log(`📝 Subscription created: ${subscription.id}`);
