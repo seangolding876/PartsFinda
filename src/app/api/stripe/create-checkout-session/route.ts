@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         },
         // ✅ CRITICAL: Add proration settings for upgrades
         proration_behavior: 'create_prorations', // ✅ Proration allow karein
-        billing_cycle_anchor: 'now' // ✅ Immediately start new billing cycle
+        // billing_cycle_anchor: 'now' // ✅ Immediately start new billing cycle
       },
       allow_promotion_codes: true
     };
