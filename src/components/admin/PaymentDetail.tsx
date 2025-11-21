@@ -4,18 +4,18 @@ import { useRouter } from 'next/navigation';
 
 interface PaymentDetail {
   id: number;
-  stripe_payment_id: string;
+  stripe_payment_intent_id: string;
+  stripe_subscription_id: string;
+  billing_cycle_start: string;
+  billing_cycle_end: string;
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed';
   description: string;
   created_at: string;
   receipt_url: string;
-  customer_name: string;
-  customer_email: string;
   invoice_number: string;
   payment_method: string;
-  plan_details: any;
   user_id: number;
   user_name: string;
   user_email: string;
@@ -116,6 +116,14 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
     );
   };
 
+  // Safe number formatting function
+  const formatCurrency = (value: any): string => {
+    if (value === null || value === undefined) return '0.00';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '0.00';
+    return num.toFixed(2);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
@@ -174,7 +182,6 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
           </div>
         </div>
 
-        {/* Rest of the component remains the same */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Payment Information */}
           <div className="lg:col-span-2 space-y-6">
@@ -187,8 +194,12 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Basic Details</h3>
                   <dl className="space-y-3">
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Payment ID</dt>
-                      <dd className="text-sm text-gray-900 font-mono">{payment.stripe_payment_id}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Payment Intent ID</dt>
+                      <dd className="text-sm text-gray-900 font-mono">{payment.stripe_payment_intent_id || 'N/A'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Subscription ID</dt>
+                      <dd className="text-sm text-gray-900 font-mono">{payment.stripe_subscription_id || 'N/A'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Internal ID</dt>
@@ -209,26 +220,41 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Amount & Plan</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Amount & Billing</h3>
                   <dl className="space-y-3">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Amount</dt>
                       <dd className="text-2xl font-bold text-gray-900">
-                        ${payment.amount} {payment.currency}
+                        ${formatCurrency(payment.amount)} {payment.currency}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Plan</dt>
-                      <dd className="text-sm text-gray-900">{payment.plan_name || 'N/A'}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Billing Cycle Start</dt>
+                      <dd className="text-sm text-gray-900">
+                        {payment.billing_cycle_start ? new Date(payment.billing_cycle_start).toLocaleDateString() : 'N/A'}
+                      </dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-gray-500">Plan Price</dt>
-                      <dd className="text-sm text-gray-900">${payment.plan_price || 'N/A'}</dd>
+                      <dt className="text-sm font-medium text-gray-500">Billing Cycle End</dt>
+                      <dd className="text-sm text-gray-900">
+                        {payment.billing_cycle_end ? new Date(payment.billing_cycle_end).toLocaleDateString() : 'N/A'}
+                      </dd>
                     </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Duration</dt>
-                      <dd className="text-sm text-gray-900">{payment.duration_days || 'N/A'} days</dd>
-                    </div>
+                    {payment.receipt_url && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Stripe Receipt</dt>
+                        <dd className="text-sm">
+                          <a 
+                            href={payment.receipt_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            View on Stripe
+                          </a>
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
               </div>
@@ -241,6 +267,52 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
               )}
             </div>
 
+            {/* Plan Information */}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Plan Information</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Plan Details</h3>
+                  <dl className="space-y-3">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Plan Name</dt>
+                      <dd className="text-sm text-gray-900">{payment.plan_name || 'N/A'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Plan Price</dt>
+                      <dd className="text-sm text-gray-900">${formatCurrency(payment.plan_price)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Duration</dt>
+                      <dd className="text-sm text-gray-900">{payment.duration_days || 'N/A'} days</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
+                  <dl className="space-y-3">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Method</dt>
+                      <dd className="text-sm text-gray-900">{payment.payment_method || 'Credit Card'}</dd>
+                    </div>
+                    <div className="flex items-center space-x-3 mt-2">
+                      <div className="w-10 h-6 bg-blue-500 rounded flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">CC</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {payment.payment_method || 'Credit Card'}
+                        </p>
+                        <p className="text-xs text-gray-500">Via Stripe</p>
+                      </div>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </div>
+
             {/* Customer Information */}
             <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Customer Information</h2>
@@ -251,11 +323,11 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                   <dl className="space-y-3">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Name</dt>
-                      <dd className="text-sm text-gray-900">{payment.user_name || payment.customer_name}</dd>
+                      <dd className="text-sm text-gray-900">{payment.user_name || 'N/A'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Email</dt>
-                      <dd className="text-sm text-gray-900">{payment.user_email || payment.customer_email}</dd>
+                      <dd className="text-sm text-gray-900">{payment.user_email || 'N/A'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Phone</dt>
@@ -282,6 +354,10 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Tax ID</dt>
                       <dd className="text-sm text-gray-900">{payment.tax_id || 'N/A'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Business Registration</dt>
+                      <dd className="text-sm text-gray-900">{payment.business_registration_number || 'N/A'}</dd>
                     </div>
                   </dl>
                 </div>
@@ -341,7 +417,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500">Days Remaining</span>
                     <span className="text-sm text-gray-900">
-                      {Math.ceil((new Date(payment.subscription_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                      {Math.max(0, Math.ceil((new Date(payment.subscription_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}
                     </span>
                   </div>
                 )}
@@ -360,7 +436,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span>Download Receipt</span>
+                  <span>Generate Receipt</span>
                 </button>
 
                 <button
@@ -384,23 +460,18 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                     <span>Send Email</span>
                   </button>
                 )}
-              </div>
-            </div>
 
-            {/* Payment Method */}
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h3>
-              
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-6 bg-blue-500 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">CC</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {payment.payment_method || 'Credit Card'}
-                  </p>
-                  <p className="text-xs text-gray-500">Via Stripe</p>
-                </div>
+                {payment.receipt_url && (
+                  <button
+                    onClick={() => window.open(payment.receipt_url, '_blank')}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span>View Stripe Receipt</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
