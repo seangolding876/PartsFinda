@@ -520,7 +520,7 @@ async function handleSubscriptionDeleted(subscription: any) {
       // Reset user plan to free
       await query(
         'UPDATE users SET membership_plan = $1 WHERE id = $2',
-        ['free', userId]
+        ['basic', userId]
       );
 
       // Create notification

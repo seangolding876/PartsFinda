@@ -141,7 +141,7 @@ function SellerDashboard() {
             };
             
             setSellerProfile(profileData);
-            console.log('🎉 Seller profile set successfully');
+            // console.log('🎉 Seller profile set successfully');
           } else {
             console.error('❌ API Error:', result.error);
             errormsg(result.error || 'Failed to load seller profile');
