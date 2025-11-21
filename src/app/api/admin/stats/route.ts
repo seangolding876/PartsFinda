@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       query(`SELECT COUNT(*) as count FROM part_requests WHERE status = 'open' AND expires_at > NOW()`),
       
       // Monthly revenue from payments table
-      query(`SELECT COALESCE(SUM(amount), 0) as revenue FROM payments 
+      query(`SELECT COALESCE(SUM(amount), 0) as revenue FROM subscription_payments 
              WHERE status = 'completed' AND created_at >= DATE_TRUNC('month', CURRENT_DATE)`),
       
       // Urgent suppliers (missing documents but registered)
