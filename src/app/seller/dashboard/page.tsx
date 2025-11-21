@@ -110,7 +110,7 @@ function SellerDashboard() {
   useEffect(() => {
     const fetchSellerProfile = async () => {
       try {
-        console.log('🔍 Fetching seller profile...');
+        // console.log('🔍 Fetching seller profile...');
 
         const authData = getAuthData();
         if (!authData?.token) {
@@ -129,7 +129,7 @@ function SellerDashboard() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log('✅ API Result:', result);
+          // console.log('✅ API Result:', result);
 
           if (result.success) {
             // Ensure rating is a number
