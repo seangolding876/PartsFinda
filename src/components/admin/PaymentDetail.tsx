@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface PaymentDetail {
-  payment_id: number;
+  id: number;
   stripe_payment_id: string;
   amount: number;
   currency: string;
@@ -157,7 +157,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
             </button>
             <h1 className="text-3xl font-bold text-gray-900">Payment Details</h1>
             <p className="text-gray-600 mt-2">
-              Invoice: {payment.invoice_number || `INV-${payment.payment_id}`}
+              Invoice: {payment.invoice_number || `INV-${payment.id}`}
             </p>
           </div>
           
@@ -192,7 +192,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Internal ID</dt>
-                      <dd className="text-sm text-gray-900">#{payment.payment_id}</dd>
+                      <dd className="text-sm text-gray-900">#{payment.id}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Status</dt>
