@@ -61,8 +61,13 @@ export default function AlertManager() {
   return (
     <>
       {/* PREMIUM CENTER-BOTTOM TOAST */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] 
-                      w-[90%] sm:w-auto max-w-sm flex flex-col gap-3">
+<div className="
+  fixed bottom-6 z-[9999] 
+  w-[90%] max-w-sm flex flex-col gap-3
+
+  left-1/2 -translate-x-1/2        /* MOBILE: center */
+  sm:left-auto sm:right-6 sm:translate-x-0   /* DESKTOP: right */
+">
 
         {alerts.map(alert => (
           <div
