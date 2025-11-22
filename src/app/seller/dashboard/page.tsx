@@ -518,7 +518,6 @@ function SellerDashboard() {
         fetchData();
 
       } else {
-        // alert(result.error || 'Failed to reject request');
         errormsg(result.error || 'Failed to reject request');
       }
 

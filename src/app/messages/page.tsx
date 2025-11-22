@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Send, Paperclip, ArrowLeft, Check, CheckCheck, Clock, MessageCircle, User, RefreshCw } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { StarRating, RatingModal, UserRatingDisplay } from '@/components/RatingComponents';
-
+import { useToast } from '@/hooks/useToast'; 
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
@@ -84,6 +84,7 @@ export default function MessagesPage() {
   const [manualRefresh, setManualRefresh] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+  const { successmsg, errormsg, infomsg } = useToast(); 
   
   // ✅ Rating States
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -291,7 +292,7 @@ const checkRatingStatus = async (conversationId: string) => {
 const handleRatingSubmit = async (rating: number, comment: string) => {
   if (!selectedConversation) {
     console.error('❌ No conversation selected');
-    alert('No conversation selected');
+    infomsg('No conversation selected');
     return false;
   }
 
@@ -316,7 +317,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     // Final validation
     if (!ratedUserId || ratedUserId === currentUserId) {
       console.error('❌ Invalid ratedUserId:', { ratedUserId, currentUserId });
-      alert('Cannot determine user to rate. Please try again.');
+      infomsg('Cannot determine user to rate. Please try again.');
       return false;
     }
 
@@ -352,12 +353,12 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
       return true;
     } else {
       console.error('❌ Rating submission failed:', result.error);
-      alert(`Failed to submit rating: ${result.error}`);
+      errormsg(`Failed to submit rating:' ${result.error}`);
       throw new Error(result.error || 'Failed to submit rating');
     }
   } catch (error) {
     console.error('❌ Error submitting rating:', error);
-    alert('Error submitting rating. Please try again.');
+    errormsg('Error submitting rating. Please try again.');
     throw error;
   }
 };

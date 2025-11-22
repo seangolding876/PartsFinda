@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/useToast';
 
 interface Make {
   id: string;
@@ -32,6 +33,7 @@ export default function CarsManagement() {
   const [modelForm, setModelForm] = useState({ name: '', make_id: '' });
   const [editingMake, setEditingMake] = useState<Make | null>(null);
   const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   // Fetch data
   useEffect(() => {
@@ -78,14 +80,14 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Make created successfully!');
+        successmsg('Make created successfully!');
         setMakeForm({ name: '', logo_url: '' });
         fetchMakes();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to create make');
+      errormsg
     } finally {
       setLoading(false);
     }
@@ -107,15 +109,15 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Make updated successfully!');
+        successmsg('Make updated successfully!');
         setMakeForm({ name: '', logo_url: '' });
         setEditingMake(null);
         fetchMakes();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to update make');
+      errormsg
     } finally {
       setLoading(false);
     }
@@ -129,13 +131,13 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Make deleted successfully!');
+        successmsg('Make deleted successfully!');
         fetchMakes();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to delete make');
+    errormsg('Failed to delete make');
     }
   };
 
@@ -154,14 +156,14 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Model created successfully!');
+        successmsg('Model created successfully!');
         setModelForm({ name: '', make_id: '' });
         fetchModels();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to create model');
+      errormsg('Failed to create model');
     } finally {
       setLoading(false);
     }
@@ -183,15 +185,15 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Model updated successfully!');
+        successmsg('Model updated successfully!');
         setModelForm({ name: '', make_id: '' });
         setEditingModel(null);
         fetchModels();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to update model');
+      errormsg('Failed to update model');
     } finally {
       setLoading(false);
     }
@@ -205,13 +207,13 @@ export default function CarsManagement() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Model deleted successfully!');
+        successmsg('Model deleted successfully!');
         fetchModels();
       } else {
-        alert('Error: ' + result.error);
+        errormsg('Error: ' + result.error);
       }
     } catch (error) {
-      alert('Failed to delete model');
+      errormsg('Failed to delete model');
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface BuyerUser {
   id: number;
@@ -38,6 +39,7 @@ export default function BuyerDetailsModal({ buyer, onClose }: BuyerDetailsModalP
   const [activeTab, setActiveTab] = useState<'profile' | 'requests' | 'activity'>('profile');
   const [stats, setStats] = useState<BuyerStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   useEffect(() => {
     if (buyer) {
@@ -87,7 +89,7 @@ const fetchBuyerStats = async () => {
     });
     
     // You can show a user-friendly error message here
-    alert(`Failed to load buyer stats: ${error.message}`);
+    errormsg('Failed to load buyer stats. Please try again later.');
   } finally {
     setLoading(false);
   }

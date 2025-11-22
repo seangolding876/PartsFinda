@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import CreateAdminUserModal from './CreateAdminUserModal';
+import { useToast } from '@/hooks/useToast'; 
 
 export interface AdminUser {
   id: number;
@@ -21,6 +22,7 @@ interface AdminUsersTabProps {
 
 export default function AdminUsersTab({ users, onUserCreated, onUserDeleted }: AdminUsersTabProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const handleDeleteUser = async (userId: number) => {
     if (!confirm('Are you sure you want to delete this admin user?')) return;
@@ -34,11 +36,11 @@ export default function AdminUsersTab({ users, onUserCreated, onUserDeleted }: A
       if (data.success) {
         onUserDeleted(userId);
       } else {
-        alert('Failed to delete user: ' + data.error);
+        errormsg('Failed to delete user: ' + data.error);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Error deleting user');
+      errormsg('Error deleting user');
     }
   };
 

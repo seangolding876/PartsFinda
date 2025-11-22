@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { useToast } from '@/hooks/useToast'; 
+import { Info } from 'lucide-react';
 interface AuthProtectProps {
   children: React.ReactNode;
   requiredRole?: 'buyer' | 'seller' | 'admin';
@@ -12,6 +13,7 @@ export default function AuthProtect({ children, requiredRole = 'seller' }: AuthP
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const getAuthData = () => {
     if (typeof window === 'undefined') return null;
@@ -29,14 +31,14 @@ export default function AuthProtect({ children, requiredRole = 'seller' }: AuthP
       
       if (!authData?.token) {
         // No token found, redirect to login
-        alert('Please login to access this page');
+        infomsg('Please login to access this page');
         router.push('/auth/login');
         return;
       }
 
       if (requiredRole && authData.role !== requiredRole) {
         // Wrong role, redirect to appropriate page
-        alert(`This page is for ${requiredRole}s only`);
+        infomsg(`This page is for ${requiredRole}s only`);
         router.push(authData.role === 'buyer' ? '/my-requests' : '/dashboard');
         return;
       }
@@ -58,7 +60,7 @@ export default function AuthProtect({ children, requiredRole = 'seller' }: AuthP
         } else {
           // Token invalid, clear storage and redirect
           localStorage.removeItem('authData');
-          alert('Session expired. Please login again.');
+          infomsg('Session expired. Please login again.');
           router.push('/auth/login');
         }
       } catch (error) {

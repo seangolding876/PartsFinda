@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/useToast'; 
 
 // ✅ Star Rating Component
 export const StarRating = ({ 
@@ -69,10 +70,11 @@ export const RatingModal = ({
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      alert('Please select a rating');
+      infomsg('Please select a rating before submitting.');
       return;
     }
 

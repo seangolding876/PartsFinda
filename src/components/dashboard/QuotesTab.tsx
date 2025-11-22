@@ -1,5 +1,7 @@
 // components/Dashboard/QuotesTab.tsx
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/useToast'; 
+import { info } from 'console';
 
 interface Quote {
   id: number;
@@ -43,6 +45,7 @@ export default function QuotesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   useEffect(() => {
     fetchQuotes();
@@ -94,7 +97,7 @@ export default function QuotesTab() {
     try {
       const token = getAuthToken();
       if (!token) {
-        alert('Please login again');
+        infomsg('Please login again');
         return;
       }
 
@@ -109,14 +112,14 @@ export default function QuotesTab() {
       
       const data = await response.json();
       if (data.success) {
-        alert('Quote accepted successfully! Other quotes for this part have been automatically rejected.');
+        successmsg('Quote accepted successfully! Other quotes for this part have been automatically rejected.');
         fetchQuotes(); // Refresh quotes
       } else {
-        alert(data.error || 'Failed to accept quote');
+        errormsg(data.error || 'Failed to accept quote');
       }
     } catch (error: any) {
       console.error('Error accepting quote:', error);
-      alert('Failed to accept quote. Please try again.');
+      errormsg('Failed to accept quote. Please try again.');
     }
   };
 
@@ -126,7 +129,7 @@ export default function QuotesTab() {
     try {
       const token = getAuthToken();
       if (!token) {
-        alert('Please login again');
+        infomsg('Please login again');
         return;
       }
 
@@ -141,14 +144,14 @@ export default function QuotesTab() {
       
       const data = await response.json();
       if (data.success) {
-        alert('Quote rejected successfully!');
+        infomsg('Quote rejected successfully!');
         fetchQuotes(); // Refresh quotes
       } else {
-        alert(data.error || 'Failed to reject quote');
+        errormsg(data.error || 'Failed to reject quote');
       }
     } catch (error: any) {
       console.error('Error rejecting quote:', error);
-      alert('Failed to reject quote. Please try again.');
+      errormsg('Failed to reject quote. Please try again.');
     }
   };
 

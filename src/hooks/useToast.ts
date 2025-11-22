@@ -11,18 +11,12 @@ export const useToast = () => {
       (window as any).showAlert(message, type, duration);
     } else {
       console.log('Custom alert function not available');
-      // Fallback to native alert
-      const icons = {
-        successmsg: '✅',
-        errormsg: '❌', 
-        warningmsg: '⚠️',
-        infomsg: 'ℹ️'
-      };
-      alert(`${icons[type]} ${message}`);
+      
+      // SIMPLE ONE-LINE ALERT (NO ICON)
+      alert(message);
     }
   }, []);
 
-  // Convenience methods with 10s default
   const successmsg = useCallback((message: string, duration = 10000) => 
     showToast(message, 'successmsg', duration), [showToast]);
   

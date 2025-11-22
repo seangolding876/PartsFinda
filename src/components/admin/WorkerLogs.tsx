@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react'; // ✅ useRef import karein
 import { RefreshCw, Trash2, Download, Play, Square } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface WorkerLogsProps {
   authToken: string;
@@ -13,6 +14,7 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [workerStatus, setWorkerStatus] = useState<'running' | 'stopped' | 'unknown'>('unknown');
+  const { successmsg, errormsg, infomsg } = useToast(); 
   
   // ✅ Scroll ke liye ref add karein
   const logsContainerRef = useRef<HTMLDivElement>(null);
@@ -73,10 +75,10 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
         fetchWorkerStatus();
         fetchWorkerLogs(); // Refresh logs
       } else {
-        alert('Failed to control worker: ' + data.error);
+        errormsg('Failed to control worker: ' + data.error);
       }
     } catch (error) {
-      alert('Failed to control worker');
+      errormsg('Failed to control worker');
     }
   };
 

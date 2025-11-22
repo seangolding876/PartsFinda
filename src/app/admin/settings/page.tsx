@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface SystemSettings {
   general: {
@@ -46,6 +47,7 @@ export default function SystemSettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   // Load settings from API
   useEffect(() => {
@@ -133,13 +135,13 @@ export default function SystemSettingsPage() {
       const data = await response.json();
 
       if (data.success) {
-        alert('Settings saved successfully!');
+        successmsg('Settings saved successfully!');
       } else {
-        alert('Failed to save settings: ' + data.error);
+        errormsg('Failed to save settings: ' + data.error);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings');
+      errormsg('Error saving settings');
     } finally {
       setSaving(false);
     }
@@ -156,14 +158,14 @@ export default function SystemSettingsPage() {
       const data = await response.json();
       
       if (data.success) {
-        alert('Settings reset to default!');
+        successmsg('Settings reset to default!');
         loadSettings();
       } else {
-        alert('Failed to reset settings');
+        errormsg('Failed to reset settings');
       }
     } catch (error) {
       console.error('Error resetting settings:', error);
-      alert('Error resetting settings');
+      errormsg('Error resetting settings');
     }
   };
 

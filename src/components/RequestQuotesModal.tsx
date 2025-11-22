@@ -1,6 +1,7 @@
 // components/RequestQuotesModal.tsx
 import { useState, useEffect } from 'react';
 import { X, MessageCircle, User, Calendar, DollarSign, Package, Truck } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface Quote {
   id: number;
@@ -35,6 +36,7 @@ const getAuthToken = () => {
 export default function RequestQuotesModal({ isOpen, onClose, request }: RequestQuotesModalProps) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   useEffect(() => {
     if (isOpen && request) {
@@ -82,14 +84,14 @@ export default function RequestQuotesModal({ isOpen, onClose, request }: Request
 
       const result = await response.json();
       if (result.success) {
-        alert('Quote accepted successfully!');
+        successmsg('Quote accepted successfully!');
         fetchQuotes(); // Refresh quotes
       } else {
-        alert(result.error || 'Failed to accept quote');
+        errormsg(result.error || 'Failed to accept quote');
       }
     } catch (error) {
       console.error('Error accepting quote:', error);
-      alert('Failed to accept quote');
+      errormsg('Failed to accept quote');
     }
   };
 

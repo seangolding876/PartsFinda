@@ -27,7 +27,6 @@ export default function RootLayout({
         {/* Favicon and Icons */}
         <link rel="icon" href="/favicon.ico" />
       </head>
-        {/* ✅ Navigation ko AuthProvider ke ANDAR rakhein */}
         <AuthProvider>
           <Navigation />
           <main className="min-h-screen">

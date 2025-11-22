@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface CreateAdminUserModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function CreateAdminUserModal({ isOpen, onClose, onUserCreated }:
     role: 'admin' as const
   });
   const [loading, setLoading] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,11 +40,11 @@ export default function CreateAdminUserModal({ isOpen, onClose, onUserCreated }:
         onClose();
         setFormData({ name: '', email: '', password: '', phone: '', role: 'admin' });
       } else {
-        alert('Failed to create user: ' + data.error);
+        errormsg('Failed to create user: ' + data.error);
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('Error creating user');
+      errormsg('Error creating user');
     } finally {
       setLoading(false);
     }

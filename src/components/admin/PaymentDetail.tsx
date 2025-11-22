@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/useToast'; 
 
 interface PaymentDetail {
   id: number;
@@ -46,6 +47,7 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   useEffect(() => {
     if (paymentId) {
@@ -92,11 +94,11 @@ export default function PaymentDetail({ paymentId }: PaymentDetailProps) {
       if (data.success) {
         router.push(data.data.receipt_url);
       } else {
-        alert(data.error || 'Failed to generate receipt');
+        errormsg(data.error || 'Failed to generate receipt');
       }
     } catch (error) {
       console.error('Error generating receipt:', error);
-      alert('Failed to generate receipt');
+      errormsg('Failed to generate receipt');
     }
   };
 

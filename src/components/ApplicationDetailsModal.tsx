@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { X, Mail, Phone, MapPin, Calendar, Download, CheckCircle, XCircle, Building, User, Briefcase, Award } from 'lucide-react';
-
+import { useToast } from '@/hooks/useToast'; 
 interface Application {
   id: string;
   businessName: string;
@@ -33,6 +33,7 @@ interface ApplicationDetailsModalProps {
 
 export default function ApplicationDetailsModal({ isOpen, onClose, application }: ApplicationDetailsModalProps) {
   const [loading, setLoading] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   if (!isOpen || !application) return null;
 
@@ -52,7 +53,7 @@ export default function ApplicationDetailsModal({ isOpen, onClose, application }
 
   const handleDownloadDocument = async (documentType: string, documentUrl?: string) => {
     if (!documentUrl) {
-      alert('Document not available');
+      infomsg('Document not available');
       return;
     }
 
@@ -61,7 +62,7 @@ export default function ApplicationDetailsModal({ isOpen, onClose, application }
       window.open(documentUrl, '_blank');
     } catch (error) {
       console.error('Error downloading document:', error);
-      alert('Failed to download document');
+      errormsg('Failed to download document');
     } finally {
       setLoading(false);
     }
@@ -75,7 +76,7 @@ export default function ApplicationDetailsModal({ isOpen, onClose, application }
     ].filter(doc => doc.url);
 
     if (documents.length === 0) {
-      alert('No documents available for download');
+      infomsg('No documents available for download');
       return;
     }
 
@@ -91,7 +92,7 @@ export default function ApplicationDetailsModal({ isOpen, onClose, application }
       }
     } catch (error) {
       console.error('Error downloading documents:', error);
-      alert('Failed to download some documents');
+      errormsg('Failed to download some documents');
     } finally {
       setLoading(false);
     }

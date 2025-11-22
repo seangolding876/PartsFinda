@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SellerDetailsModal from './SellerDetailsModal';
+import { useToast } from '@/hooks/useToast'; 
 
 export interface SellerUser {
   id: number;
@@ -27,6 +28,7 @@ interface SellerUsersTabProps {
 
 export default function SellerUsersTab({ users, onUserDeleted }: SellerUsersTabProps) {
   const [selectedSeller, setSelectedSeller] = useState<SellerUser | null>(null);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const handleDeleteUser = async (userId: number) => {
     if (!confirm('Are you sure you want to delete this seller?')) return;
@@ -40,11 +42,11 @@ export default function SellerUsersTab({ users, onUserDeleted }: SellerUsersTabP
       if (data.success) {
         onUserDeleted(userId);
       } else {
-        alert('Failed to delete user: ' + data.error);
+        errormsg('Failed to delete user: ' + data.error);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Error deleting user');
+      errormsg('Error deleting user');
     }
   };
 

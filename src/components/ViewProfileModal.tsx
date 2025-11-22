@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { X, Mail, Phone, MapPin, Calendar, Star, Download, CheckCircle, XCircle, MessageCircle } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface SupplierProfile {
   id: string;
@@ -41,6 +42,7 @@ interface ViewProfileModalProps {
 
 export default function ViewProfileModal({ isOpen, onClose, supplier, onSendMessage }: ViewProfileModalProps) {
   const [loading, setLoading] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   if (!isOpen || !supplier) return null;
 
@@ -60,7 +62,7 @@ export default function ViewProfileModal({ isOpen, onClose, supplier, onSendMess
 
   const handleDownloadDocument = async (documentType: string, documentUrl?: string) => {
     if (!documentUrl) {
-      alert('Document not available');
+      infomsg('Document not available');
       return;
     }
 
@@ -69,7 +71,7 @@ export default function ViewProfileModal({ isOpen, onClose, supplier, onSendMess
       window.open(documentUrl, '_blank');
     } catch (error) {
       console.error('Error downloading document:', error);
-      alert('Failed to download document');
+      errormsg('Failed to download document');
     } finally {
       setLoading(false);
     }

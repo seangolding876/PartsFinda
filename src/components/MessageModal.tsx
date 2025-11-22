@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { X, Send, Mail } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 interface MessageModalProps {
   isOpen: boolean;
@@ -19,13 +20,14 @@ export default function MessageModal({ isOpen, onClose, supplier }: MessageModal
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   if (!isOpen || !supplier) return null;
 
 // components/MessageModal.tsx - Updated handleSendMessage function
 const handleSendMessage = async () => {
   if (!message.trim()) {
-    alert('Please enter a message');
+    infomsg('Please enter a message before sending.');
     return;
   }
 
@@ -45,7 +47,7 @@ const handleSendMessage = async () => {
 
     const authData = getAuthData();
     if (!authData?.token) {
-      alert('Authentication required');
+      infomsg('You must be logged in to send messages.');
       return;
     }
 
@@ -154,7 +156,7 @@ const handleSendMessage = async () => {
       }
     }
 
-    alert('Message sent successfully!');
+    successmsg('Message sent successfully!');
     setMessage('');
     onClose();
 
@@ -165,7 +167,7 @@ const handleSendMessage = async () => {
 
   } catch (error: any) {
     console.error('Error sending message:', error);
-    alert(error.message || 'Failed to send message. Please try again.');
+    errormsg(error.message || 'Failed to send message. Please try again.');
   } finally {
     setLoading(false);
   }

@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Upload, Building, MapPin, Phone, Mail, User, FileText, CreditCard, Star, Shield, CheckCircle, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 export default function SellerSignupPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const [sellerForm, setSellerForm] = useState({
     // Personal Information
@@ -148,14 +150,14 @@ export default function SellerSignupPage() {
       // Validate file size (5MB limit)
       const maxSize = 5 * 1024 * 1024; // 5MB
       if (file.size > maxSize) {
-        alert('File size must be less than 5MB. Please choose a smaller file.');
+        infomsg('File size must be less than 5MB. Please choose a smaller file.');
         return;
       }
 
       // Validate file type
       const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
-        alert('Only PDF, JPG, and PNG files are allowed.');
+        infomsg('Only PDF, JPG, and PNG files are allowed.');
         return;
       }
 

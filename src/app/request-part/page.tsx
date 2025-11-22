@@ -164,7 +164,6 @@ function RequestPartForm() {
     const checkAuth = () => {
       if (!isAuthenticated()) {
         // console.log('🚫 User not authenticated, redirecting to login');
-        // alert('Please login to submit a part request');
         errormsg('Please login to submit a part request');
         router.push('/auth/login');
       } else {
@@ -348,7 +347,6 @@ function RequestPartForm() {
 
       if (result.success) {
         // console.log('✅ Request submitted successfully:', result.data);
-        // alert('✅ Request submitted successfully! Sellers will contact you soon.');
         successmsg('Request submitted successfully! Sellers will contact you soon.');
         
         // Reset form
@@ -386,7 +384,6 @@ function RequestPartForm() {
       }
       
       setError(errorMessage);
-      // alert(`❌ ${errorMessage}`);
       errormsg(`Error: ${errorMessage}`);
     } finally {
       setLoading(false);

@@ -19,6 +19,7 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
+import { useToast } from '@/hooks/useToast'; 
 
 export default function SubmitQuotePage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function SubmitQuotePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [request, setRequest] = useState(null);
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   // Demo request data
   const demoRequest = {
@@ -154,7 +156,7 @@ export default function SubmitQuotePage() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      alert('Quote submitted successfully! The buyer will be notified and can contact you directly.');
+      successmsg('Quote submitted successfully! The buyer will be notified and can contact you directly.');
       router.push('/seller/dashboard');
 
     } catch (err: any) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/useToast'; 
 
 interface User {
   id: string;
@@ -50,6 +51,7 @@ export default function ProfilePage() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const { successmsg, errormsg, infomsg } = useToast(); 
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -166,19 +168,19 @@ export default function ProfilePage() {
         const result = await response.json();
         setUser(prev => prev ? { ...prev, ...formData, profile_completion_percentage: result.profile_completion } : null);
         setEditing(false);
-        alert('Profile updated successfully!');
+        successmsg('Profile updated successfully!');
       } else {
         throw new Error('Failed to update profile');
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      alert('Failed to update profile');
+      errormsg('Failed to update profile');
     }
   };
 
   const handleAddVehicle = () => {
     // Add vehicle logic here
-    alert('Add vehicle functionality coming soon!');
+    infomsg('Add vehicle functionality coming soon!');
   };
 
   const formatDate = (dateString: string) => {

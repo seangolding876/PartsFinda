@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import WorkerLogs from '@/components/admin/WorkerLogs';
 import { getAuthData } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast'; 
 
 // Type definitions
 interface QueueStats {
@@ -80,6 +81,7 @@ export default function LiveQueueMonitor() {
   const [error, setError] = useState<string | null>(null);
   const [successfulRequests, setSuccessfulRequests] = useState<SuccessfulRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'pending' | 'successful'>('pending');
+  const { successmsg, errormsg, infomsg } = useToast(); 
 
   const authData = getAuthData();
 
@@ -137,15 +139,15 @@ export default function LiveQueueMonitor() {
       const result = await response.json();
       
       if (result.success) {
-        alert(`✅ Worker ${action}ed successfully`);
+        successmsg(`Worker ${action}ed successfully`);
         // Refresh data after 2 seconds
         setTimeout(fetchData, 2000);
       } else {
-        alert(`❌ Failed to ${action} worker: ${result.error}`);
+        errormsg(`Failed to ${action} worker: ${result.error}`);
       }
     } catch (error) {
       console.error('❌ Worker control error:', error);
-      alert(`❌ Error: ${error.message}`);
+      errormsg(`Error: ${error.message}`);
     }
   };
 

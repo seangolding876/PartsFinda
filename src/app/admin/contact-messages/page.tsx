@@ -6,6 +6,8 @@ import ContactMessagesFilters from '@/components/admin/contact-messages/ContactM
 import ContactMessageDetails from '@/components/admin/contact-messages/ContactMessageDetails';
 import {  MessageStatus, MessageType } from '@/types/contact';
 import { getAuthToken, isAdmin, logout } from '@/lib/auth';
+import { useToast } from '@/hooks/useToast'; 
+import { info } from 'console';
 
 export interface ContactMessage {
   id: string;
@@ -44,7 +46,7 @@ export default function ContactMessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const token = getAuthToken();
-  
+  const { successmsg, errormsg, infomsg } = useToast(); 
   // Filters state
   const [filters, setFilters] = useState({
     status: 'all',
@@ -78,7 +80,7 @@ const fetchMessages = async () => {
     if (!token) {
       console.error('❌ User not authenticated');
       // Redirect to login or show message
-      alert('Please login to access this page');
+      infomsg('Please login to access this page');
       window.location.href = '/auth/login';
       return;
     }
@@ -86,7 +88,7 @@ const fetchMessages = async () => {
     // Also check if user is admin
     if (!isAdmin()) {
       console.error('❌ User is not admin');
-      alert('Access denied. Admin privileges required.');
+      errormsg('Access denied. Admin privileges required.');
       return;
     }
 
@@ -114,7 +116,7 @@ const fetchMessages = async () => {
 
     if (response.status === 403) {
       console.error('❌ Forbidden - user is not admin');
-      alert('Access denied. Admin privileges required.');
+      errormsg('Access denied. Admin privileges required.');
       return;
     }
 
@@ -129,12 +131,11 @@ const fetchMessages = async () => {
       setPagination(data.data.pagination);
       setFilterCounts(data.data.filters);
     } else {
-      console.error('Failed to fetch messages:', data.error);
-      alert('Error: ' + data.error);
+      errormsg('Error fetching contact messages: ' + data.error);
     }
   } catch (error) {
     console.error('Error fetching contact messages:', error);
-    alert('Network error. Please try again.');
+    errormsg('Network error. Please try again.');
   } finally {
     setLoading(false);
   }
