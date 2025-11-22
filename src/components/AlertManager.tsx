@@ -45,18 +45,19 @@ export default function AlertManager() {
     window.showAlert = showAlert;
   }, []);
 
-  const getStyle = (type: AlertType) => {
-    switch (type) {
-      case 'successmsg':
-        return "bg-emerald-200/60 text-emerald-900";
-      case 'errormsg':
-        return "bg-rose-200/60 text-rose-900";
-      case 'warningmsg':
-        return "bg-amber-200/60 text-amber-900";
-      default:
-        return "bg-sky-200/60 text-sky-900";
-    }
-  };
+const getStyle = (type: AlertType) => {
+  switch (type) {
+    case 'successmsg':
+      return "bg-emerald-700 text-emerald-100 shadow-lg border border-emerald-600";
+    case 'errormsg':
+      return "bg-red-700 text-red-100 shadow-lg border border-red-600";
+    case 'warningmsg':
+      return "bg-amber-700 text-amber-100 shadow-lg border border-amber-600";
+    default:
+      return "bg-slate-800 text-slate-100 shadow-lg border border-slate-700";
+  }
+};
+
 
   return (
     <>
