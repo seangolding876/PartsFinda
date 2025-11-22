@@ -27,7 +27,7 @@ export default function AlertManager() {
     const id = Date.now().toString();
     const newAlert: Alert = { id, message, type, duration };
     
-    console.log('🚀 Showing alert:', message, type, `${duration}ms`);
+   // console.log('🚀 Showing alert:', message, type, `${duration}ms`);
     
     setAlerts(prev => [...prev, newAlert]);
 

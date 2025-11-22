@@ -17,7 +17,7 @@ export default function BuyerWelcomePage() {
 
   useEffect(() => {
     // Track successful registration
-    console.log('Buyer registration completed:', { email, name });
+    // console.log('Buyer registration completed:', { email, name });
   }, [email, name]);
 
   const features = [

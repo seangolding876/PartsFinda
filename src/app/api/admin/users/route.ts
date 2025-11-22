@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password before storing
-    console.log('🔐 Hashing password for new user...');
+    // console.log('🔐 Hashing password for new user...');
     const hashedPassword = await hashPassword(password);
 
     // For admin users, no email verification needed
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       [name, email.toLowerCase(), hashedPassword, phone, role, true]
     );
 
-    console.log('✅ Admin user created successfully with ID:', result.rows[0].id);
+    // console.log('✅ Admin user created successfully with ID:', result.rows[0].id);
 
     return NextResponse.json({
       success: true,

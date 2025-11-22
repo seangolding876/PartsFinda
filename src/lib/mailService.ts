@@ -11,12 +11,12 @@ export async function sendMail({
   html: string; 
 }) {
   try {
-    console.log('🔍 GoDaddy SMTP Configuration Check:', {
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      user: process.env.SMTP_USER,
-      secure: process.env.SMTP_SECURE
-    });
+    // console.log('🔍 GoDaddy SMTP Configuration Check:', {
+    //   host: process.env.SMTP_HOST,
+    //   port: process.env.SMTP_PORT,
+    //   user: process.env.SMTP_USER,
+    //   secure: process.env.SMTP_SECURE
+    // });
 
     // Validate required environment variables
     if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -45,11 +45,11 @@ export async function sendMail({
       logger: true
     });
 
-    console.log('🔄 Verifying SMTP connection...');
+    //console.log('🔄 Verifying SMTP connection...');
 
     // Verify connection
     await transporter.verify();
-    console.log('✅ SMTP connection verified');
+    //console.log('✅ SMTP connection verified');
 
     // ✅ Use specific FROM address format (matches your C# code)
     const fromAddress = process.env.SMTP_FROM || `"PartsFinda Official" <support@partsfinda.com>`;
@@ -65,22 +65,22 @@ export async function sendMail({
       text: html.replace(/<[^>]*>/g, ''), // HTML to text
     };
 
-    console.log('📤 Sending email:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
+    // console.log('📤 Sending email:', {
+    //   from: mailOptions.from,
+    //   to: mailOptions.to,
+    //   subject: mailOptions.subject
+    // });
 
     const info = await transporter.sendMail(mailOptions);
 
     // Detailed success logs
-    console.log("🎉 EMAIL SENT SUCCESSFULLY:", {
-      messageId: info.messageId,
-      response: info.response,
-      accepted: info.accepted,
-      rejected: info.rejected,
-      envelope: info.envelope
-    });
+    // console.log("🎉 EMAIL SENT SUCCESSFULLY:", {
+    //   messageId: info.messageId,
+    //   response: info.response,
+    //   accepted: info.accepted,
+    //   rejected: info.rejected,
+    //   envelope: info.envelope
+    // });
 
     return { 
       success: true, 

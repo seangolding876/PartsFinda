@@ -11,7 +11,7 @@ export default function TestAuth() {
     setResult('Testing...');
 
     try {
-      console.log('Testing simple auth...');
+     // console.log('Testing simple auth...');
 
       const response = await fetch('/api/simple-auth', {
         method: 'POST',
@@ -25,11 +25,11 @@ export default function TestAuth() {
         }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+     // console.log('Response status:', response.status);
+     // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       const data = await response.json();
-      console.log('Response data:', data);
+    //  console.log('Response data:', data);
 
       setResult(`Status: ${response.status}\nData: ${JSON.stringify(data, null, 2)}`);
 

@@ -50,7 +50,7 @@ export default function ContactMessageDetails({
       const data = await response.json();
       if (data.success) {
         // Notes saved successfully
-        console.log('Notes saved');
+       // console.log('Notes saved');
       }
     } catch (error) {
       console.error('Error saving notes:', error);

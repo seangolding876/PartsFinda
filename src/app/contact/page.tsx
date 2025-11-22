@@ -57,7 +57,7 @@ export default function ContactPage() {
         throw new Error(result.error);
       }
 
-      console.log('Contact form submitted successfully:', result);
+   //   console.log('Contact form submitted successfully:', result);
       setSubmitted(true);
       setFormData({
         name: '',

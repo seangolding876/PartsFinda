@@ -149,7 +149,7 @@ export default function SubmitQuotePage() {
         throw new Error('Please fill in all required fields');
       }
 
-      console.log('Submitting quote...', quoteData);
+     // console.log('Submitting quote...', quoteData);
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));

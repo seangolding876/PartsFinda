@@ -22,7 +22,7 @@ try {
         autoRefreshToken: true,
       },
     });
-    console.log('✅ Supabase client initialized with production config');
+   // console.log('✅ Supabase client initialized with production config');
   } else {
     // Development/mock configuration
     console.warn('⚠️ Supabase environment variables not configured. Using mock database mode.');

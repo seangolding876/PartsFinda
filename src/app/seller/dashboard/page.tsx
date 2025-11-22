@@ -114,7 +114,7 @@ function SellerDashboard() {
 
         const authData = getAuthData();
         if (!authData?.token) {
-          console.log('❌ No auth token');
+          //console.log('❌ No auth token');
           setSellerLoading(false);
           return;
         }

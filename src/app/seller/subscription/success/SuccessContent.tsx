@@ -22,7 +22,7 @@ export default function SuccessContent() {
       }
 
       try {
-        console.log('Verifying payment for session:', sessionId);
+       // console.log('Verifying payment for session:', sessionId);
         
         // You can add session verification here if needed
         // const response = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`);

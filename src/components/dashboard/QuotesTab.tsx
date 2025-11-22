@@ -59,7 +59,7 @@ export default function QuotesTab() {
         return;
       }
 
-      console.log('🔄 Fetching quotes with token...');
+      //console.log('🔄 Fetching quotes with token...');
       const response = await fetch('/api/quotes', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -67,7 +67,7 @@ export default function QuotesTab() {
       });
       
       const data = await response.json();
-      console.log('📨 API Response:', data);
+     // console.log('📨 API Response:', data);
       
       if (!response.ok) {
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -75,7 +75,7 @@ export default function QuotesTab() {
       
       if (data.success) {
         setQuotes(data.data || []);
-        console.log(`✅ Loaded ${data.data?.length || 0} quotes`);
+      //  console.log(`✅ Loaded ${data.data?.length || 0} quotes`);
       } else {
         throw new Error(data.error || 'Failed to fetch quotes');
       }

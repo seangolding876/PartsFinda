@@ -25,7 +25,7 @@ export const query = async <T = any>(text: string, params?: any[]): Promise<{ ro
 export const connectToDatabase = async () => {
   try {
     const client = await pool.connect();
-    console.log('✅ Connected to PostgreSQL database');
+   // console.log('✅ Connected to PostgreSQL database');
     return { client, pool };
   } catch (error) {
     console.error('❌ Database connection error:', error);

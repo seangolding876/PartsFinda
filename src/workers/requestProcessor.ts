@@ -2,11 +2,11 @@ export default class RequestProcessor {
   private isProcessing = false;
 
   constructor() {
-    console.log('🔄 Worker Initialized');
+   // console.log('🔄 Worker Initialized');
   }
 
   async start() {
-    console.log('🚀 Worker Started');
+    //console.log('🚀 Worker Started');
 
     // Repeat every 5 seconds
     setInterval(() => this.processQueue(), 5000);
@@ -19,7 +19,7 @@ export default class RequestProcessor {
     if (this.isProcessing) return;
 
     this.isProcessing = true;
-    console.log('👋 Hello World', new Date().toISOString());
+   // console.log('👋 Hello World', new Date().toISOString());
     this.isProcessing = false;
   }
 }

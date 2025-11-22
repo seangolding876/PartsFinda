@@ -9,7 +9,7 @@ export const initSocketServer = (server: NetServer) => {
     return io;
   }
 
-  console.log('🔄 Initializing Socket.IO server...');
+  // console.log('🔄 Initializing Socket.IO server...');
   
   io = new SocketServer(server, {
     path: '/api/socket/', // Important: Ye path use karen
@@ -29,7 +29,7 @@ export const initSocketServer = (server: NetServer) => {
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
-      console.log('🔐 Socket auth attempt');
+      //console.log('🔐 Socket auth attempt');
       
       if (!token) {
         return next(new Error('No token provided'));
@@ -37,7 +37,7 @@ export const initSocketServer = (server: NetServer) => {
       
       const userInfo = verifyToken(token);
       socket.data.userId = userInfo.userId;
-      console.log('✅ Socket authenticated for user:', userInfo.userId);
+      //console.log('✅ Socket authenticated for user:', userInfo.userId);
       next();
     } catch (error) {
       console.error('❌ Socket auth error:', error);
@@ -46,13 +46,13 @@ export const initSocketServer = (server: NetServer) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('✅ User connected:', socket.data.userId);
+    //console.log('✅ User connected:', socket.data.userId);
     
     socket.join(`user_${socket.data.userId}`);
     
     socket.on('join_conversation', (conversationId) => {
       socket.join(`conversation_${conversationId}`);
-      console.log(`User ${socket.data.userId} joined conversation ${conversationId}`);
+     // console.log(`User ${socket.data.userId} joined conversation ${conversationId}`);
     });
 
     socket.on('leave_conversation', (conversationId) => {
@@ -61,7 +61,7 @@ export const initSocketServer = (server: NetServer) => {
 
     socket.on('send_message', async (data) => {
       try {
-        console.log('📨 Received message:', data);
+       // console.log('📨 Received message:', data);
         const { conversationId, messageText, receiverId } = data;
         
         if (!conversationId || !messageText || !receiverId) {
@@ -100,7 +100,7 @@ export const initSocketServer = (server: NetServer) => {
           timestamp: new Date().toISOString()
         });
 
-        console.log('✅ Message sent successfully');
+       // console.log('✅ Message sent successfully');
 
       } catch (error) {
         console.error('❌ Error sending message:', error);
@@ -109,11 +109,11 @@ export const initSocketServer = (server: NetServer) => {
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ User disconnected:', socket.data.userId);
+     // console.log('❌ User disconnected:', socket.data.userId);
     });
   });
 
-  console.log('✅ Socket.IO server initialized');
+ // console.log('✅ Socket.IO server initialized');
   return io;
 };
 

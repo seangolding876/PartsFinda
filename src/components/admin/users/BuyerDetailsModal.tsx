@@ -51,7 +51,7 @@ const fetchBuyerStats = async () => {
   
   setLoading(true);
   try {
-    console.log(`🔄 Fetching stats for buyer ID: ${buyer.id}`);
+    //console.log(`🔄 Fetching stats for buyer ID: ${buyer.id}`);
     
     const response = await fetch(`/api/admin/users/${buyer.id}/stats?role=buyer`);
     
@@ -71,7 +71,7 @@ const fetchBuyerStats = async () => {
     }
 
     const data = await response.json();
-    console.log('✅ API Response:', data);
+  //  console.log('✅ API Response:', data);
 
     if (data.success) {
       setStats(data.data);

@@ -27,7 +27,7 @@ export const useSocket = () => {
     const token = getAuthToken();
     
     if (!token) {
-      console.log('🔴 No auth token found for socket connection');
+    //  console.log('🔴 No auth token found for socket connection');
       setConnectionError('Authentication required');
       return;
     }
@@ -57,10 +57,10 @@ export const useSocket = () => {
 
     // Connection events
     socketInstance.on('connect', () => {
-      console.log('✅ CONNECTED to Socket Server!', {
-        id: socketInstance.id,
-        connected: socketInstance.connected
-      });
+      // console.log('✅ CONNECTED to Socket Server!', {
+      //   id: socketInstance.id,
+      //   connected: socketInstance.connected
+      // });
       setIsConnected(true);
       setConnectionError(null);
       setReconnectAttempts(0);
@@ -68,12 +68,12 @@ export const useSocket = () => {
     });
 
     socketInstance.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
+   //   console.log('❌ Socket disconnected:', reason);
       setIsConnected(false);
       
       if (reason === 'io server disconnect') {
         // Server forcibly disconnected, need to manually reconnect
-        console.log('🔄 Server disconnected, attempting reconnect...');
+     //   console.log('🔄 Server disconnected, attempting reconnect...');
         setTimeout(() => {
           socketInstance.connect();
         }, 1000);
@@ -92,7 +92,7 @@ export const useSocket = () => {
       setReconnectAttempts(attempts);
       
       if (attempts <= 5) {
-        console.log(`🔄 Retry attempt ${attempts}/5 in 3 seconds...`);
+       // console.log(`🔄 Retry attempt ${attempts}/5 in 3 seconds...`);
         setTimeout(() => {
           socketInstance.connect();
         }, 3000);
@@ -100,12 +100,12 @@ export const useSocket = () => {
     });
 
     socketInstance.on('reconnect_attempt', (attempt) => {
-      console.log(`🔄 Socket reconnection attempt ${attempt}`);
+    //  console.log(`🔄 Socket reconnection attempt ${attempt}`);
       setReconnectAttempts(attempt);
     });
 
     socketInstance.on('reconnect', (attempt) => {
-      console.log(`✅ Socket reconnected after ${attempt} attempts`);
+    //  console.log(`✅ Socket reconnected after ${attempt} attempts`);
       setIsConnected(true);
       setConnectionError(null);
     });
@@ -130,7 +130,7 @@ export const useSocket = () => {
     socketInstance.connect();
 
     return () => {
-      console.log('🧹 Cleaning up socket connection');
+    //  console.log('🧹 Cleaning up socket connection');
       socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };

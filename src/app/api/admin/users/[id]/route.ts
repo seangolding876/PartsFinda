@@ -140,10 +140,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('🗑️ DELETE User API Called');
+    // console.log('🗑️ DELETE User API Called');
     
     const userId = parseInt(params.id);
-    console.log('🔢 User ID to delete:', userId);
+    // console.log('🔢 User ID to delete:', userId);
 
     if (isNaN(userId)) {
       return NextResponse.json(
@@ -174,7 +174,7 @@ export async function DELETE(
     }
 
     const user = userCheck.rows[0];
-    console.log('👤 User to delete:', user.email, 'Role:', user.role);
+    // console.log('👤 User to delete:', user.email, 'Role:', user.role);
 
     // Start a transaction for safe deletion
     await query('BEGIN');
@@ -209,7 +209,7 @@ export async function DELETE(
 
       await query('COMMIT');
 
-      console.log('✅ User deleted successfully:', deleteResult.rows[0]);
+      // console.log('✅ User deleted successfully:', deleteResult.rows[0]);
 
       return NextResponse.json({
         success: true,

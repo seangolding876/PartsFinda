@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('📋 Fetching logs for partsfinda-worker...');
+    // console.log('📋 Fetching logs for partsfinda-worker...');
 
     // Specific worker ke logs get karein
     const { stdout, stderr } = await execAsync('pm2 logs partsfinda-worker --lines 50 --nostream');

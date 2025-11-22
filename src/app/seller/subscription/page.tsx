@@ -61,14 +61,14 @@ export default function SubscriptionPage() {
       const authData = getAuthData();
       
       if (!authData?.token) {
-        console.log('No token found, redirecting to login');
+       // console.log('No token found, redirecting to login');
         errormsg('Please login to access subscription page');
         router.push('/auth/login');
         return false;
       }
 
       if (!isSeller()) {
-        console.log('Not a seller, redirecting to home');
+      //  console.log('Not a seller, redirecting to home');
         errormsg('This page is for sellers only');
         router.push('/');
         return false;
@@ -109,7 +109,7 @@ export default function SubscriptionPage() {
       }
 
       const plansResult = await plansResponse.json();
-      console.log('Plans loaded:', plansResult);
+     // console.log('Plans loaded:', plansResult);
 
       if (plansResult.success) {
         setPlans(plansResult.data);
@@ -121,7 +121,7 @@ export default function SubscriptionPage() {
       // Handle current subscription
       if (currentSubResponse.ok) {
         const currentSubResult = await currentSubResponse.json();
-        console.log('Current subscription:', currentSubResult);
+     //   console.log('Current subscription:', currentSubResult);
         
         if (currentSubResult.success && currentSubResult.data) {
           setCurrentSubscription(currentSubResult.data);
@@ -151,8 +151,8 @@ export default function SubscriptionPage() {
         return;
       }
 
-      console.log('🔍 Selected plan:', plan);
-      console.log('🔍 Plan ID:', plan.id);
+    //  console.log('🔍 Selected plan:', plan);
+      //console.log('🔍 Plan ID:', plan.id);
 
       // Check if this is the current plan
       if (currentSubscription?.plan_name === plan.name) {
@@ -160,7 +160,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      console.log('Processing subscription for plan:', plan.name);
+     // console.log('Processing subscription for plan:', plan.name);
 
       // For FREE plan - direct activate (same as before)
       if (plan.price === 0) {
@@ -176,7 +176,7 @@ export default function SubscriptionPage() {
         });
 
         const result = await response.json();
-        console.log('Free plan activation result:', result);
+        //console.log('Free plan activation result:', result);
 
         if (result.success) {
           successmsg('Free plan activated successfully!');
@@ -189,7 +189,7 @@ export default function SubscriptionPage() {
       }
 
       // ✅ CHANGED: For PAID plans - Stripe Checkout Session (NEW APPROACH)
-      console.log('Creating Stripe checkout session for plan ID:', plan.id);
+     // console.log('Creating Stripe checkout session for plan ID:', plan.id);
       infomsg('Redirecting to secure payment...');
 
       const checkoutResponse = await fetch('/api/stripe/create-checkout-session', {
@@ -205,7 +205,7 @@ export default function SubscriptionPage() {
       });
 
       const checkoutResult = await checkoutResponse.json();
-      console.log('Stripe checkout session result:', checkoutResult);
+     // console.log('Stripe checkout session result:', checkoutResult);
 
       if (checkoutResult.url) {
         // ✅ Redirect user to Stripe Checkout page

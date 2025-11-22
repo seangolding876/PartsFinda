@@ -142,7 +142,7 @@ export default function SellerSignupPage() {
   };
 
   const handleFileChange = (field: string, file: File | null) => {
-    console.log('📁 File upload:', field, file?.name);
+   // console.log('📁 File upload:', field, file?.name);
 
     if (file) {
       // Validate file size (5MB limit)
@@ -159,7 +159,7 @@ export default function SellerSignupPage() {
         return;
       }
 
-      console.log('✅ File valid:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
+    //  console.log('✅ File valid:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
     }
 
     setSellerForm(prev => ({
@@ -169,7 +169,7 @@ export default function SellerSignupPage() {
   };
 
   const triggerFileInput = (inputId: string) => {
-    console.log('🖱️ Triggering file input:', inputId);
+   // console.log('🖱️ Triggering file input:', inputId);
     const input = document.getElementById(inputId) as HTMLInputElement;
     if (input) {
       input.click();
@@ -179,7 +179,7 @@ export default function SellerSignupPage() {
   };
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>, field: string) => {
-    console.log('📄 File input change:', field, event.target.files?.length, 'files');
+  //  console.log('📄 File input change:', field, event.target.files?.length, 'files');
     const file = event.target.files?.[0] || null;
     handleFileChange(field, file);
 
@@ -232,16 +232,16 @@ export default function SellerSignupPage() {
     setError('');
 
     try {
-      console.log('🚀 Starting seller registration with file uploads...');
+     // console.log('🚀 Starting seller registration with file uploads...');
 
       // File upload function
       const uploadFile = async (file: File | null, type: string): Promise<string | null> => {
         if (!file) {
-          console.log(`📄 No ${type} file to upload`);
+         // console.log(`📄 No ${type} file to upload`);
           return null;
         }
 
-        console.log(`📤 Uploading ${type}:`, file.name);
+       // console.log(`📤 Uploading ${type}:`, file.name);
 
         const uploadFormData = new FormData(); // ✅ Different variable name
         uploadFormData.append('file', file);
@@ -259,7 +259,7 @@ export default function SellerSignupPage() {
           throw new Error(result.error || `Failed to upload ${type}`);
         }
 
-        console.log(`✅ ${type} uploaded successfully:`, result.fileUrl);
+     //   console.log(`✅ ${type} uploaded successfully:`, result.fileUrl);
         return result.fileUrl;
       };
 
@@ -272,11 +272,11 @@ export default function SellerSignupPage() {
 
       const [businessLicenseUrl, taxCertificateUrl, insuranceCertificateUrl] = await Promise.all(uploadPromises);
 
-      console.log('📁 All files uploaded:', {
-        businessLicense: businessLicenseUrl,
-        taxCertificate: taxCertificateUrl,
-        insuranceCertificate: insuranceCertificateUrl
-      });
+      // console.log('📁 All files uploaded:', {
+      //   businessLicense: businessLicenseUrl,
+      //   taxCertificate: taxCertificateUrl,
+      //   insuranceCertificate: insuranceCertificateUrl
+      // });
 
       // Prepare registration data with actual file URLs
       const submissionData = {
@@ -314,7 +314,7 @@ export default function SellerSignupPage() {
         agreeToVerification: sellerForm.agreeToVerification
       };
 
-      console.log('📨 Sending registration data to API...');
+     // console.log('📨 Sending registration data to API...');
 
       const response = await fetch('/api/auth/seller-register', {
         method: 'POST',
@@ -331,7 +331,7 @@ export default function SellerSignupPage() {
       }
 
       if (result.success) {
-        console.log('✅ Application submitted successfully:', result);
+       // console.log('✅ Application submitted successfully:', result);
         const successUrl = `/auth/seller-application-submitted?applicationId=${result.data.applicationId}&businessName=${encodeURIComponent(result.data.businessName)}&email=${encodeURIComponent(result.data.email)}&membershipPlan=${encodeURIComponent(result.data.membershipPlan)}`;
         router.push(successUrl);
       } else {

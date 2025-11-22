@@ -11,12 +11,12 @@ export async function GET(
   let userId: number;
   
   try {
-    console.log('🚀 API Route Started ======================');
+    // console.log('🚀 API Route Started ======================');
     
     // Parse and validate user ID
     userId = parseInt(params.id);
-    console.log(`📝 Raw params:`, params);
-    console.log(`🔢 Parsed User ID: ${userId}`);
+    //console.log(`📝 Raw params:`, params);
+    //console.log(`🔢 Parsed User ID: ${userId}`);
     
     if (isNaN(userId)) {
       console.error('❌ Invalid user ID:', params.id);
@@ -33,8 +33,8 @@ export async function GET(
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
-    console.log(`🎯 Role parameter: ${role}`);
-    console.log(`🔗 Full URL: ${request.url}`);
+   // console.log(`🎯 Role parameter: ${role}`);
+   // console.log(`🔗 Full URL: ${request.url}`);
 
     // Validate role
     if (!role) {
@@ -50,7 +50,7 @@ export async function GET(
     }
 
     if (role === 'seller') {
-      console.log('🛍️ Processing seller stats...');
+      //console.log('🛍️ Processing seller stats...');
       
       try {
         const [
@@ -95,15 +95,15 @@ export async function GET(
           )
         ]);
 
-        console.log('✅ Seller queries executed successfully');
-        console.log('📊 Seller Results:', {
-          partRequests: partRequestsResult.rows[0],
-          quotes: quotesResult.rows[0],
-          acceptedQuotes: acceptedQuotesResult.rows[0],
-          revenue: revenueResult.rows[0],
-          subscription: subscriptionResult.rows[0],
-          payments: paymentsResult.rows
-        });
+        // console.log('✅ Seller queries executed successfully');
+        // console.log('📊 Seller Results:', {
+        //   partRequests: partRequestsResult.rows[0],
+        //   quotes: quotesResult.rows[0],
+        //   acceptedQuotes: acceptedQuotesResult.rows[0],
+        //   revenue: revenueResult.rows[0],
+        //   subscription: subscriptionResult.rows[0],
+        //   payments: paymentsResult.rows
+        // });
 
         const responseData = {
           total_part_requests: parseInt(partRequestsResult.rows[0]?.count || 0),
@@ -114,7 +114,7 @@ export async function GET(
           payment_history: paymentsResult.rows
         };
 
-        console.log('🎉 Seller stats successfully generated');
+        //console.log('🎉 Seller stats successfully generated');
         return NextResponse.json({
           success: true,
           data: responseData
@@ -126,13 +126,13 @@ export async function GET(
       }
 
     } else {
-      console.log('🛒 Processing buyer stats...');
+      //console.log('🛒 Processing buyer stats...');
       
       try {
         // Test connection with a simple query first
-        console.log('🧪 Testing database connection...');
+        //console.log('🧪 Testing database connection...');
         const testQuery = await query('SELECT NOW() as current_time', []);
-        console.log('✅ Database connection test passed:', testQuery.rows[0]);
+       // console.log('✅ Database connection test passed:', testQuery.rows[0]);
 
         // Execute all buyer queries
         const queryPromises = [
@@ -169,7 +169,7 @@ export async function GET(
           )
         ];
 
-        console.log('📨 Executing buyer queries...');
+        // console.log('📨 Executing buyer queries...');
         const [
           totalRequestsResult,
           openRequestsResult,
@@ -179,15 +179,15 @@ export async function GET(
           totalSpentResult
         ] = await Promise.all(queryPromises);
 
-        console.log('✅ All buyer queries executed successfully');
-        console.log('📊 Buyer Query Results:', {
-          totalRequests: totalRequestsResult.rows[0],
-          openRequests: openRequestsResult.rows[0],
-          fulfilledRequests: fulfilledRequestsResult.rows[0],
-          quotesReceived: quotesReceivedResult.rows[0],
-          acceptedQuotes: acceptedQuotesResult.rows[0],
-          totalSpent: totalSpentResult.rows[0]
-        });
+        // console.log('✅ All buyer queries executed successfully');
+        // console.log('📊 Buyer Query Results:', {
+        //   totalRequests: totalRequestsResult.rows[0],
+        //   openRequests: openRequestsResult.rows[0],
+        //   fulfilledRequests: fulfilledRequestsResult.rows[0],
+        //   quotesReceived: quotesReceivedResult.rows[0],
+        //   acceptedQuotes: acceptedQuotesResult.rows[0],
+        //   totalSpent: totalSpentResult.rows[0]
+        // });
 
         // Process results
         const statsData = {
@@ -199,8 +199,8 @@ export async function GET(
           total_spent: parseFloat(totalSpentResult.rows[0]?.total || 0)
         };
 
-        console.log('📈 Final buyer stats:', statsData);
-        console.log('🎉 Buyer stats successfully generated');
+       // console.log('📈 Final buyer stats:', statsData);
+       // console.log('🎉 Buyer stats successfully generated');
 
         return NextResponse.json({
           success: true,
@@ -258,6 +258,6 @@ export async function GET(
       { status: 500 }
     );
   } finally {
-    console.log('🏁 API Route Completed ======================\n');
+   // console.log('🏁 API Route Completed ======================\n');
   }
 }

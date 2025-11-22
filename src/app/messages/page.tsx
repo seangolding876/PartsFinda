@@ -112,17 +112,17 @@ export default function MessagesPage() {
   useEffect(() => {
     if (isConnected) {
       setConnectionStatus('connected');
-      console.log('✅ Socket connected');
+//console.log('✅ Socket connected');
     } else {
       setConnectionStatus('disconnected');
-      console.log('❌ Socket disconnected');
+   //   console.log('❌ Socket disconnected');
     }
   }, [isConnected]);
 
   // ✅ Fetch conversations
   const fetchConversations = async () => {
     try {
-      console.log('🔄 Fetching conversations...');
+      //console.log('🔄 Fetching conversations...');
       const token = getAuthToken();
       if (!token) {
         console.error('❌ No token found');
@@ -138,7 +138,7 @@ export default function MessagesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Conversations fetched:', result.data?.length || 0);
+      //  console.log('✅ Conversations fetched:', result.data?.length || 0);
         if (result.success) {
           setConversations(result.data || []);
           setLastUpdate(Date.now());
@@ -154,7 +154,7 @@ export default function MessagesPage() {
   // ✅ Fetch messages
   const fetchMessages = async (conversationId: string) => {
     try {
-      console.log('🔄 Fetching messages for:', conversationId);
+     // console.log('🔄 Fetching messages for:', conversationId);
       const token = getAuthToken();
       if (!token) {
         console.error('❌ No token found');
@@ -170,7 +170,7 @@ export default function MessagesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('📨 Messages API response:', result);
+      //  console.log('📨 Messages API response:', result);
         
         if (result.success && result.data && result.data.messages) {
           const formattedMessages: Message[] = result.data.messages.map((msg: any) => ({
@@ -187,9 +187,9 @@ export default function MessagesPage() {
           formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
           
           setMessages(formattedMessages);
-          console.log('✅ Messages loaded:', formattedMessages.length);
+         // console.log('✅ Messages loaded:', formattedMessages.length);
         } else {
-          console.log('❌ No messages in response');
+       //   console.log('❌ No messages in response');
           setMessages([]);
         }
       } else {
@@ -204,7 +204,7 @@ export default function MessagesPage() {
 
   // ✅ Conversation select handler - YEH ADD KAREIN
   const handleSelectConversation = async (conversation: Conversation) => {
-    console.log('🎯 Selecting conversation:', conversation.id);
+  //  console.log('🎯 Selecting conversation:', conversation.id);
     setSelectedConversation(conversation);
     
     // Join socket room
@@ -253,7 +253,7 @@ const checkRatingStatus = async (conversationId: string) => {
             if (userResponse.ok) {
               const userResult = await userResponse.json();
               if (userResult.success) {
-                console.log('👤 User details fetched:', userResult.data);
+              //  console.log('👤 User details fetched:', userResult.data);
                 setRatingStatus(prev => prev ? {
                   ...prev,
                   userToRate: userResult.data
@@ -305,12 +305,12 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     if (ratingStatus?.userToRate?.id) {
       // Pehla option: ratingStatus se lo
       ratedUserId = ratingStatus.userToRate.id;
-      console.log('✅ Using ratedUserId from ratingStatus:', ratedUserId);
+     // console.log('✅ Using ratedUserId from ratingStatus:', ratedUserId);
     } else {
       // Emergency fallback: Conversation participants se calculate karo
       // Assume karo ke jo current user nahi hai, usko rate karna hai
       ratedUserId = selectedConversation.participant.id;
-      console.log('🆘 EMERGENCY: Using participant ID as ratedUserId:', ratedUserId);
+      //console.log('🆘 EMERGENCY: Using participant ID as ratedUserId:', ratedUserId);
     }
 
     // Final validation
@@ -328,7 +328,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
       comment: comment || ''
     };
 
-    console.log('📤 FINAL Rating submission data:', requestBody);
+   // console.log('📤 FINAL Rating submission data:', requestBody);
 
     const response = await fetch('/api/ratings', {
       method: 'POST',
@@ -340,10 +340,10 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     });
 
     const result = await response.json();
-    console.log('📨 Rating submission response:', result);
+   // console.log('📨 Rating submission response:', result);
 
     if (response.ok && result.success) {
-      console.log('✅ Rating submitted successfully');
+     // console.log('✅ Rating submitted successfully');
       setRatingStatus(prev => prev ? { 
         ...prev, 
         canRate: false, 
@@ -415,13 +415,13 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
       );
 
       if (socket) {
-        console.log('📤 Sending via socket:', {
-          conversationId: selectedConversation.id,
-          messageText: newMessage.trim()
-        });
+        // console.log('📤 Sending via socket:', {
+        //   conversationId: selectedConversation.id,
+        //   messageText: newMessage.trim()
+        // });
 
         const socketTimeout = setTimeout(() => {
-          console.log('⏰ Socket timeout, falling back to API');
+         // console.log('⏰ Socket timeout, falling back to API');
           sendMessageViaAPI(tempId);
         }, 5000);
 
@@ -432,7 +432,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
           clearTimeout(socketTimeout);
           
           if (response?.success) {
-            console.log('✅ Message sent via socket');
+           // console.log('✅ Message sent via socket');
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === tempId 
@@ -492,7 +492,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
                 : msg
             )
           );
-          console.log('✅ Message sent via API');
+         // console.log('✅ Message sent via API');
           setTimeout(() => fetchConversations(), 200);
         } else {
           throw new Error(result.error);
@@ -513,19 +513,19 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
   // ✅ Socket Event Handlers
   useEffect(() => {
     if (!socket) {
-      console.log('❌ Socket not available');
+     // console.log('❌ Socket not available');
       return;
     }
 
-    console.log('🎯 Setting up socket listeners');
+   // console.log('🎯 Setting up socket listeners');
 
     const handleNewMessage = (messageData: any) => {
-      console.log('📨 Socket received message:', messageData);
+    //  console.log('📨 Socket received message:', messageData);
       
       const messageId = String(messageData.id || messageData.message_id);
       
       if (messageTracker.has(messageId)) {
-        console.log('🔄 Skipping duplicate message:', messageId);
+    //    console.log('🔄 Skipping duplicate message:', messageId);
         return;
       }
 
@@ -535,7 +535,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
       const messageConvId = messageData.conversation_id || messageData.conversationId;
       
       if (currentConv && messageConvId === currentConv.id) {
-        console.log('💬 Adding message to current conversation');
+      //  console.log('💬 Adding message to current conversation');
         
         const isCurrentUser = messageData.sender_id === currentUserId || messageData.senderId === currentUserId;
         
@@ -572,7 +572,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
         );
       }
       
-      console.log('🔄 New message received, refreshing conversations list');
+     // console.log('🔄 New message received, refreshing conversations list');
       fetchConversations();
     };
 
@@ -600,7 +600,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
-    console.log('🎯 Joining conversation room:', selectedConversation.id);
+   // console.log('🎯 Joining conversation room:', selectedConversation.id);
     
     socket.emit('join_conversation', { 
       conversationId: selectedConversation.id,
@@ -613,7 +613,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }, 500);
 
     return () => {
-      console.log('🎯 Leaving conversation room:', selectedConversation.id);
+      //console.log('🎯 Leaving conversation room:', selectedConversation.id);
       socket.emit('leave_conversation', { 
         conversationId: selectedConversation.id,
         userId: currentUserId
@@ -625,16 +625,16 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
   useEffect(() => {
     if (!selectedConversation) return;
 
-    console.log('🔄 Starting auto-refresh for conversation:', selectedConversation.id);
+  //  console.log('🔄 Starting auto-refresh for conversation:', selectedConversation.id);
 
     refreshIntervalRef.current = setInterval(() => {
-      console.log('🔄 Auto-refreshing messages and conversations');
+     // console.log('🔄 Auto-refreshing messages and conversations');
       fetchMessages(selectedConversation.id);
       fetchConversations();
     }, 3000);
 
     return () => {
-      console.log('🔄 Stopping auto-refresh');
+     // console.log('🔄 Stopping auto-refresh');
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
@@ -643,7 +643,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
 
   // ✅ Manual refresh function
   const handleManualRefresh = useCallback(() => {
-    console.log('🔄 Manual refresh triggered');
+   // console.log('🔄 Manual refresh triggered');
     setManualRefresh(prev => prev + 1);
     
     fetchConversations();
@@ -668,7 +668,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
   // ✅ Load messages when conversation changes
   useEffect(() => {
     if (selectedConversation) {
-      console.log('🔄 Loading messages for conversation:', selectedConversation.id);
+     // console.log('🔄 Loading messages for conversation:', selectedConversation.id);
       setMessages([]);
       messageTracker.clear();
       fetchMessages(selectedConversation.id);

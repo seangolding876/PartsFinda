@@ -33,7 +33,7 @@ export default function TestLoginPage() {
     setTestResult(`🔐 Testing login for: ${description} (${email})\n\nStarting authentication...`);
 
     try {
-      console.log('Testing login:', email);
+      //console.log('Testing login:', email);
 
       const response = await fetch('/api/auth/login', {
         method: 'POST',

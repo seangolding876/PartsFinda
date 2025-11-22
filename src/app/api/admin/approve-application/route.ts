@@ -300,7 +300,7 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
       subject: '🎉 Congratulations! Your PartsFinda Seller Account is Verified',
       html: emailHtml,
     });
-    console.log(`✅ Approval email sent to ${userEmail}`);
+    // console.log(`✅ Approval email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send approval email:', error);
     // Don't throw error - email failure shouldn't break the main flow
@@ -483,7 +483,7 @@ async function sendRejectionEmail(userEmail: string, userName: string, rejection
       subject: '⚠️ Your PartsFinda Seller Application Requires Attention',
       html: emailHtml,
     });
-    console.log(`✅ Rejection email sent to ${userEmail}`);
+    // console.log(`✅ Rejection email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send rejection email:', error);
     // Don't throw error - email failure shouldn't break the main flow

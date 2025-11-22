@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       LIMIT 12;
     `;
 
-    console.log('Running revenue query:', revenueQuery);
+    // console.log('Running revenue query:', revenueQuery);
 
     const result = await query(revenueQuery);
 
