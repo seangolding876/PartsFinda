@@ -13,14 +13,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "PartsFinda - Jamaica's Auto Parts Request System",
   description: "Request auto parts and get competitive quotes from verified sellers across Jamaica.",
-  icons: "/favicon.ico",
-  metadataBase: new URL("https://partsfinda.com"),
-  alternates: {},
-  verification: {
-    google: "google8f48d9bd68558d27",
-  },
 };
-
 
 export default function RootLayout({
   children,
@@ -31,6 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
               <head>
+       <meta name="google-site-verification" content="DFvnrrhiI_hx0_GHlspLIFyvyT4chFVk8eHpWDz8soA" />
         {/* Favicon and Icons */}
         <link rel="icon" href="/favicon.ico" />
       </head>
