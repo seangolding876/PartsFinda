@@ -13,7 +13,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "PartsFinda - Jamaica's Auto Parts Request System",
   description: "Request auto parts and get competitive quotes from verified sellers across Jamaica.",
+  icons: "/favicon.ico",
+  metadataBase: new URL("https://partsfinda.com"),
+  alternates: {},
+  verification: {
+    google: "google8f48d9bd68558d27",
+  },
 };
+
 
 export default function RootLayout({
   children,
