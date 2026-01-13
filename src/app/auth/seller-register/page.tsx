@@ -675,9 +675,10 @@ export default function SellerSignupPage() {
               <div className="border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <Shield className="w-5 h-5 text-green-600" />
-                  Why verify your business?
+                  Why verify your business? (opational)
                 </h3>
                 <ul className="space-y-2 text-sm text-gray-600">
+                  
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
                     Get verified badge to build customer trust
@@ -700,7 +701,7 @@ export default function SellerSignupPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="border border-gray-200 rounded-lg p-6">
                   <h4 className="font-semibold text-gray-800 mb-2">Business License</h4>
-                  <p className="text-sm text-gray-600 mb-4">Upload your business license or registration certificate</p>
+                  <p className="text-sm text-gray-600 mb-4">Upload your business license or registration certificate (Optional)</p>
                   <div
                     className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
                       sellerForm.businessLicense
@@ -742,7 +743,7 @@ export default function SellerSignupPage() {
 
                 <div className="border border-gray-200 rounded-lg p-6">
                   <h4 className="font-semibold text-gray-800 mb-2">Tax Certificate</h4>
-                  <p className="text-sm text-gray-600 mb-4">Upload your tax compliance certificate</p>
+                  <p className="text-sm text-gray-600 mb-4">Upload your tax compliance certificate (Optional)</p>
                   <div
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
                     onClick={() => triggerFileInput('taxCertificate')}
@@ -764,7 +765,7 @@ export default function SellerSignupPage() {
 
                 <div className="border border-gray-200 rounded-lg p-6 md:col-span-2">
                   <h4 className="font-semibold text-gray-800 mb-2">Insurance Certificate</h4>
-                  <p className="text-sm text-gray-600 mb-4">Upload your business insurance certificate (recommended)</p>
+                  <p className="text-sm text-gray-600 mb-4">Upload your business insurance certificate (Optional)</p>
                   <div
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
                     onClick={() => triggerFileInput('insuranceCertificate')}
