@@ -6,8 +6,12 @@ import { sendMail } from '@/lib/mailService';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== APPROVE APPLICATION START ===');
+    
     // ✅ 1. Verify Authorization Header
     const authHeader = request.headers.get('authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid token' },
@@ -19,9 +23,11 @@ export async function POST(request: NextRequest) {
     let userInfo;
     try {
       const token = authHeader.replace('Bearer ', '');
+      console.log('Token length:', token.length);
       userInfo = verifyToken(token);
+      console.log('User ID from token:', userInfo?.userId);
     } catch (err: any) {
-      console.error('JWT verification failed:', err);
+      console.error('JWT verification failed:', err.message);
       return NextResponse.json(
         { success: false, error: 'Invalid or expired token' },
         { status: 401 }
@@ -29,7 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ 3. Check Admin Role
+    console.log('Checking admin role for user:', userInfo.userId);
     const userCheck = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
+    console.log('User check result:', userCheck.rows);
+    
     if (userCheck.rows.length === 0 || userCheck.rows[0].role !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Access denied: Admin privileges required' },
@@ -41,7 +50,9 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
+      console.log('Request body:', body);
     } catch (err) {
+      console.error('JSON parse error:', err);
       return NextResponse.json(
         { success: false, error: 'Invalid JSON payload' },
         { status: 400 }
@@ -49,6 +60,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { applicationId, action, reason } = body;
+    console.log('Extracted values:', { applicationId, action, reason });
+    
     if (!applicationId || !action) {
       return NextResponse.json(
         { success: false, error: 'Application ID and action are required' },
@@ -57,10 +70,13 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ 5. Check Application Existence
+    console.log('Checking application:', applicationId);
     const applicationResult = await query(
       `SELECT id, email, name FROM users WHERE id = $1 AND role = 'seller'`,
       [applicationId]
     );
+    console.log('Application found:', applicationResult.rows.length > 0);
+    
     if (applicationResult.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Application not found' },
@@ -69,16 +85,27 @@ export async function POST(request: NextRequest) {
     }
 
     const application = applicationResult.rows[0];
+    console.log('Application details:', application);
 
     // ✅ 6. Perform Action (Approve or Reject)
+    console.log('Performing action:', action);
+    
     if (action === 'approve') {
-      await query(
-        `UPDATE users SET verified_status = 'approved' WHERE id = $1`,
-        [applicationId]
-      );
-      
-      // Send approval email
-      await sendApprovalEmail(application.email, application.name);
+      try {
+        const result = await query(
+          `UPDATE users SET verified_status = 'approved' WHERE id = $1`, // 
+          [applicationId]
+        );
+        console.log('Approval update result:', result.rows);
+        
+        // Send approval email
+        console.log('Sending approval email to:', application.email);
+        await sendApprovalEmail(application.email, application.name);
+        
+      } catch (dbError) {
+        console.error('Database update error (approve):', dbError);
+        throw dbError;
+      }
       
     } else if (action === 'reject') {
       if (!reason?.trim()) {
@@ -88,13 +115,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await query(
-        `UPDATE users SET verified_status = 'rejected', rejection_reason = $2 WHERE id = $1`,
-        [applicationId, reason]
-      );
-      
-      // Send rejection email
-      await sendRejectionEmail(application.email, application.name, reason);
+      try {
+        const result = await query(
+          `UPDATE users SET verified_status = 'rejected', rejection_reason = $2 WHERE id = $1`,
+          [applicationId, reason]
+        );
+        console.log('Rejection update result:', result.rows);
+        
+        // Send rejection email
+        console.log('Sending rejection email to:', application.email);
+        await sendRejectionEmail(application.email, application.name, reason);
+      } catch (dbError) {
+        console.error('Database update error (reject):', dbError);
+        throw dbError;
+      }
     } else {
       return NextResponse.json(
         { success: false, error: 'Invalid action' },
@@ -103,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ 7. Success Response
+    console.log('=== APPROVE APPLICATION SUCCESS ===');
     return NextResponse.json({
       success: true,
       message: `Application ${action}ed successfully`
@@ -110,21 +145,26 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     // ✅ 8. Global Error Handling
-    console.error('Unhandled error in approve-application route:', error);
+    console.error('=== UNHANDLED ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Error full:', error);
 
-    // Include stack trace only in development for debugging
     const isDev = process.env.NODE_ENV === 'development';
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to process application request',
-        ...(isDev && { details: error.message, stack: error.stack }),
+        error: 'Failed to process application',
+        ...(isDev && { 
+          details: error.message, 
+          stack: error.stack,
+          type: error.constructor.name 
+        }),
       },
       { status: 500 }
     );
   }
 }
-
 // ✅ Approval Email Template
 async function sendApprovalEmail(userEmail: string, userName: string) {
   const emailHtml = `
