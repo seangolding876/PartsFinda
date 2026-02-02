@@ -178,8 +178,8 @@ async function scheduleRequestForAllSellers(partRequestId: number, sellers: any[
       const sellerVisibleTime = calculateSellerVisibleTime(seller.membership_plan);
       await query(
         `INSERT INTO request_queue 
-         (part_request_id, seller_id, scheduled_delivery_time, status, seller_visible_time) 
-         VALUES ($1, $2, $3, 'pending',$4)`,
+         (part_request_id, seller_id, scheduled_delivery_time, seller_visible_time , status) 
+         VALUES ($1, $2, $3, $4, 'pending')`,
         [partRequestId, seller.id, sellerDeliveryTime, sellerVisibleTime  ]
       );
       
