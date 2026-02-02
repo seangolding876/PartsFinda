@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to calculate delivery schedule based on SELLER membership
-function calculateSellerDeliverySchedule(sellerMembership: string): Date {
+function calculateSellerVisibleTime(sellerMembership: string): Date {
   const deliveryTime = new Date();
   
   // Seller ke membership ke hisaab se delivery time
@@ -129,6 +129,15 @@ function calculateSellerDeliverySchedule(sellerMembership: string): Date {
     default:
       deliveryTime.setHours(deliveryTime.getHours() + 48); // 48 hours for free/default
   }
+  
+  return deliveryTime;
+}
+
+function calculateSellerDeliverySchedule(sellerMembership: string): Date {
+  const deliveryTime = new Date();
+  
+  // Sabhi membership types ko 2 minute mein delivery
+  deliveryTime.setMinutes(deliveryTime.getMinutes() + 2);
   
   return deliveryTime;
 }
@@ -164,12 +173,12 @@ async function scheduleRequestForAllSellers(partRequestId: number, sellers: any[
     // Har seller ke liye individually schedule karen with their own delivery time
     for (const seller of sellers) {
       const sellerDeliveryTime = calculateSellerDeliverySchedule(seller.membership_plan);
-      
+      const sellerVisibleTime = calculateSellerVisibleTime(seller.membership_plan);
       await query(
         `INSERT INTO request_queue 
-         (part_request_id, seller_id, scheduled_delivery_time, status) 
-         VALUES ($1, $2, $3, 'pending')`,
-        [partRequestId, seller.id, sellerDeliveryTime]
+         (part_request_id, seller_id, scheduled_delivery_time, status, seller_visible_time) 
+         VALUES ($1, $2, $3, 'pending',$4)`,
+        [partRequestId, seller.id, sellerDeliveryTime, sellerVisibleTime  ]
       );
       
       scheduledCount++;
