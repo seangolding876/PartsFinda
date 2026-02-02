@@ -38,7 +38,7 @@ echo -e "${GREEN}✅ Code updated${NC}"
 # === 2. CLEAN INSTALL ===
 echo -e "${YELLOW}📦 Force reinstalling dependencies...${NC}"
 rm -rf node_modules package-lock.json || true
-npm ci --only=production --silent --no-audit
+npm ci --only=production --no-audit
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 
 # === 3. BUILD APP ===
