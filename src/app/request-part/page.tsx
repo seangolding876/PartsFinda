@@ -422,7 +422,7 @@ function RequestPartForm() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Request Auto Parts</h1>
+            <h1 className="text-3xl font-bold mb-2">Request Auto Parts New</h1>
             <p className="text-gray-600">
               Tell us what you need and get competitive quotes from verified sellers
             </p>
