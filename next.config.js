@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: 'export',
+  // ✅ CHOOSE ONLY ONE:
+  // Option A: For Static Export (if you're hosting on static hosting)
+  output: 'export',
+  
+  // OR Option B: For Server/Node.js hosting
+  // output: 'standalone',
+  
   reactStrictMode: true,
   trailingSlash: false,
 
@@ -9,19 +15,22 @@ const nextConfig = {
   },
 
   images: {
+    // ❌ `output: 'export'` के साथ remotePatterns में '**' allowed नहीं है
+    // Static export में सभी images को local होना चाहिए
+    unoptimized: true, // ✅ Add this for static export
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: '**', // इससे error हो सकता है
       },
       {
         protocol: 'http',
-        hostname: '**',
+        hostname: '**', // इससे error हो सकता है
       },
     ],
   },
 
-  // Environment variable validation
+  // ✅ Environment variables (already ok)
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -30,36 +39,29 @@ const nextConfig = {
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   },
 
-  // ✅ IMPORTANT: Skip ESLint during production builds
+  // ✅ Build optimizations
   eslint: {
     ignoreDuringBuilds: true,
   },
-
-  // ✅ IMPORTANT: Skip TypeScript errors during build
+  
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // ✅ IMPORTANT: Disable static generation for dynamic APIs
-  output: 'standalone',
-
-  // Disable x-powered-by header for security
+  // Security
   poweredByHeader: false,
 
-  // ✅ Add this to handle API routes properly
-  async headers() {
-    return [
-      {
-        source: '/api/:path*',
-        headers: [
-          { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
-          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
-        ]
-      }
-    ]
-  }
+  // ✅ For chunk loading issues, add this:
+  webpack: (config, { isServer }) => {
+    // Avoid chunk loading errors
+    config.optimization.splitChunks = {
+      chunks: 'all',
+      maxInitialRequests: 25,
+      minSize: 20000,
+    };
+    
+    return config;
+  },
 }
 
 module.exports = nextConfig
