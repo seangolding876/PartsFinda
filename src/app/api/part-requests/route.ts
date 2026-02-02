@@ -123,6 +123,8 @@ function calculateSellerVisibleTime(sellerMembership: string): Date {
       deliveryTime.setHours(deliveryTime.getHours() + 24); // 24 hours for basic sellers
       break;
     case 'premium':
+      deliveryTime.setMinutes(deliveryTime.getMinutes() + 5);
+      break;
     case 'enterprise':
       deliveryTime.setMinutes(deliveryTime.getMinutes() + 5); // 5 minutes for premium/enterprise
       break;
