@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ✅ CHOOSE ONLY ONE:
-  // Option A: For Static Export (if you're hosting on static hosting)
-  output: 'export',
-  
-  // OR Option B: For Server/Node.js hosting
-  // output: 'standalone',
-  
+    output: 'export',
   reactStrictMode: true,
   trailingSlash: false,
 
@@ -15,22 +9,19 @@ const nextConfig = {
   },
 
   images: {
-    // ❌ `output: 'export'` के साथ remotePatterns में '**' allowed नहीं है
-    // Static export में सभी images को local होना चाहिए
-    unoptimized: true, // ✅ Add this for static export
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**', // इससे error हो सकता है
+        hostname: '**',
       },
       {
         protocol: 'http',
-        hostname: '**', // इससे error हो सकता है
+        hostname: '**',
       },
     ],
   },
 
-  // ✅ Environment variables (already ok)
+  // Environment variable validation
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -39,29 +30,36 @@ const nextConfig = {
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   },
 
-  // ✅ Build optimizations
+  // ✅ IMPORTANT: Skip ESLint during production builds
   eslint: {
     ignoreDuringBuilds: true,
   },
-  
+
+  // ✅ IMPORTANT: Skip TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // Security
+  // ✅ IMPORTANT: Disable static generation for dynamic APIs
+  output: 'standalone',
+
+  // Disable x-powered-by header for security
   poweredByHeader: false,
 
-  // ✅ For chunk loading issues, add this:
-  webpack: (config, { isServer }) => {
-    // Avoid chunk loading errors
-    config.optimization.splitChunks = {
-      chunks: 'all',
-      maxInitialRequests: 25,
-      minSize: 20000,
-    };
-    
-    return config;
-  },
+  // ✅ Add this to handle API routes properly
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
+        ]
+      }
+    ]
+  }
 }
 
 module.exports = nextConfig
