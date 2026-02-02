@@ -1,20 +1,27 @@
 module.exports = {
   apps: [
-    // Next.js Main App
+    // Next.js Main App - FIXED VERSION
     {
       name: 'partsfinda',
       script: 'npm',
       args: 'start',
       cwd: '/var/www/partsfinda',
-      instances: 'max',
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '1G',
+      autorestart: true,
+      watch: false,
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
-      }
+        PORT: 3000,
+        HOSTNAME: '0.0.0.0'
+      },
+      error_file: '/home/seanroot/.pm2/logs/partsfinda-error.log',
+      out_file: '/home/seanroot/.pm2/logs/partsfinda-out.log',
+      time: true
     },
 
-    // Background Worker - WITH ENV
+    // Background Worker
     {
       name: 'partsfinda-worker',
       script: './dist-worker/start_worker.js',
@@ -28,13 +35,12 @@ module.exports = {
     },
     
     // Socket Server
-   // ✅ Socket Server - FIXED
     {
       name: 'partsfinda-socket',
       script: 'index.js',
       cwd: '/var/www/partsfinda/opt/socket-server',
       instances: 1,
-      exec_mode: 'fork', // ✅ YEH ADD KARO
+      exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
         SOCKET_PORT: 3001,
