@@ -52,7 +52,14 @@ export async function GET(request: NextRequest) {
         ) as has_quoted,
         COALESCE(
           (SELECT COUNT(*) FROM request_quotes rq3 WHERE rq3.request_id = pr.id), 0
-        ) as total_quotes
+        ) as total_quotes,
+		seller_visible_time,
+		u.membership_plan,
+		    CASE 
+        WHEN u.membership_plan = 'basic' 
+        THEN (NOW() >= rq.seller_visible_time)
+        ELSE true 
+        END as is_visible_to_seller
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
@@ -60,13 +67,13 @@ export async function GET(request: NextRequest) {
        JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
        WHERE rq.seller_id = $1 AND ${statusCondition} AND (rq."isReject" = false OR rq."isReject" IS NULL)
        ORDER BY 
+       rq.processed_at DESC,
          CASE pr.urgency 
            WHEN 'high' THEN 1
            WHEN 'medium' THEN 2
            WHEN 'low' THEN 3
            ELSE 4
-         END,
-         rq.processed_at DESC`,
+         END`,
       [sellerId]
     );
 
