@@ -936,211 +936,111 @@ const renderRequestCard = (request) => {
             )}
 
             {/* Rest of your existing requests tab code remains the same */}
-    {activeTab === 'requests' && (
-    <div className="space-y-6">
-      {/* Search and Filter */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search requests..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value);
-              infomsg(`Filtering by ${e.target.value === 'all' ? 'all requests' : e.target.value}...`);
-            }}
-            className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Requests</option>
-            <option value="unquoted">Not Quoted</option>
-            <option value="quoted">Already Quoted</option>
-            <option value="available">Available Now</option>
-            <option value="upcoming">Upcoming</option>
-          </select>
-          
-          {/* Statistics Badge */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-blue-700">
-                <span className="font-semibold">
-                  {requests.filter(r => isRequestVisible(r)).length}
-                </span> of <span className="font-semibold">{requests.length}</span> requests available
-              </div>
+{activeTab === 'requests' && (
+  <div className="space-y-6">
+    {/* Search and Filter */}
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search requests..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => {
+            setFilterStatus(e.target.value);
+            infomsg(`Filtering by ${e.target.value === 'all' ? 'all requests' : e.target.value}...`);
+          }}
+          className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="all">All Requests</option>
+          <option value="unquoted">Not Quoted</option>
+          <option value="quoted">Already Quoted</option>
+          <option value="available">Available Now</option>
+          <option value="upcoming">Upcoming</option>
+        </select>
+        
+        {/* Statistics Badge */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-blue-700">
+              <span className="font-semibold">
+                {requests.filter(r => isRequestVisible(r)).length}
+              </span> of <span className="font-semibold">{requests.length}</span> requests available
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Upgrade Banner for Basic Plan Requests */}
-      {requests.some(r => r.membership_plan === 'basic' && !isRequestVisible(r)) && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Crown className="w-6 h-6 text-yellow-600" />
-              <div>
-                <h4 className="font-bold text-gray-800">Get Instant Access!</h4>
-                <p className="text-sm text-gray-600">
-                  Upgrade to Premium to quote basic plan requests immediately
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/seller/subscription"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-            >
-              <Zap className="w-4 h-4" />
-              Upgrade Plan
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Requests List */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading requests...</p>
-        </div>
-                ) : (
-                  <div className="space-y-4">
-                     {filteredRequests
-            .filter(request => {
-              // Apply additional filters
-              if (filterStatus === 'available') {
-                return isRequestVisible(request) && !request.hasQuoted;
-              }
-              if (filterStatus === 'upcoming') {
-                return !isRequestVisible(request) && !request.hasQuoted;
-              }
-              return true;
-            })
-            .map(renderRequestCard)}
-
-          {filteredRequests.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg shadow-lg">
-              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">No Requests Found</h4>
-              <p className="text-gray-600">
-                {searchQuery || filterStatus !== 'all'
-                  ? 'Try adjusting your search or filter criteria'
-                  : 'No part requests available at the moment'
-                }
+    {/* Upgrade Banner for Basic Plan Requests */}
+    {requests.some(r => r.membership_plan === 'basic' && !isRequestVisible(r)) && (
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Crown className="w-6 h-6 text-yellow-600" />
+            <div>
+              <h4 className="font-bold text-gray-800">Get Instant Access!</h4>
+              <p className="text-sm text-gray-600">
+                Upgrade to Premium to quote basic plan requests immediately
               </p>
             </div>
-          )}
+          </div>
+          <Link
+            href="/seller/subscription"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+          >
+            <Zap className="w-4 h-4" />
+            Upgrade Plan
+          </Link>
+        </div>
+      </div>
+    )}
 
-                    {filteredRequests.map((request) => (
-                      <div key={request.id} className="bg-white rounded-lg shadow-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-xl font-bold text-gray-800">{request.partName}</h3>
-                              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(request.urgency)}`}>
-                                {request.urgency}
-                              </div>
-                              {request.hasQuoted && (
-                                <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                                  Quoted
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-gray-600 mb-2">{request.makeName} {request.modelName} {request.vehicleYear} • {request.buyerName}</p>
-                            <p className="text-gray-700 mb-4">{request.description}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-500">Request ID: REQ-{request.id}</p>
-                            <p className="text-sm text-gray-500">Received: {timeAgo(request.processedAt)}</p>
-                          </div>
-                        </div>
+    {/* Requests List */}
+    {loading ? (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading requests...</p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {/* YEH SIRF EK BAAR USE KAREN - renderRequestCard function */}
+        {filteredRequests
+          .filter(request => {
+            // Apply additional filters
+            if (filterStatus === 'available') {
+              return isRequestVisible(request) && !request.hasQuoted;
+            }
+            if (filterStatus === 'upcoming') {
+              return !isRequestVisible(request) && !request.hasQuoted;
+            }
+            return true;
+          })
+          .map(renderRequestCard)}  {/* <-- YEH SIRF EK BAAR */}
 
-                        <div className="grid md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Budget</p>
-                            <p className="text-green-600 font-bold">{formatCurrency(request.budget)}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Location</p>
-                            <p className="text-gray-600">{request.parish}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Expires</p>
-                            <p className="text-red-600">{new Date(request.expiresAt).toLocaleDateString()}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-700">Quotes</p>
-                            <p className="text-blue-600 font-bold">{request.totalQuotes}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                          {!request.hasQuoted ? (
-                            <>
-                              <button
-                                onClick={() => openQuoteModal(request)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                              >
-                                <Send className="w-4 h-4" />
-                                Submit Quote
-                              </button>
-                              <button
-                                onClick={() => handleReject(request)}
-                                disabled={loading}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 disabled:bg-gray-400"
-                              >
-                                {loading ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-1 border-white"></div>
-                                    Rejecting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="w-4 h-4" />
-                                    I don't have this part (Reject)
-                                  </>
-                                )}
-                              </button>
-                            </>
-                          ) : (
-                            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                              <Edit className="w-4 h-4" />
-                              View Quote
-                            </button>
-                          )}
-                          <button
-                            onClick={() => openDetailsModal(request)}
-                            className="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-
-                    {filteredRequests.length === 0 && (
-                      <div className="text-center py-12 bg-white rounded-lg shadow-lg">
-                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h4 className="text-lg font-semibold text-gray-800 mb-2">No Requests Found</h4>
-                        <p className="text-gray-600">
-                          {searchQuery || filterStatus !== 'all'
-                            ? 'Try adjusting your search or filter criteria'
-                            : 'No part requests available at the moment'
-                          }
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+        {filteredRequests.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-lg shadow-lg">
+            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h4 className="text-lg font-semibold text-gray-800 mb-2">No Requests Found</h4>
+            <p className="text-gray-600">
+              {searchQuery || filterStatus !== 'all'
+                ? 'Try adjusting your search or filter criteria'
+                : 'No part requests available at the moment'
+              }
+            </p>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
           </div>
         </div>
       </div>
