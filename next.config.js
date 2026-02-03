@@ -9,14 +9,23 @@ const nextConfig = {
   },
 
   images: {
+    unoptimized: true, // ✅ Export mode ke liye MUST
+    domains: ['ext.same-assets.com', 'partsfinda.com'], // ✅ Dono domains
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'ext.same-assets.com', // ✅ External CDN
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'partsfinda.com', // ✅ Aapka own domain
+        pathname: '/**',
       },
       {
         protocol: 'http',
-        hostname: '**',
+        hostname: 'localhost', // ✅ Local development
+        pathname: '/**',
       },
     ],
   },
