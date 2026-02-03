@@ -45,6 +45,8 @@ interface SellerRequest {
   quoted: boolean;
   isReject: boolean;
   membership_plan: string;
+  is_visible_to_seller: boolean;
+  seller_visible_time?: string;
 }
 
 interface SellerStats {
