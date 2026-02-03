@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 		seller_visible_time,
 		seller.membership_plan,
 		    CASE 
-        WHEN u.membership_plan = 'basic' 
+        WHEN seller.membership_plan = 'basic' 
         THEN (NOW() >= rq.seller_visible_time)
         ELSE true 
         END as is_visible_to_seller,
