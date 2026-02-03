@@ -543,12 +543,30 @@ const isRequestVisible = (request: SellerRequest) => {
 
 
 const getTimeRemaining = (request: SellerRequest) => {
+  // Debug log add karein
+  console.log('Request data:', {
+    membership_plan: request.membership_plan,
+    is_visible_to_seller: request.is_visible_to_seller,
+    seller_visible_time: request.seller_visible_time,
+    serverDate: request.serverDate
+  });
+  
   if (request.membership_plan !== 'basic' || request.is_visible_to_seller) {
     return 'Available now';
   }
   
+  // Ensure dates are valid
+  if (!request.seller_visible_time || !request.serverDate) {
+    return 'Time not available';
+  }
+  
   const visibleTime = new Date(request.seller_visible_time);
-  const serverTime = new Date(request.serverDate); // Server time use karein
+  const serverTime = new Date(request.serverDate);
+  
+  // Check if dates are valid
+  if (isNaN(visibleTime.getTime()) || isNaN(serverTime.getTime())) {
+    return 'Invalid time';
+  }
   
   const diffMs = visibleTime.getTime() - serverTime.getTime();
   
@@ -562,6 +580,7 @@ const getTimeRemaining = (request: SellerRequest) => {
   }
   return `Available in ${diffMinutes} minutes`;
 };
+
 
 // ✅ Render request card with visibility logic
 const renderRequestCard = (request) => {
@@ -598,9 +617,9 @@ const renderRequestCard = (request) => {
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center gap-2 text-yellow-800">
                 <Clock className="w-4 h-4" />
-                <span className="font-semibold">
-                  This request will be available to quote in: {getTimeRemaining(request.seller_visible_time)}
-                </span>
+          <span className="font-semibold">
+  This request will be available to quote in: {getTimeRemaining(request)} 
+</span>
               </div>
               <p className="text-sm text-yellow-700 mt-1">
                 Upgrade to <Link href="/seller/subscription" className="font-semibold underline">Premium</Link> to get immediate access to all requests!
@@ -668,7 +687,7 @@ const renderRequestCard = (request) => {
                     <div>
                       <p className="font-semibold text-gray-800">Quote submission locked</p>
                       <p className="text-sm text-gray-600">
-                        Available in: {getTimeRemaining(request.seller_visible_time)}
+                        Available in: {getTimeRemaining(request)} 
                       </p>
                     </div>
                     <Link
