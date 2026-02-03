@@ -46,7 +46,7 @@ interface SellerRequest {
   isReject: boolean;
   membership_plan: string;
   is_visible_to_seller: boolean;
-  seller_visible_time?: string;
+  seller_visible_time: Date;
   serverDate: Date;
 }
 
