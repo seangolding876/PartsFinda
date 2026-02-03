@@ -100,7 +100,11 @@ export async function GET(request: NextRequest) {
       processedAt: request.processed_at,
       hasQuoted: request.has_quoted,
       quoted: request.has_quoted, // duplicate for compatibility
-      totalQuotes: parseInt(request.total_quotes)
+      totalQuotes: parseInt(request.total_quotes),
+      seller_visible_time : request.seller_visible_time,
+      is_visible_to_seller: request.is_visible_to_seller,
+      membership_plan: request.membership_plan,
+      isReject: request.isReject || false
     }));
 
     return NextResponse.json({
