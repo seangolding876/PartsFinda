@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           (SELECT COUNT(*) FROM request_quotes rq3 WHERE rq3.request_id = pr.id), 0
         ) as total_quotes,
 		seller_visible_time,
-		u.membership_plan,
+		seller.membership_plan,
 		    CASE 
         WHEN u.membership_plan = 'basic' 
         THEN (NOW() >= rq.seller_visible_time)
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
+       JOIN users seller ON rq.seller_id = seller.id
        JOIN makes mk ON pr.make_id = mk.id
        JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
        WHERE rq.seller_id = $1 AND ${statusCondition} AND (rq."isReject" = false OR rq."isReject" IS NULL)
