@@ -6,7 +6,7 @@ import { Check, Star, Zap, Crown, Gift, ArrowRight, Users, TrendingUp, Clock, Sh
 export default function PricingPage() {
   const plans = [
     {
-      name: 'Free',
+      name: 'basic',
       price: 'J$0',
       period: '/month',
       description: 'Perfect for getting started',

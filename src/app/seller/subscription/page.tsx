@@ -401,7 +401,7 @@ export default function SubscriptionPage() {
                       ? 'bg-green-500 text-white cursor-default'
                       : plan.recommended
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : plan.name === 'free'
+                      : plan.name === 'basic'
                       ? 'bg-gray-600 hover:bg-gray-700 text-white'
                       : 'bg-green-600 hover:bg-green-700 text-white'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}

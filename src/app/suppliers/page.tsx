@@ -104,7 +104,7 @@ export default function SuppliersPage() {
       specialties: ['Tires & Wheels', 'Brake Systems', 'Suspension'],
       description: 'Central Jamaica\'s go-to supplier for tires, wheels, and safety parts.',
       responseTime: '5 hours',
-      membershipLevel: 'Free',
+      membershipLevel: 'basic',
       joinedYear: 2022,
       verified: true
     },
