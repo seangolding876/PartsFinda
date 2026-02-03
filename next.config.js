@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // Ya phir 'standalone' - ek hi choose karein
+    output: 'export',
   reactStrictMode: true,
   trailingSlash: false,
 
@@ -21,7 +21,7 @@ const nextConfig = {
     ],
   },
 
-  // Environment variables
+  // Environment variable validation
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -30,19 +30,23 @@ const nextConfig = {
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   },
 
+  // ✅ IMPORTANT: Skip ESLint during production builds
   eslint: {
     ignoreDuringBuilds: true,
   },
 
+  // ✅ IMPORTANT: Skip TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // Dono 'output' mat use karein, ek choose karein
-  // output: 'standalone', // Remove this line if using 'export'
+  // ✅ IMPORTANT: Disable static generation for dynamic APIs
+  output: 'standalone',
 
+  // Disable x-powered-by header for security
   poweredByHeader: false,
 
+  // ✅ Add this to handle API routes properly
   async headers() {
     return [
       {
@@ -52,8 +56,7 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
-        ]
-      },
+        ,
       {
         source: '/(.*)',
         headers: [
@@ -93,6 +96,10 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
           }
+        ]
+      }
+        
+        
         ]
       }
     ]
