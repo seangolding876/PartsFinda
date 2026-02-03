@@ -548,7 +548,7 @@ const getTimeRemaining = (request: SellerRequest) => {
     membership_plan: request.membership_plan,
     is_visible_to_seller: request.is_visible_to_seller,
     seller_visible_time: request.seller_visible_time,
-    serverDate: request.serverDate
+    server_date: request.serverDate
   });
   
   if (request.membership_plan !== 'basic' || request.is_visible_to_seller) {

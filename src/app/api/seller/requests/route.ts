@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         THEN (NOW() >= rq.seller_visible_time)
         ELSE true 
         END as is_visible_to_seller,
-		    NOW() as ServerDate
+		    NOW() as server_date, 
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       is_visible_to_seller: request.is_visible_to_seller,
       membership_plan: request.membership_plan,
       isReject: request.isReject || false,
-      serverDate : request.ServerDate
+      serverDate : request.server_date
     }));
 
     return NextResponse.json({
