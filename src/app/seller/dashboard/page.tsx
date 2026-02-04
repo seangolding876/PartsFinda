@@ -47,6 +47,7 @@ interface SellerRequest {
   membership_plan: string;
   is_visible_to_seller: boolean;
   seller_visible_time?: string;
+  serverDate: Date;
 }
 
 interface SellerStats {
@@ -532,21 +533,24 @@ function SellerDashboard() {
     }
   };
 
-  const isRequestVisible = (request) => {
-  const now = new Date();
-  const visibleTime = new Date(request.seller_visible_time);
-  
+const isRequestVisible = (request: SellerRequest) => {
   if (request.membership_plan === 'basic') {
-    return now >= visibleTime;
+    // Use is_visible_to_seller directly from API (server calculated)
+    return request.is_visible_to_seller;
   }
   return true; // Premium users always visible
 };
 
 
-const getTimeRemaining = (sellerVisibleTime) => {
-  const now = new Date();
-  const visibleTime = new Date(sellerVisibleTime);
-  const diffMs = visibleTime.getTime() - now.getTime();
+const getTimeRemaining = (request: SellerRequest) => {
+  if (request.membership_plan !== 'basic' || request.is_visible_to_seller) {
+    return 'Available now';
+  }
+  
+  const visibleTime = new Date(request.seller_visible_time);
+  const serverTime = new Date(request.serverDate); // Server time use karein
+  
+  const diffMs = visibleTime.getTime() - serverTime.getTime();
   
   if (diffMs <= 0) return 'Available now';
   
