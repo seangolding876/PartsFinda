@@ -487,18 +487,18 @@ function RequestPartForm() {
                   <label className="block text-sm font-medium mb-2">
                     Year <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="vehicleYear"
-                    value={formData.vehicleYear}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="">Select Year</option>
-                    {Array.from({ length: 30 }, (_, i) => 2024 - i).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
+<select
+  name="vehicleYear"
+  value={formData.vehicleYear}
+  onChange={handleChange}
+  required
+  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+>
+  <option value="">Select Year</option>
+  {Array.from({ length: 40 }, (_, i) => new Date().getFullYear() - i).map(year => (
+    <option key={year} value={year}>{year}</option>
+  ))}
+</select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
