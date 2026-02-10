@@ -157,56 +157,50 @@ if (!nameValidation.valid) {
   // Name validation helper - realistic but not too strict
 function isValidName(name: string): { valid: boolean; message?: string } {
   const trimmed = name.trim();
-  
-  // 1. Basic length checks
-  if (trimmed.length < 2) {
-    return { valid: false, message: 'Name must be at least 2 characters' };
-  }
-  if (trimmed.length > 100) {
-    return { valid: false, message: 'Name is too long' };
+
+  // Basic checks
+  if (trimmed.length < 2 || trimmed.length > 100) {
+    return { valid: false, message: 'Name must be 2–100 characters long' };
   }
 
-  // 2. Must contain at least 2 actual letters (Unicode aware - supports international names)
+  // Must have at least 2 Unicode letters
   const letters = [...trimmed].filter(char => /\p{L}/u.test(char));
   if (letters.length < 2) {
     return { valid: false, message: 'Name must contain at least 2 letters' };
   }
 
-  // 3. Reject obvious bot/gibberish patterns:
-  
-  // Pattern A: Long alphanumeric string with NO spaces (like your example "bFeHGAkozkjVUgOmvijml")
-  if (/^[a-zA-Z0-9]{12,}$/.test(trimmed.replace(/\s+/g, '')) && !/\s/.test(trimmed)) {
-    return { valid: false, message: 'Please enter a real name (not random characters)' };
+  // ❌ Reject if it looks like random mixed-case gibberish
+  // Rule: If name has NO lowercase letters → likely fake (real names aren't ALL-CAPS or RandomCase)
+  const hasLowercase = /[a-z\u0621-\u064A]/.test(trimmed); // includes Urdu/Arabic lowercase range
+  const hasUppercase = /[A-Z\u0621-\u064A]/.test(trimmed); // Arabic script doesn't distinguish case, so this is safe
+
+  // But: allow all-uppercase if it's short (e.g., "BO", "ALI") – common in some cultures
+  if (!hasLowercase && trimmed.length > 4) {
+    return { valid: false, message: 'Please enter a real name (not random letters)' };
   }
 
-  // Pattern B: Too many consecutive uppercase letters (e.g., "ABCdefGHI")
-  const consecutiveUpper = trimmed.match(/[A-Z]{4,}/);
-  if (consecutiveUpper && consecutiveUpper[0].length / trimmed.length > 0.4) {
-    return { valid: false, message: 'Name appears invalid' };
+  // 🔍 Advanced: Check for "randomness" using uppercase-to-total-letter ratio
+  const upperLetters = letters.filter(c => c >= 'A' && c <= 'Z').length;
+  const lowerLetters = letters.length - upperLetters;
+
+  // If more than 70% of letters are uppercase AND no spaces → suspicious
+  if (upperLetters / letters.length > 0.7 && !trimmed.includes(' ') && trimmed.length > 6) {
+    return { valid: false, message: 'Name appears invalid. Please use your real name.' };
   }
 
-  // Pattern C: Suspicious character ratio (too many numbers/symbols)
-  const suspiciousChars = [...trimmed].filter(char => 
-    !/\p{L}/u.test(char) && 
-    char !== ' ' && 
-    char !== '-' && 
-    char !== "'" && 
-    char !== '.' && 
-    char !== '’'
-  ).length;
-  
-  if (suspiciousChars / trimmed.length > 0.3) {
-    return { valid: false, message: 'Name contains too many unusual characters' };
+  // ❌ Reject if it matches "CamelCase Gibberish" pattern (like WSPqAb TQPhtahJHEG)
+  // Real names don’t have internal uppercase mid-word unless it’s a proper compound (rare)
+  // Simple heuristic: if any word has ≥2 uppercase letters and ≥1 lowercase → likely fake
+  const words = trimmed.split(/\s+/);
+  for (const word of words) {
+    const upperCount = (word.match(/[A-Z]/g) || []).length;
+    const lowerCount = (word.match(/[a-z]/g) || []).length;
+    if (upperCount >= 2 && lowerCount >= 1 && word.length >= 5) {
+      return { valid: false, message: 'Please enter a real name (not random characters)' };
+    }
   }
 
-  // 4. Allow legitimate formats:
-  // ✅ "John Doe" (spaces)
-  // ✅ "O'Brien" (apostrophe)
-  // ✅ "Mary-Jane" (hyphen)
-  // ✅ "José" (Unicode)
-  // ✅ "محمد" (Arabic/Urdu names)
-  // ❌ "bFeHGAkozkjVUgOmvijml" (rejected - no spaces, looks random)
-
+  // Allow legitimate names: "John Doe", "José", "محمد علي", "O’Reilly", etc.
   return { valid: true };
 }
 }
