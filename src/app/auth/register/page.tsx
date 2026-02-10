@@ -22,6 +22,19 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
+    if (formData.name.trim().length < 2) {
+  setError('Name must be at least 2 characters');
+  setLoading(false);
+  return;
+}
+
+if (/^[a-zA-Z0-9]{15,}$/.test(formData.name.trim().replace(/\s+/g, '')) && !/\s/.test(formData.name)) {
+  setError('Please enter a real name (not random characters)');
+  setLoading(false);
+  return;
+}
+
+
     // Validation
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');

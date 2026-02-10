@@ -39,6 +39,14 @@ if (!allowed) {
       );
     }
 
+    const nameValidation = isValidName(name);
+if (!nameValidation.valid) {
+  return NextResponse.json(
+    { success: false, error: nameValidation.message || 'Invalid name format' },
+    { status: 400 }
+  );
+}
+
     if (password.length < 6) {
       return NextResponse.json(
         { success: false, error: 'Password must be at least 6 characters' },
@@ -145,7 +153,66 @@ if (!allowed) {
       { status: 500 }
     );
   }
+
+  // Name validation helper - realistic but not too strict
+function isValidName(name: string): { valid: boolean; message?: string } {
+  const trimmed = name.trim();
+  
+  // 1. Basic length checks
+  if (trimmed.length < 2) {
+    return { valid: false, message: 'Name must be at least 2 characters' };
+  }
+  if (trimmed.length > 100) {
+    return { valid: false, message: 'Name is too long' };
+  }
+
+  // 2. Must contain at least 2 actual letters (Unicode aware - supports international names)
+  const letters = [...trimmed].filter(char => /\p{L}/u.test(char));
+  if (letters.length < 2) {
+    return { valid: false, message: 'Name must contain at least 2 letters' };
+  }
+
+  // 3. Reject obvious bot/gibberish patterns:
+  
+  // Pattern A: Long alphanumeric string with NO spaces (like your example "bFeHGAkozkjVUgOmvijml")
+  if (/^[a-zA-Z0-9]{12,}$/.test(trimmed.replace(/\s+/g, '')) && !/\s/.test(trimmed)) {
+    return { valid: false, message: 'Please enter a real name (not random characters)' };
+  }
+
+  // Pattern B: Too many consecutive uppercase letters (e.g., "ABCdefGHI")
+  const consecutiveUpper = trimmed.match(/[A-Z]{4,}/);
+  if (consecutiveUpper && consecutiveUpper[0].length / trimmed.length > 0.4) {
+    return { valid: false, message: 'Name appears invalid' };
+  }
+
+  // Pattern C: Suspicious character ratio (too many numbers/symbols)
+  const suspiciousChars = [...trimmed].filter(char => 
+    !/\p{L}/u.test(char) && 
+    char !== ' ' && 
+    char !== '-' && 
+    char !== "'" && 
+    char !== '.' && 
+    char !== '’'
+  ).length;
+  
+  if (suspiciousChars / trimmed.length > 0.3) {
+    return { valid: false, message: 'Name contains too many unusual characters' };
+  }
+
+  // 4. Allow legitimate formats:
+  // ✅ "John Doe" (spaces)
+  // ✅ "O'Brien" (apostrophe)
+  // ✅ "Mary-Jane" (hyphen)
+  // ✅ "José" (Unicode)
+  // ✅ "محمد" (Arabic/Urdu names)
+  // ❌ "bFeHGAkozkjVUgOmvijml" (rejected - no spaces, looks random)
+
+  return { valid: true };
 }
+}
+
+
+
 
 async function sendBuyerVerificationEmail(userEmail: string, userName: string, token: string) {
   const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/buyer/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;
