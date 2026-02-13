@@ -9,22 +9,20 @@ interface QueueSmsOptions {
   referenceId: string;
   scheduledFor?: Date;
   maxRetries?: number;
-  priority?: 'high' | 'normal' | 'low';
 }
 
 class SmsQueueService {
   // ============= 1. QUEUE SMS =============
-  async queueSms(options: QueueSmsOptions): Promise<number> {
-    const { 
-      userId, 
-      phone, 
-      message, 
-      type, 
-      referenceId, 
-      scheduledFor = new Date(),
-      maxRetries = 3,
-      priority = 'normal'
-    } = options;
+async queueSms(options: QueueSmsOptions): Promise<number> {
+  const { 
+    userId, 
+    phone, 
+    message, 
+    type, 
+    referenceId, 
+    scheduledFor = new Date(),
+    maxRetries = 3
+  } = options;
 
     // Validate phone number
     if (!phone || phone.trim() === '') {
@@ -37,16 +35,16 @@ class SmsQueueService {
     }
 
     try {
-      const result = await query(
-        `INSERT INTO sms_queue 
-         (user_id, phone_number, message, type, reference_id, scheduled_for, max_retries, priority, status) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-         RETURNING id`,
-        [userId, phone, message, type, referenceId, scheduledFor, maxRetries, priority]
-      );
+    const result = await query(
+      `INSERT INTO sms_queue 
+       (user_id, phone_number, message, type, reference_id, scheduled_for, max_retries, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+       RETURNING id`,
+      [userId, phone, message, type, referenceId, scheduledFor, maxRetries] // ✅ 7 parameters only
+    );
 
-      const queueId = result.rows[0].id;
-      console.log(`✅ SMS queued [${queueId}] for ${phone} (${type})`);
+    const queueId = result.rows[0].id;
+    console.log(`✅ SMS queued [${queueId}] for ${phone} (${type})`);
       
       return queueId;
     } catch (error) {
