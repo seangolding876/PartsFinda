@@ -33,6 +33,18 @@ module.exports = {
         DATABASE_URL: 'postgresql://postgres:C5%2Ay%24gRPGFiNuVveagleEye7%24@97.74.85.166:5432/myprojectdb'
       }
     },
+    {
+      name: 'partsfinda-sms-worker', // 📱 SMS worker
+      script: './dist-worker/sms-worker.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://postgres:C5%2Ay%24gRPGFiNuVveagleEye7%24@97.74.85.166:5432/myprojectdb'
+      }
+    },
     
     // Socket Server
     {
