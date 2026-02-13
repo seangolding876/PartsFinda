@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
+import smsQueueService from '@/lib/sms-queue-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +119,38 @@ export async function POST(request: NextRequest) {
         ]
       );
       console.log('🟢 Quote inserted successfully. ID:', result.rows[0]?.id);
+
+
+      // After quote insert, BEFORE return response
+const quoteId = result.rows[0].id;
+
+// ✅ ADD THIS - Get buyer details
+const buyerData = await query(
+  `SELECT u.id, u.name, u.phone, pr.part_name 
+   FROM part_requests pr
+   JOIN users u ON pr.user_id = u.id
+   WHERE pr.id = $1`,
+  [requestId]
+);
+
+const buyer = buyerData.rows[0];
+
+// ✅ ADD THIS - Send SMS to buyer
+if (buyer?.phone) {
+  const message = `${userInfo.name || 'A seller'} sent J$${price} quote for ${buyer.part_name}. Check Partify app now.`;
+  
+  await smsQueueService.queueSms({
+    userId: buyer.id,
+    phone: buyer.phone,
+    message: message,
+    type: 'new_quote',
+    referenceId: quoteId.toString()
+  });
+  
+  console.log('📱 SMS queued for buyer');
+}
+
+
     } catch (insertError) {
       console.log('🔴 Database insert error:', insertError);
       console.log('🔴 Insert error details:', {
