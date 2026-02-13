@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
       // After quote insert, BEFORE return response
 const quoteId = result.rows[0].id;
-
+debugger;
 // ✅ ADD THIS - Get buyer details
 const buyerData = await query(
   `SELECT u.id, u.name, u.phone, pr.part_name 
@@ -134,7 +134,8 @@ const buyerData = await query(
 );
 
 const buyer = buyerData.rows[0];
-
+debugger;
+console.log('🔵 Buyer details fetched:', buyer);
 // ✅ ADD THIS - Send SMS to buyer
 if (buyer?.phone) {
   const message = `${userInfo.name || 'A seller'} sent J$${price} quote for ${buyer.part_name}. Check Partify app now.`;
