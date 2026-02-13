@@ -39,14 +39,6 @@ if (!allowed) {
       );
     }
 
-    const nameValidation = isValidName(name);
-if (!nameValidation.valid) {
-  return NextResponse.json(
-    { success: false, error: nameValidation.message || 'Invalid name format' },
-    { status: 400 }
-  );
-}
-
     if (password.length < 6) {
       return NextResponse.json(
         { success: false, error: 'Password must be at least 6 characters' },
@@ -153,60 +145,7 @@ if (!nameValidation.valid) {
       { status: 500 }
     );
   }
-
-  // Name validation helper - realistic but not too strict
-function isValidName(name: string): { valid: boolean; message?: string } {
-  const trimmed = name.trim();
-
-  // Basic checks
-  if (trimmed.length < 2 || trimmed.length > 100) {
-    return { valid: false, message: 'Name must be 2–100 characters long' };
-  }
-
-  // Must have at least 2 Unicode letters
-  const letters = [...trimmed].filter(char => /\p{L}/u.test(char));
-  if (letters.length < 2) {
-    return { valid: false, message: 'Name must contain at least 2 letters' };
-  }
-
-  // ❌ Reject if it looks like random mixed-case gibberish
-  // Rule: If name has NO lowercase letters → likely fake (real names aren't ALL-CAPS or RandomCase)
-  const hasLowercase = /[a-z\u0621-\u064A]/.test(trimmed); // includes Urdu/Arabic lowercase range
-  const hasUppercase = /[A-Z\u0621-\u064A]/.test(trimmed); // Arabic script doesn't distinguish case, so this is safe
-
-  // But: allow all-uppercase if it's short (e.g., "BO", "ALI") – common in some cultures
-  if (!hasLowercase && trimmed.length > 4) {
-    return { valid: false, message: 'Please enter a real name (not random letters)' };
-  }
-
-  // 🔍 Advanced: Check for "randomness" using uppercase-to-total-letter ratio
-  const upperLetters = letters.filter(c => c >= 'A' && c <= 'Z').length;
-  const lowerLetters = letters.length - upperLetters;
-
-  // If more than 70% of letters are uppercase AND no spaces → suspicious
-  if (upperLetters / letters.length > 0.7 && !trimmed.includes(' ') && trimmed.length > 6) {
-    return { valid: false, message: 'Name appears invalid. Please use your real name.' };
-  }
-
-  // ❌ Reject if it matches "CamelCase Gibberish" pattern (like WSPqAb TQPhtahJHEG)
-  // Real names don’t have internal uppercase mid-word unless it’s a proper compound (rare)
-  // Simple heuristic: if any word has ≥2 uppercase letters and ≥1 lowercase → likely fake
-  const words = trimmed.split(/\s+/);
-  for (const word of words) {
-    const upperCount = (word.match(/[A-Z]/g) || []).length;
-    const lowerCount = (word.match(/[a-z]/g) || []).length;
-    if (upperCount >= 2 && lowerCount >= 1 && word.length >= 5) {
-      return { valid: false, message: 'Please enter a real name (not random characters)' };
-    }
-  }
-
-  // Allow legitimate names: "John Doe", "José", "محمد علي", "O’Reilly", etc.
-  return { valid: true };
 }
-}
-
-
-
 
 async function sendBuyerVerificationEmail(userEmail: string, userName: string, token: string) {
   const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/buyer/verify-email?token=${token}&email=${encodeURIComponent(userEmail)}`;

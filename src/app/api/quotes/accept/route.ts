@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
-import smsQueueService from '@/lib/sms-queue-service';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -174,57 +173,6 @@ export async function POST(request: NextRequest) {
       'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
       [conversationId]
     );
-
-    
-// ============= 📱 SMS FOR BUYER =============
-try {
-  const buyerPhone = await query(
-    'SELECT phone FROM users WHERE id = $1',
-    [userInfo.userId]
-  );
-  
-  if (buyerPhone.rows[0]?.phone) {
-     const buyerMessage = `✅ Hi ${quote.buyer_name}! Your quote request for ${quote.part_name} has been ACCEPTED by ${quote.seller_name} at J$${quote.price}. Check your conversations for next steps.`;
-    
-    await smsQueueService.queueSms({
-      userId: userInfo.userId,
-      phone: buyerPhone.rows[0].phone,
-      message: buyerMessage,
-      type: 'quote_accepted_buyer',
-      referenceId: quoteId,
-      priority: 'high'
-    });
-    
-    console.log('📱 SMS queued for BUYER');
-  }
-} catch (smsError) {
-  console.error('❌ Failed to queue buyer SMS:', smsError);
-  // Don't fail the transaction
-}
-
-// ============= 📱 SMS FOR SELLER =============
-try {
-  const sellerPhone = await query(
-    'SELECT phone FROM users WHERE id = $1',
-    [quote.seller_id]
-  );
-  
-  if (sellerPhone.rows[0]?.phone) {
-    const sellerMessage = `🎉 Congratulations ${quote.seller_name}! Your quote for ${quote.part_name} has been ACCEPTED by ${quote.buyer_name} at J$${quote.price}. Please check your conversations to coordinate delivery.`;
-    await smsQueueService.queueSms({
-      userId: quote.seller_id,
-      phone: sellerPhone.rows[0].phone,
-      message: sellerMessage,
-      type: 'quote_accepted_seller',
-      referenceId: quoteId,
-      priority: 'high'
-    });
-    
-    console.log('📱 SMS queued for SELLER');
-  }
-} catch (smsError) {
-  console.error('❌ Failed to queue seller SMS:', smsError);
-}
 
     // Commit transaction
     await query('COMMIT');
