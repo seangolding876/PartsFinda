@@ -97,7 +97,7 @@ function RequestPartForm() {
     modelId: '',
     description: '',
     condition: 'any',
-    budget: '',
+    budget: '0',
     parish: '',
     urgency: 'medium',
   });
@@ -285,10 +285,10 @@ function RequestPartForm() {
       }
     }
 
-    if (formData.budget && parseFloat(formData.budget) < 0) {
-      setError('Budget cannot be negative');
-      return false;
-    }
+    // if (formData.budget && parseFloat(formData.budget) < 0) {
+    //   setError('Budget cannot be negative');
+    //   return false;
+    // }
 
     setError('');
     return true;
@@ -324,7 +324,7 @@ function RequestPartForm() {
       const requestData = {
         ...formData,
         vehicleYear: parseInt(formData.vehicleYear),
-        budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        // budget: formData.budget ? parseFloat(formData.budget) : undefined,
       };
 
       // console.log('📦 Sending request data:', requestData);
@@ -358,7 +358,7 @@ function RequestPartForm() {
           modelId: '',
           description: '',
           condition: 'any',
-          budget: '',
+          budget: '0',
           parish: '',
           urgency: 'medium',
         });
@@ -575,7 +575,7 @@ function RequestPartForm() {
                     <option value="refurbished">Refurbished</option>
                   </select>
                 </div>
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium mb-2">Budget (JMD)</label>
                   <input
                     type="number"
@@ -587,7 +587,7 @@ function RequestPartForm() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     placeholder="e.g., 5000"
                   />
-                </div>
+                </div> */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Parish <span className="text-red-500">*</span>
