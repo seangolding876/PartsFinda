@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 2. Decode and Verify JWT
+    // ✅ 2. Decode and Verify JWT Implementation
     let userInfo;
     try {
       const token = authHeader.replace('Bearer ', '');
