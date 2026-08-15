@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-// ✅ Compiled JavaScript file import karo
+//  Compiled JavaScript file import karo
 import RequestProcessor from '../dist-workers/workers/requestProcessor.js';
 
 const processor = new RequestProcessor();

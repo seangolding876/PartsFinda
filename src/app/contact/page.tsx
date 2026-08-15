@@ -11,7 +11,7 @@ export default function ContactPage() {
     subject: '',
     message: '',
     type: 'general',
-    website: '' // ✅ Honeypot field
+    website: '' //  Honeypot field
   });
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,14 +24,14 @@ export default function ContactPage() {
     setIsLoading(true);
     setError('');
 
-    // ✅ Client-side validation
+    //  Client-side validation
     if (formData.name.length < 2 || formData.subject.length < 3 || formData.message.length < 10) {
       setError('Please fill in all fields properly.');
       setIsLoading(false);
       return;
     }
 
-    // ✅ Check for suspicious content
+    //  Check for suspicious content
     if (isSuspiciousContent(formData.name) || isSuspiciousContent(formData.subject)) {
       setError('Invalid content detected in form fields.');
       setIsLoading(false);
@@ -83,7 +83,7 @@ export default function ContactPage() {
     });
   };
 
-  // ✅ Client-side suspicious content detection
+  //  Client-side suspicious content detection
   const isSuspiciousContent = (text: string): boolean => {
     if (text.length < 8) return false;
     
@@ -101,7 +101,7 @@ export default function ContactPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="text-6xl mb-4">✅</div>
+          <div className="text-6xl mb-4"></div>
           <h2 className="text-2xl font-bold mb-4">Message Sent!</h2>
           <p className="text-gray-600 mb-6">
             Thank you for contacting us. We'll get back to you within 24 hours.
@@ -223,7 +223,7 @@ export default function ContactPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* ✅ HONEYPOT FIELD - Bots will fill this but users won't see it */}
+              {/*  HONEYPOT FIELD - Bots will fill this but users won't see it */}
               <div className="hidden" aria-hidden="true">
                 <label htmlFor="website">Website</label>
                 <input

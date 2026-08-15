@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.replace('Bearer ', '');
     const userInfo = verifyToken(token);
 
-    // ✅ SIRF EK TABLE SE DATA - ALL NOTIFICATIONS
+    //  SIRF EK TABLE SE DATA - ALL NOTIFICATIONS
     const notifications = await query(
       `SELECT 
         id, title, message, type, user_type, is_read, created_at, 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const userInfo = verifyToken(token);
     const { notificationId } = await request.json();
 
-    // ✅ SIRF EK TABLE UPDATE
+    //  SIRF EK TABLE UPDATE
     await query(
       'UPDATE notifications SET is_read = true, read_at = NOW() WHERE id = $1 AND user_id = $2',
       [notificationId, userInfo.userId]

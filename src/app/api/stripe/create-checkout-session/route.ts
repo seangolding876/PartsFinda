@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const user = userResult.rows[0];
 
-    // ✅ Check if user has existing active subscription
+    //  Check if user has existing active subscription
     const existingSubResult = await query(
       `SELECT ss.stripe_subscription_id, sp.plan_name, ss.end_date 
        FROM supplier_subscription ss
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       stripeSubscriptionId: existingSubscription?.stripe_subscription_id
     });
 
-    // ✅ Stripe Price IDs
+    //  Stripe Price IDs
     const stripePriceIds: { [key: string]: string } = {
       'premium': 'price_1SUoQNAs2bHVxogZgEFlB38T',
       'enterprise': 'price_1SUoRIAs2bHVxogZYGOAg92m',
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stripe price not configured for this plan' }, { status: 400 });
     }
 
-    // ✅ Stripe Checkout Session Configuration - FIXED
+    //  Stripe Checkout Session Configuration - FIXED
     const sessionConfig: any = {
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -103,14 +103,14 @@ export async function POST(request: NextRequest) {
           plan_name: plan.plan_name,
           is_upgrade: hasActiveSubscription.toString()
         },
-        // ✅ FIX: Add proper billing_cycle_anchor with proration_behavior
+        //  FIX: Add proper billing_cycle_anchor with proration_behavior
         proration_behavior: 'create_prorations',
-        billing_cycle_anchor: Math.floor(Date.now() / 1000) // ✅ Current timestamp in seconds
+        billing_cycle_anchor: Math.floor(Date.now() / 1000) //  Current timestamp in seconds
       },
       allow_promotion_codes: true
     };
 
-    // ✅ OPTIONAL: Agar existing subscription hai toh uski information add karein
+    //  OPTIONAL: Agar existing subscription hai toh uski information add karein
     if (hasActiveSubscription && existingSubscription.stripe_subscription_id) {
       sessionConfig.metadata.existing_subscription_id = existingSubscription.stripe_subscription_id;
       sessionConfig.subscription_data.metadata.existing_subscription_id = existingSubscription.stripe_subscription_id;
@@ -122,10 +122,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ✅ Create Stripe Checkout Session
+    //  Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
-    console.log('✅ Stripe checkout session created:', session.id, {
+    console.log(' Stripe checkout session created:', session.id, {
       isUpgrade: hasActiveSubscription,
       prorationBehavior: 'create_prorations',
       billingCycleAnchor: Math.floor(Date.now() / 1000)

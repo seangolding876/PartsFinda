@@ -71,7 +71,7 @@ export default function BuyerVerificationSuccess() {
             </div>
             
             <h1 className="text-3xl font-bold text-gray-800 mb-4">
-              Welcome to PartsFinda! 🎉
+              Welcome to PartsFinda! 
             </h1>
             
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 max-w-md mx-auto">

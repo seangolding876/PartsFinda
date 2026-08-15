@@ -55,7 +55,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-semibold mb-4">Why Choose PartsFinda?</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="flex items-start">
-              <span className="text-2xl mr-3">✅</span>
+              <span className="text-2xl mr-3"></span>
               <div>
                 <h4 className="font-semibold mb-1">Verified Sellers</h4>
                 <p className="text-gray-600 text-sm">All sellers are vetted and verified for authenticity</p>

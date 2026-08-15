@@ -11,8 +11,8 @@ export const redis =
   new Redis({
     host: "127.0.0.1",
     port: 6379,
-    password: "123@123", // ✅ your redis password
-    db: 1, // ✅ separate DB for rate limit
+    password: "123@123", //  your redis password
+    db: 1, //  separate DB for rate limit
   });
 
 if (process.env.NODE_ENV !== "production") global._redis = redis;

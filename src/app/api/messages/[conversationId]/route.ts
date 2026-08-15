@@ -76,7 +76,7 @@ export async function GET(
       [conversationId]
     );
 
-    console.log('✅ Messages found:', messagesResult.rows.length);
+    console.log(' Messages found:', messagesResult.rows.length);
 
     // Mark messages as read
     await query(
@@ -207,7 +207,7 @@ export async function POST(
 
     const newMessage = messageResult.rows[0];
 
-    console.log('✅ Message sent successfully:', newMessage.id);
+    console.log(' Message sent successfully:', newMessage.id);
 
     return NextResponse.json({
       success: true,

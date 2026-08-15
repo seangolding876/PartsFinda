@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
-import { sendMail } from '@/lib/mailService'; // ✅ Email service import
+import { sendMail } from '@/lib/mailService'; //  Email service import
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const plan = planResult.rows[0];
 
-    // ✅ Validate plan name against allowed values
+    //  Validate plan name against allowed values
     const allowedPlans = ['Basic', 'Premium', 'Enterprise'];
     if (!allowedPlans.includes(plan.plan_name)) {
       console.error('Invalid plan name:', plan.plan_name);
@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // ✅ Send subscription success email to user
+    //  Send subscription success email to user
     await sendSubscriptionSuccessEmail(user.email, user.name, plan.plan_name, endDate, paymentIntent.amount);
 
-    // ✅ Send admin notification email
+    //  Send admin notification email
     await sendAdminNotificationEmail(user.email, user.name, plan.plan_name, paymentIntent.amount);
 
     console.log('Subscription created:', subscriptionResult.rows[0]);
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ Subscription Success Email Template (User)
+//  Subscription Success Email Template (User)
 async function sendSubscriptionSuccessEmail(
   userEmail: string, 
   userName: string, 
@@ -262,7 +262,7 @@ async function sendSubscriptionSuccessEmail(
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Subscription Activated Successfully!</h1>
+      <h1> Subscription Activated Successfully!</h1>
       <p>Welcome to ${planName} Plan</p>
     </div>
     
@@ -273,7 +273,7 @@ async function sendSubscriptionSuccessEmail(
 
       <div class="success-badge">
         <p style="margin: 0; font-size: 18px; font-weight: 600; color: #7c3aed;">
-          ✅ Payment Confirmed - ${planName} Plan Activated
+           Payment Confirmed - ${planName} Plan Activated
         </p>
       </div>
 
@@ -293,7 +293,7 @@ async function sendSubscriptionSuccessEmail(
         </div>
         <div class="detail-row">
           <span><strong>Status:</strong></span>
-          <span style="color: #059669; font-weight: 600;">Active ✅</span>
+          <span style="color: #059669; font-weight: 600;">Active </span>
         </div>
       </div>
 
@@ -337,18 +337,18 @@ async function sendSubscriptionSuccessEmail(
   try {
     await sendMail({
       to: userEmail,
-      subject: `🎉 Welcome to ${planName} Plan - PartsFinda Subscription Activated!`,
+      subject: ` Welcome to ${planName} Plan - PartsFinda Subscription Activated!`,
       html: emailHtml,
     });
-    console.log(`✅ Subscription success email sent to ${userEmail}`);
+    console.log(` Subscription success email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send subscription success email:', error);
     // Don't throw error - email failure shouldn't break the payment flow
   }
 }
 
-// ✅ Admin Notification Email Template
-// ✅ Admin Notification Email Template
+//  Admin Notification Email Template
+//  Admin Notification Email Template
 async function sendAdminNotificationEmail(
   userEmail: string, 
   userName: string, 
@@ -357,7 +357,7 @@ async function sendAdminNotificationEmail(
 ) {
   const formattedAmount = (amount / 100).toFixed(2);
   
-  // ✅ Multiple admin emails support
+  //  Multiple admin emails support
   const adminEmails = process.env.ADMIN_EMAIL 
     ? process.env.ADMIN_EMAIL.split(',').map(email => email.trim())
     : ['admin@partsfinda.com']; // Fallback
@@ -500,7 +500,7 @@ async function sendAdminNotificationEmail(
 </html>`;
 
   try {
-    // ✅ Send email to all admin addresses
+    //  Send email to all admin addresses
     const emailPromises = adminEmails.map(adminEmail => 
       sendMail({
         to: adminEmail,
@@ -510,7 +510,7 @@ async function sendAdminNotificationEmail(
     );
 
     await Promise.all(emailPromises);
-    console.log(`✅ Admin notification emails sent to: ${adminEmails.join(', ')}`);
+    console.log(` Admin notification emails sent to: ${adminEmails.join(', ')}`);
   } catch (error) {
     console.error('❌ Failed to send admin notification emails:', error);
     // Don't throw error - email failure shouldn't break the payment flow

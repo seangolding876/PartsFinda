@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       services: {
         website: {
           configured: true,
-          status: '✅ Active',
+          status: ' Active',
           description: 'Professional marketplace with Jamaica branding',
           features: [
             'Mobile-responsive design',
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         },
         payments: {
           configured: stripeConfigured,
-          status: stripeConfigured ? '✅ Active' : '⚠️ Mock Mode',
+          status: stripeConfigured ? ' Active' : '⚠️ Mock Mode',
           description: stripeConfigured
             ? 'Live payment processing with Stripe'
             : 'Configure STRIPE_SECRET_KEY for live payments',
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         },
         database: {
           configured: supabaseConfigured,
-          status: supabaseConfigured ? '✅ Active' : '⚠️ Mock Mode',
+          status: supabaseConfigured ? ' Active' : '⚠️ Mock Mode',
           description: supabaseConfigured
             ? 'Full database with user management'
             : 'Configure Supabase for user accounts and data storage',
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         },
         email: {
           configured: emailConfigured,
-          status: emailConfigured ? '✅ Active' : '⚠️ Not Configured',
+          status: emailConfigured ? ' Active' : '⚠️ Not Configured',
           description: emailConfigured
             ? 'Email notifications with Resend'
             : 'Configure RESEND_API_KEY for email notifications',
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
         },
         fileStorage: {
           configured: cloudinaryConfigured,
-          status: cloudinaryConfigured ? '✅ Active' : '⚠️ Not Configured',
+          status: cloudinaryConfigured ? ' Active' : '⚠️ Not Configured',
           description: cloudinaryConfigured
             ? 'Image storage with Cloudinary'
             : 'Configure Cloudinary for image uploads',
@@ -180,7 +180,7 @@ function getNextSteps(score: number, services: Record<string, boolean>) {
   const steps: string[] = [];
 
   if (score === 5) {
-    steps.push('🎉 All services configured! Start marketing your marketplace');
+    steps.push(' All services configured! Start marketing your marketplace');
     steps.push('📊 Monitor user engagement and payment analytics');
     steps.push('🌐 Consider custom domain for professional branding');
     return steps;

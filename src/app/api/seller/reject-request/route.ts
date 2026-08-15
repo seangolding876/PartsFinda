@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'request_id is required' }, { status: 400 });
     }
 
-    // ✅ Update request_queue
+    //  Update request_queue
 let result;
 try {
   result = await query(

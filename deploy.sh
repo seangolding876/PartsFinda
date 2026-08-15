@@ -34,6 +34,6 @@ pm2 start ecosystem.config.js
 pm2 save
 
 # === 6. VERIFY ===
-echo "✅ Deployment complete!"
+echo " Deployment complete!"
 echo "📊 Status: pm2 status"
 echo "🔍 Logs: pm2 logs"

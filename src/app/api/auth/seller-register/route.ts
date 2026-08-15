@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid'; // ✅ Yeh import add karein
-import { sendMail } from '@/lib/mailService'; // ✅ Yeh import add karein
+import { v4 as uuidv4 } from 'uuid'; //  Yeh import add karein
+import { sendMail } from '@/lib/mailService'; //  Yeh import add karein
 import { rateLimit } from "@/lib/rateLimit";
 
 export const dynamic = 'force-dynamic';
@@ -189,9 +189,9 @@ if (!phoneAllowed) {
           body.agreeToTerms,             // $26 - agree_to_terms
           body.agreeToVerification,      // $27 - agree_to_verification
           false,                          // $28 - email_verified
-          verificationToken,             // $29 - verification_token ✅ NAYA
-          verificationTokenExpires,      // $30 - verification_token_expires ✅ NAYA  
-         'pending'                      // $31 - status ✅ NAYA
+          verificationToken,             // $29 - verification_token  NAYA
+          verificationTokenExpires,      // $30 - verification_token_expires  NAYA  
+         'pending'                      // $31 - status  NAYA
         ]
       );
 
@@ -204,14 +204,14 @@ try {
     newUser.owner_name, 
     verificationToken
   );
-  console.log('✅ Verification email sent successfully');
+  console.log(' Verification email sent successfully');
 } catch (emailError: any) {
   console.error('❌ Email sending failed:', emailError);
   // Email failure shouldn't break registration
 }
 
 
-      console.log('✅ Seller registration completed successfully');
+      console.log(' Seller registration completed successfully');
       console.log('New user ID:', newUser.id);
       console.log('File URLs saved:', {
         businessLicense: businessLicenseValue,
@@ -227,8 +227,8 @@ try {
     businessName: newUser.business_name,
     email: newUser.email,
     membershipPlan: newUser.membership_plan,
-    status: 'pending_verification', // ✅ Yeh update karein
-    nextSteps: 'Please check your email to verify your account. Our team will review your application within 2-3 business days.' // ✅ Message update karein
+    status: 'pending_verification', //  Yeh update karein
+    nextSteps: 'Please check your email to verify your account. Our team will review your application within 2-3 business days.' //  Message update karein
   }
       });
 
@@ -344,7 +344,7 @@ async function sendVerificationEmail(userEmail: string, userName: string, token:
       <p>Thank you for registering as a seller on PartsFinda! To complete your registration, please verify your email address by clicking the button below:</p>
       <div class="verification-box">
         <p><strong>Action Required:</strong> Verify your email within 24 hours</p>
-        <a href="${verificationUrl}" class="button">✅ Verify Email Address</a>
+        <a href="${verificationUrl}" class="button"> Verify Email Address</a>
       </div>
       <p style="font-size: 12px; color: #6b7280;">
         If the button doesn't work, copy and paste this link in your browser:<br>
@@ -365,7 +365,7 @@ async function sendVerificationEmail(userEmail: string, userName: string, token:
       subject: 'Verify Your Email - PartsFinda Seller Registration',
       html: emailHtml,
     });
-    console.log(`✅ Verification email sent to ${userEmail}`);
+    console.log(` Verification email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send verification email:', error);
     throw new Error('Failed to send verification email');

@@ -74,7 +74,7 @@ const fetchMessages = async () => {
   try {
     setLoading(true);
     
-    // ✅ USE YOUR EXISTING AUTH UTILITY
+    //  USE YOUR EXISTING AUTH UTILITY
 
     
     if (!token) {

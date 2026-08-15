@@ -21,7 +21,7 @@ if [ ! -z "$EXISTING_REMOTE" ]; then
     read REPLACE
     if [ "$REPLACE" = "y" ] || [ "$REPLACE" = "Y" ]; then
         git remote remove origin
-        echo "✅ Removed existing remote"
+        echo " Removed existing remote"
     else
         echo "❌ Keeping existing remote. Exiting."
         exit 1
@@ -80,7 +80,7 @@ echo "Repository: $USERNAME/$REPO"
 # Add remote
 git remote add origin "$REMOTE_URL"
 if [ $? -eq 0 ]; then
-    echo "✅ Remote added successfully"
+    echo " Remote added successfully"
 else
     echo "❌ Failed to add remote"
     exit 1
@@ -94,7 +94,7 @@ echo "This will trigger auto-deploy if Netlify is connected."
 git push -u origin master
 if [ $? -eq 0 ]; then
     echo ""
-    echo "🎉 SUCCESS! Code pushed to GitHub!"
+    echo " SUCCESS! Code pushed to GitHub!"
     echo ""
     echo "📋 Next steps:"
     echo "1. Go to: https://app.netlify.com"
@@ -124,5 +124,5 @@ else
 fi
 
 echo ""
-echo "✅ Auto-deploy setup complete!"
+echo " Auto-deploy setup complete!"
 echo "🔗 Repository URL: https://github.com/$USERNAME/$REPO"

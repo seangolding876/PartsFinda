@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
       message: connectionTest?.connected
-        ? '✅ Database connection successful'
+        ? ' Database connection successful'
         : '⚠️ Database in mock mode - configure Supabase environment variables for full functionality'
     });
 

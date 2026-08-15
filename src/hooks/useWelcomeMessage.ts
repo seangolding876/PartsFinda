@@ -12,7 +12,7 @@ export const useWelcomeMessage = () => {
     const authData = getAuthData();
     
     if (authData) {
-      // ✅ User-specific + role-specific key
+      //  User-specific + role-specific key
       const welcomeKey = `hasSeenWelcome_${authData.role}_${authData.userId}`;
       const hasSeenWelcome = sessionStorage.getItem(welcomeKey);
       
@@ -36,7 +36,7 @@ export const useWelcomeMessage = () => {
         sessionStorage.setItem(welcomeKey, 'true');
       }
 
-      // ✅ Seller subscription expiry check
+      //  Seller subscription expiry check
       if (authData.role === 'seller') {
         checkSellerSubscription(authData.userId);
       }
@@ -52,7 +52,7 @@ export const useWelcomeMessage = () => {
         const data = await response.json();
         
         if (data.expired) {
-          // ✅ Subscription expiry message
+          //  Subscription expiry message
           warningmsg(
             `Your ${data.planName} subscription has expired. You've been downgraded to Basic plan. Please update your subscription to access premium features.`,
             8000 // 8 seconds display

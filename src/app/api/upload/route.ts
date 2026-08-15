@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Return file URL for database
     const fileUrl = `/uploads/sellers/${sellerFolder}/${fileName}`;
 
-    console.log('✅ File uploaded successfully:', {
+    console.log(' File uploaded successfully:', {
       originalName: file.name,
       savedPath: fileUrl,
       size: (file.size / 1024 / 1024).toFixed(2) + 'MB'

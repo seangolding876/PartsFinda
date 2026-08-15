@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { getAuthData } from '@/lib/auth';
-import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import
+import { useToast } from '@/hooks/useToast'; //  Toast hook import
 
 interface ProfileForm {
   name: string;
@@ -21,7 +21,7 @@ export default function BuyerProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
-  // ✅ Toast hook use karein
+  //  Toast hook use karein
   const { successmsg, errormsg } = useToast();
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export default function BuyerProfile() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-      {/* ✅ Ab yahan custom message display ki zaroorat nahi, kyunki toast automatically show hoga */}
+      {/*  Ab yahan custom message display ki zaroorat nahi, kyunki toast automatically show hoga */}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>

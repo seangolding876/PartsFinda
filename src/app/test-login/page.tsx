@@ -65,7 +65,7 @@ export default function TestLoginPage() {
             const dashboardUrl = result.user.role === 'admin' ? '/admin/dashboard' :
                                 result.user.role === 'seller' ? '/seller/dashboard' : '/my-requests';
 
-            setTestResult(prev => prev + `\n\n✅ LOGIN SUCCESS!\n🎯 Redirecting to: ${dashboardUrl}`);
+            setTestResult(prev => prev + `\n\n LOGIN SUCCESS!\n🎯 Redirecting to: ${dashboardUrl}`);
 
             // Redirect after showing success
             setTimeout(() => {
@@ -163,7 +163,7 @@ export default function TestLoginPage() {
 
             <div className="bg-gray-900 rounded-lg p-4 min-h-96 max-h-96 overflow-auto">
               <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
-                {testResult || '👆 Click any "Test Login" button above to start testing\n\n🎯 What this tests:\n- API authentication\n- Cookie setting\n- Role-based redirects\n- Error handling\n\n✅ All accounts should work perfectly!'}
+                {testResult || '👆 Click any "Test Login" button above to start testing\n\n🎯 What this tests:\n- API authentication\n- Cookie setting\n- Role-based redirects\n- Error handling\n\n All accounts should work perfectly!'}
               </pre>
             </div>
 

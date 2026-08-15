@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-// ✅ Server-side secret
+//  Server-side secret
 const JWT_SECRET = process.env.JWT_SECRET!;
 if (!JWT_SECRET) throw new Error('JWT_SECRET not configured');
 
@@ -26,7 +26,7 @@ export function generateToken(payload: JwtPayload): string {
   };
 
   const token = jwt.sign(payload, JWT_SECRET, options);
-  // console.log('✅ Token generated:', token);
+  // console.log(' Token generated:', token);
   return token;
 }
 
@@ -36,7 +36,7 @@ export function verifyToken(token: string): JwtPayload {
     // console.log('🔍 Verifying token:', token);
 
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    // console.log('✅ Token verified successfully:', decoded);
+    // console.log(' Token verified successfully:', decoded);
 
     return decoded;
   } catch (error: any) {

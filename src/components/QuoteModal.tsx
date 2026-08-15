@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import
+import { useToast } from '@/hooks/useToast'; //  Toast hook import
 
 interface QuoteModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
     notes: ''
   });
 
-  // ✅ Toast hook use karein
+  //  Toast hook use karein
   const { errormsg } = useToast();
 
   // Reset form when modal opens/closes
@@ -42,7 +42,7 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ✅ Validation with toast
+    //  Validation with toast
     if (!formData.price || parseFloat(formData.price) <= 0) {
       errormsg('Please enter a valid price');
       return;

@@ -78,7 +78,7 @@ export default function QuotesTab() {
       
       if (data.success) {
         setQuotes(data.data || []);
-      //  console.log(`✅ Loaded ${data.data?.length || 0} quotes`);
+      //  console.log(` Loaded ${data.data?.length || 0} quotes`);
       } else {
         throw new Error(data.error || 'Failed to fetch quotes');
       }

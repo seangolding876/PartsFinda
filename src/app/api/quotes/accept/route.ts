@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       );
       conversationId = newConv.rows[0].id;
 
-      // ✅ CRITICAL: Add BOTH buyer and seller to conversation_participants
+      //  CRITICAL: Add BOTH buyer and seller to conversation_participants
       await query(
         `INSERT INTO conversation_participants (conversation_id, user_id) 
          VALUES ($1, $2), ($1, $3)`,
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     // Commit transaction
     await query('COMMIT');
 
-    console.log('✅ Quote accepted, conversation created, participants added, and message sent:', quoteId);
+    console.log(' Quote accepted, conversation created, participants added, and message sent:', quoteId);
 
     // 10. Optional: Send email to seller
     try {

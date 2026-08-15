@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     `;
 
     const result = await query(queryStr, [userInfo.userId]);
-    console.log('✅ Conversations query result:', result.rows.length);
+    console.log(' Conversations query result:', result.rows.length);
 
     const formattedConversations = result.rows.map(conv => ({
       id: conv.id.toString(),
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     if (existingConv.rows.length > 0) {
       conversationId = existingConv.rows[0].id;
-      console.log('✅ Existing conversation found:', conversationId);
+      console.log(' Existing conversation found:', conversationId);
     } else {
       // Create new conversation
       const conversation = await query(
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       );
 
       isNewConversation = true;
-      console.log('✅ New conversation created:', conversationId);
+      console.log(' New conversation created:', conversationId);
     }
 
     // Insert the first message if provided
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
          VALUES ($1, $2, $3, $4, NOW())`,
         [conversationId, userInfo.userId, sellerId, messageText.trim()]
       );
-      console.log('✅ Initial message added');
+      console.log(' Initial message added');
     }
 
     return NextResponse.json({

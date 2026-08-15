@@ -159,7 +159,7 @@ async function getAllActiveSellers() {
       --AND status = 'active'`
     );
     
-    console.log(`✅ Found ${sellers.rows.length} active sellers`);
+    console.log(` Found ${sellers.rows.length} active sellers`);
     return sellers.rows;
   } catch (error) {
     console.error('❌ Error fetching sellers:', error);
@@ -187,7 +187,7 @@ async function scheduleRequestForAllSellers(partRequestId: number, sellers: any[
       console.log(`📅 Scheduled for seller ${seller.name} (${seller.membership_plan}) at ${sellerDeliveryTime}`);
     }
     
-    console.log(`✅ Scheduled request ${partRequestId} for ${scheduledCount} sellers`);
+    console.log(` Scheduled request ${partRequestId} for ${scheduledCount} sellers`);
     return scheduledCount;
   } catch (error) {
     console.error('❌ Error scheduling request in queue:', error);
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     console.log('📦 Received part request data:', { userId, ...body });
 
 
-    // ✅ Global Rate Limiting - ADNAN
+    //  Global Rate Limiting - ADNAN
     const allowed = await rateLimit(clientIP, 5, 60 * 60); // 5 req/hour
     
     if (!allowed) {
@@ -396,7 +396,7 @@ export async function POST(request: NextRequest) {
       }
 
       const newRequest = result.rows[0];
-      console.log('✅ Part request inserted:', newRequest);
+      console.log(' Part request inserted:', newRequest);
 
       // Get ALL active sellers
       const allSellers = await getAllActiveSellers();
@@ -410,7 +410,7 @@ export async function POST(request: NextRequest) {
 
       // Commit transaction
       await query('COMMIT');
-      console.log('✅ Transaction committed successfully');
+      console.log(' Transaction committed successfully');
 
       return NextResponse.json({
         success: true,

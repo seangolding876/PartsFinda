@@ -211,7 +211,7 @@ export default function Navigation() {
                     {formatDate(membershipPlan.end_date)}
                   </span>
                 ) : (
-                  <span className="text-xs text-green-600">✅ Active</span>
+                  <span className="text-xs text-green-600"> Active</span>
                 )}
               </div>
             </>

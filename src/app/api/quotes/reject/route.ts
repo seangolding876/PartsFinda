@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       ['rejected', quoteId]
     );
 
-    // ✅ Create BUYER notification in single table
+    //  Create BUYER notification in single table
     await query(
       `INSERT INTO notifications 
        (user_id, part_request_id, title, message, type, user_type) 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    // ✅ Create SELLER notification in single table
+    //  Create SELLER notification in single table
     await query(
       `INSERT INTO notifications 
        (user_id, part_request_id, title, message, type, user_type) 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    console.log('✅ Quote rejected and notifications created:', quoteId);
+    console.log(' Quote rejected and notifications created:', quoteId);
 
     return NextResponse.json({
       success: true,

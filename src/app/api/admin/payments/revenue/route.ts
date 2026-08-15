@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // ✅ Proper interval syntax
+    //  Proper interval syntax
     const interval = `12 ${intervalUnit}s`;
 
     const revenueQuery = `

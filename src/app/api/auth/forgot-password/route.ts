@@ -177,7 +177,7 @@ async function sendPasswordResetEmail(userEmail: string, userName: string, token
       subject: 'Reset Your Password - PartsFinda',
       html: emailHtml,
     });
-    console.log(`✅ Password reset email sent to ${userEmail}`);
+    console.log(` Password reset email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send password reset email:', error);
     throw new Error('Failed to send password reset email');

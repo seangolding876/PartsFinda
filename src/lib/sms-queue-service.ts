@@ -40,11 +40,11 @@ async queueSms(options: QueueSmsOptions): Promise<number> {
        (user_id, phone_number, message, type, reference_id, scheduled_for, max_retries, status) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
        RETURNING id`,
-      [userId, phone, message, type, referenceId, scheduledFor, maxRetries] // ✅ 7 parameters only
+      [userId, phone, message, type, referenceId, scheduledFor, maxRetries] //  7 parameters only
     );
 
     const queueId = result.rows[0].id;
-    console.log(`✅ SMS queued [${queueId}] for ${phone} (${type})`);
+    console.log(` SMS queued [${queueId}] for ${phone} (${type})`);
       
       return queueId;
     } catch (error) {
@@ -108,7 +108,7 @@ async queueSms(options: QueueSmsOptions): Promise<number> {
             // Move to logs
             await this.archiveToLogs(sms.id, 'sent', twilioResult.messageId);
             
-            console.log(`✅ SMS ${sms.id} sent to ${sms.phone_number}`);
+            console.log(` SMS ${sms.id} sent to ${sms.phone_number}`);
           } else {
             throw new Error(twilioResult.error || 'Unknown Twilio error');
           }

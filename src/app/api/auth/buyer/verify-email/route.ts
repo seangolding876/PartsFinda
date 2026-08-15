@@ -133,13 +133,13 @@ async function sendBuyerWelcomeEmail(userEmail: string, userName: string) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Welcome to PartsFinda!</h1>
+      <h1> Welcome to PartsFinda!</h1>
       <p>Your Buyer Account is Now Active</p>
     </div>
 
     <div class="content">
       <div class="welcome-badge">
-        ✅ Email Verified Successfully
+         Email Verified Successfully
       </div>
 
       <p>Hello <strong>${userName}</strong>,</p>
@@ -191,10 +191,10 @@ async function sendBuyerWelcomeEmail(userEmail: string, userName: string) {
   try {
     await sendMail({
       to: userEmail,
-      subject: '🎉 Welcome to PartsFinda - Your Buyer Account is Ready!',
+      subject: ' Welcome to PartsFinda - Your Buyer Account is Ready!',
       html: emailHtml,
     });
-    console.log(`✅ Buyer welcome email sent to ${userEmail}`);
+    console.log(` Buyer welcome email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send buyer welcome email:', error);
   }

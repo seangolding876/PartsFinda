@@ -4,8 +4,8 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 interface NotificationContextType {
   selectedRequestId: string | null;
   setSelectedRequestId: (id: string | null) => void;
-  redirectToDashboard: string | null; // ✅ Naya add karein
-  setRedirectToDashboard: (dashboard: string | null) => void; // ✅ Naya add karein
+  redirectToDashboard: string | null; //  Naya add karein
+  setRedirectToDashboard: (dashboard: string | null) => void; //  Naya add karein
 }
 
 const NotificationContext = createContext<NotificationContextType>({

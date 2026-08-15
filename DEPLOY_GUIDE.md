@@ -1,6 +1,6 @@
 # 🚀 PartsFinda Auto-Deploy Setup Guide
 
-## ✅ **CURRENT STATUS: Ready for GitHub Auto-Deploy**
+##  **CURRENT STATUS: Ready for GitHub Auto-Deploy**
 
 Your Version 65 code is committed and ready to push to GitHub for automatic Netlify deployment.
 
@@ -109,7 +109,7 @@ echo "Adding remote: $REMOTE_URL"
 git remote add origin $REMOTE_URL
 echo "Pushing to GitHub..."
 git push -u origin master
-echo "✅ Done! Check your Netlify dashboard for auto-deploy."
+echo " Done! Check your Netlify dashboard for auto-deploy."
 ```
 
 ---
@@ -156,7 +156,7 @@ NODE_ENV=production
 
 ---
 
-## ✅ **SUCCESS CHECKLIST**
+##  **SUCCESS CHECKLIST**
 
 After setup, verify:
 
@@ -169,7 +169,7 @@ After setup, verify:
 
 ---
 
-## 🎉 **WHAT HAPPENS NEXT**
+##  **WHAT HAPPENS NEXT**
 
 1. **Every git push** automatically deploys to Netlify
 2. **Build status** visible in Netlify dashboard

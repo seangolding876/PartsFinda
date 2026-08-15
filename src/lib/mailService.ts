@@ -23,11 +23,11 @@ export async function sendMail({
       throw new Error('GoDaddy SMTP configuration is missing');
     }
 
-    // ✅ GoDaddy Transporter Configuration (Matches your working C# settings)
+    //  GoDaddy Transporter Configuration (Matches your working C# settings)
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.office365.com", // Using Office365 as in your C# code
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: false, // ✅ MUST BE false for port 587 (matches your C# EnableSsl=true)
+      secure: false, //  MUST BE false for port 587 (matches your C# EnableSsl=true)
       auth: {
         user: process.env.SMTP_USER || "support@partsfinda.com", 
         pass: process.env.SMTP_PASS || "Partsfinda@123",
@@ -38,7 +38,7 @@ export async function sendMail({
         rejectUnauthorized: false
       },
       requireTLS: true,
-      connectionTimeout: 30000, // ✅ Matches your C# Timeout = 30000
+      connectionTimeout: 30000, //  Matches your C# Timeout = 30000
       greetingTimeout: 10000,
       socketTimeout: 30000,
       debug: true,
@@ -49,9 +49,9 @@ export async function sendMail({
 
     // Verify connection
     await transporter.verify();
-    //console.log('✅ SMTP connection verified');
+    //console.log(' SMTP connection verified');
 
-    // ✅ Use specific FROM address format (matches your C# code)
+    //  Use specific FROM address format (matches your C# code)
     const fromAddress = process.env.SMTP_FROM || `"PartsFinda Official" <support@partsfinda.com>`;
     // Alternative FROM addresses as in your C# code:
     // const fromAddress = `"PartsFinda System" <noreply@partsfinda.com>`;
@@ -74,7 +74,7 @@ export async function sendMail({
     const info = await transporter.sendMail(mailOptions);
 
     // Detailed success logs
-    // console.log("🎉 EMAIL SENT SUCCESSFULLY:", {
+    // console.log(" EMAIL SENT SUCCESSFULLY:", {
     //   messageId: info.messageId,
     //   response: info.response,
     //   accepted: info.accepted,

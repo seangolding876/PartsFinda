@@ -21,7 +21,7 @@ if (!emailAllowed) {
   );
 }
     
-// ✅ Global Rate Limiting - ADNAN
+//  Global Rate Limiting - ADNAN
 const allowed = await rateLimit(clientIP, 3, 60 * 60); // 5 req/hour
 
 if (!allowed) {
@@ -100,7 +100,7 @@ if (!allowed) {
         user.name, 
         verificationToken
       );
-      console.log('✅ Verification email sent successfully');
+      console.log(' Verification email sent successfully');
     } catch (emailError: any) {
       console.error('❌ Email sending failed:', emailError);
       // Email failure shouldn't break registration
@@ -249,7 +249,7 @@ async function sendBuyerVerificationEmail(userEmail: string, userName: string, t
       subject: 'Verify Your Email - PartsFinda Buyer Registration',
       html: emailHtml,
     });
-    console.log(`✅ Verification email sent to ${userEmail}`);
+    console.log(` Verification email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send verification email:', error);
     throw new Error('Failed to send verification email');

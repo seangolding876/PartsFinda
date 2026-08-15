@@ -86,7 +86,7 @@ export default function MessagesPage() {
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const { successmsg, errormsg, infomsg } = useToast(); 
   
-  // ✅ Rating States
+  //  Rating States
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingStatus, setRatingStatus] = useState<{
     canRate: boolean;
@@ -100,7 +100,7 @@ export default function MessagesPage() {
   const refreshIntervalRef = useRef<NodeJS.Timeout>();
   const conversationRef = useRef(selectedConversation);
 
-  // ✅ Get current user info
+  //  Get current user info
   const currentUserId = getCurrentUserId();
   const currentUserName = getCurrentUserName();
 
@@ -109,18 +109,18 @@ export default function MessagesPage() {
     conversationRef.current = selectedConversation;
   }, [selectedConversation]);
 
-  // ✅ Update connection status
+  //  Update connection status
   useEffect(() => {
     if (isConnected) {
       setConnectionStatus('connected');
-//console.log('✅ Socket connected');
+//console.log(' Socket connected');
     } else {
       setConnectionStatus('disconnected');
    //   console.log('❌ Socket disconnected');
     }
   }, [isConnected]);
 
-  // ✅ Fetch conversations
+  //  Fetch conversations
   const fetchConversations = async () => {
     try {
       //console.log('🔄 Fetching conversations...');
@@ -130,7 +130,7 @@ export default function MessagesPage() {
         return;
       }
 
-      const response = await fetch(`/api/messages/conversations?t=${Date.now()}`, { // ✅ YEH CHANGE KAREIN - /api/messages/conversations se /api/conversations
+      const response = await fetch(`/api/messages/conversations?t=${Date.now()}`, { //  YEH CHANGE KAREIN - /api/messages/conversations se /api/conversations
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -139,7 +139,7 @@ export default function MessagesPage() {
 
       if (response.ok) {
         const result = await response.json();
-      //  console.log('✅ Conversations fetched:', result.data?.length || 0);
+      //  console.log(' Conversations fetched:', result.data?.length || 0);
         if (result.success) {
           setConversations(result.data || []);
           setLastUpdate(Date.now());
@@ -152,7 +152,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ Fetch messages
+  //  Fetch messages
   const fetchMessages = async (conversationId: string) => {
     try {
      // console.log('🔄 Fetching messages for:', conversationId);
@@ -188,7 +188,7 @@ export default function MessagesPage() {
           formattedMessages.forEach((msg: Message) => messageTracker.add(msg.id));
           
           setMessages(formattedMessages);
-         // console.log('✅ Messages loaded:', formattedMessages.length);
+         // console.log(' Messages loaded:', formattedMessages.length);
         } else {
        //   console.log('❌ No messages in response');
           setMessages([]);
@@ -203,7 +203,7 @@ export default function MessagesPage() {
     }
   };
 
-  // ✅ Conversation select handler - YEH ADD KAREIN
+  //  Conversation select handler - YEH ADD KAREIN
   const handleSelectConversation = async (conversation: Conversation) => {
   //  console.log('🎯 Selecting conversation:', conversation.id);
     setSelectedConversation(conversation);
@@ -222,7 +222,7 @@ export default function MessagesPage() {
     await checkRatingStatus(conversation.id);
   };
 
-// ✅ Check rating status function - IMPROVED VERSION
+//  Check rating status function - IMPROVED VERSION
 const checkRatingStatus = async (conversationId: string) => {
   try {
     const token = getAuthToken();
@@ -288,7 +288,7 @@ const checkRatingStatus = async (conversationId: string) => {
   }
 };
 
-// ✅ EMERGENCY FIX - Direct conversation se user ID le lo
+//  EMERGENCY FIX - Direct conversation se user ID le lo
 const handleRatingSubmit = async (rating: number, comment: string) => {
   if (!selectedConversation) {
     console.error('❌ No conversation selected');
@@ -306,7 +306,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     if (ratingStatus?.userToRate?.id) {
       // Pehla option: ratingStatus se lo
       ratedUserId = ratingStatus.userToRate.id;
-     // console.log('✅ Using ratedUserId from ratingStatus:', ratedUserId);
+     // console.log(' Using ratedUserId from ratingStatus:', ratedUserId);
     } else {
       // Emergency fallback: Conversation participants se calculate karo
       // Assume karo ke jo current user nahi hai, usko rate karna hai
@@ -324,7 +324,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     // Prepare the request body
     const requestBody = {
       conversationId: selectedConversation.id,
-      ratedUserId: ratedUserId, // ✅ Ab yeh definitely set hoga
+      ratedUserId: ratedUserId, //  Ab yeh definitely set hoga
       rating: rating,
       comment: comment || ''
     };
@@ -344,7 +344,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
    // console.log('📨 Rating submission response:', result);
 
     if (response.ok && result.success) {
-     // console.log('✅ Rating submitted successfully');
+     // console.log(' Rating submitted successfully');
       setRatingStatus(prev => prev ? { 
         ...prev, 
         canRate: false, 
@@ -363,7 +363,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
   }
 };
 
-  // ✅ Conversation select hone par rating status check karo
+  //  Conversation select hone par rating status check karo
   useEffect(() => {
     if (selectedConversation) {
       checkRatingStatus(selectedConversation.id);
@@ -372,7 +372,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   }, [selectedConversation]);
 
-  // ✅ Send Message Function
+  //  Send Message Function
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
 
@@ -433,7 +433,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
           clearTimeout(socketTimeout);
           
           if (response?.success) {
-           // console.log('✅ Message sent via socket');
+           // console.log(' Message sent via socket');
             setMessages(prev => 
               prev.map(msg => 
                 msg.id === tempId 
@@ -464,7 +464,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   };
 
-  // ✅ API fallback for sending messages
+  //  API fallback for sending messages
   const sendMessageViaAPI = async (tempId: string) => {
     try {
       const token = getAuthToken();
@@ -493,7 +493,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
                 : msg
             )
           );
-         // console.log('✅ Message sent via API');
+         // console.log(' Message sent via API');
           setTimeout(() => fetchConversations(), 200);
         } else {
           throw new Error(result.error);
@@ -511,7 +511,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   };
 
-  // ✅ Socket Event Handlers
+  //  Socket Event Handlers
   useEffect(() => {
     if (!socket) {
      // console.log('❌ Socket not available');
@@ -597,7 +597,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     };
   }, [socket, currentUserId]);
 
-  // ✅ Join conversation room
+  //  Join conversation room
   useEffect(() => {
     if (!socket || !selectedConversation) return;
 
@@ -622,7 +622,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     };
   }, [socket, selectedConversation, currentUserId]);
 
-  // ✅ AUTO-REFRESH MESSAGES
+  //  AUTO-REFRESH MESSAGES
   useEffect(() => {
     if (!selectedConversation) return;
 
@@ -642,7 +642,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     };
   }, [selectedConversation]);
 
-  // ✅ Manual refresh function
+  //  Manual refresh function
   const handleManualRefresh = useCallback(() => {
    // console.log('🔄 Manual refresh triggered');
     setManualRefresh(prev => prev + 1);
@@ -657,7 +657,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     
   }, [selectedConversation]);
 
-  // ✅ Initial load
+  //  Initial load
   useEffect(() => {
     const initialize = async () => {
       await fetchConversations();
@@ -666,7 +666,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     initialize();
   }, []);
 
-  // ✅ Load messages when conversation changes
+  //  Load messages when conversation changes
   useEffect(() => {
     if (selectedConversation) {
      // console.log('🔄 Loading messages for conversation:', selectedConversation.id);
@@ -678,7 +678,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   }, [selectedConversation?.id, manualRefresh]);
 
-  // ✅ Auto-scroll to bottom when messages change
+  //  Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => {
@@ -690,7 +690,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   }, [messages]);
 
-  // ✅ Typing handlers
+  //  Typing handlers
   const handleTypingStart = useCallback(() => {
     if (socket && selectedConversation) {
       socket.emit('typing_start', { conversationId: selectedConversation.id });
@@ -703,7 +703,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   }, [socket, selectedConversation]);
 
-  // ✅ Debounced typing stop
+  //  Debounced typing stop
   useEffect(() => {
     if (newMessage.trim()) {
       handleTypingStart();
@@ -782,7 +782,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
     }
   };
 
-  // ✅ Determine if message is from current user
+  //  Determine if message is from current user
   const isCurrentUserMessage = (message: Message) => {
     return message.senderName === 'You' || message.senderId === currentUserId;
   };
@@ -881,7 +881,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  onClick={() => handleSelectConversation(conversation)} // ✅ YEH CHANGE KAREIN
+                  onClick={() => handleSelectConversation(conversation)} //  YEH CHANGE KAREIN
                   className={`p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
                     selectedConversation?.id === conversation.id 
                       ? 'bg-blue-50 border-r-2 border-r-blue-500' 
@@ -983,7 +983,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
               </div>
 
               <div className="flex items-center gap-4">
-                {/* ✅ Rating Button */}
+                {/*  Rating Button */}
                 {ratingStatus?.canRate && (
                   <button
                     onClick={() => setShowRatingModal(true)}
@@ -996,7 +996,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
                   </button>
                 )}
 
-                {/* ✅ User Rating Display */}
+                {/*  User Rating Display */}
                 <UserRatingDisplay 
                   userId={selectedConversation.participant.id} 
                   getAuthToken={getAuthToken}
@@ -1155,7 +1155,7 @@ const handleRatingSubmit = async (rating: number, comment: string) => {
               )}
             </div>
 
-            {/* ✅ Rating Modal */}
+            {/*  Rating Modal */}
             <RatingModal
               isOpen={showRatingModal}
               onClose={() => setShowRatingModal(false)}

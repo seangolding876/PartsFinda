@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       html,
     });
 
-    console.log('✅ API Route - Email sent successfully');
+    console.log(' API Route - Email sent successfully');
 
     return NextResponse.json({
       success: true,

@@ -113,7 +113,7 @@ function RequestPartForm() {
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
 //           to: 'adnan.shafi91@gmail.com',
-//           subject: '✅ TEST: GoDaddy SMTP Working from Next.js!',
+//           subject: ' TEST: GoDaddy SMTP Working from Next.js!',
 //           html: `
 //             <!DOCTYPE html>
 //             <html>
@@ -124,7 +124,7 @@ function RequestPartForm() {
 //               </style>
 //             </head>
 //             <body>
-//               <h1>🎉 SUCCESS! GoDaddy SMTP Working</h1>
+//               <h1> SUCCESS! GoDaddy SMTP Working</h1>
 //               <div class="success">
 //                 <h2>Congratulations!</h2>
 //                 <p>Your Next.js app is now sending emails via GoDaddy SMTP!</p>
@@ -143,7 +143,7 @@ function RequestPartForm() {
 //       console.log('📧 GoDaddy Test Result:', result);
 
 //       if (result.success) {
-//         alert('✅ GoDaddy email sent from Next.js! Check your inbox.');
+//         alert(' GoDaddy email sent from Next.js! Check your inbox.');
 //       } else {
 //         alert('❌ Failed: ' + result.error);
 //       }
@@ -167,7 +167,7 @@ function RequestPartForm() {
         errormsg('Please login to submit a part request');
         router.push('/auth/login');
       } else {
-        // console.log('✅ User authenticated');
+        // console.log(' User authenticated');
         setAuthChecked(true);
         fetchMakes();
       }
@@ -202,7 +202,7 @@ function RequestPartForm() {
       const result = await response.json();
       
       if (result.success) {
-        // console.log(`✅ Loaded ${result.data.length} makes`);
+        // console.log(` Loaded ${result.data.length} makes`);
         setMakes(result.data);
       } else {
         console.error('❌ Failed to fetch makes:', result.error);
@@ -231,7 +231,7 @@ function RequestPartForm() {
       const result = await response.json();
       
       if (result.success) {
-        // console.log(`✅ Loaded ${result.data.length} models`);
+        // console.log(` Loaded ${result.data.length} models`);
         setModels(result.data);
       } else {
         // console.error('❌ Failed to fetch models:', result.error);
@@ -346,7 +346,7 @@ function RequestPartForm() {
       }
 
       if (result.success) {
-        // console.log('✅ Request submitted successfully:', result.data);
+        // console.log(' Request submitted successfully:', result.data);
         successmsg('Request submitted successfully! Sellers will contact you soon.');
         
         // Reset form

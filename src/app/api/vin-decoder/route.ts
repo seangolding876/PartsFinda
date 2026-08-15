@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ NHTSA API response received');
+        console.log(' NHTSA API response received');
 
         if (data.Results && data.Results.length > 0) {
           // Extract key vehicle information from NHTSA response
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       decodedAt: new Date().toISOString()
     };
 
-    console.log('✅ VIN decode successful');
+    console.log(' VIN decode successful');
     return NextResponse.json(response);
 
   } catch (error) {

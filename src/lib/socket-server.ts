@@ -37,7 +37,7 @@ export const initSocketServer = (server: NetServer) => {
       
       const userInfo = verifyToken(token);
       socket.data.userId = userInfo.userId;
-      //console.log('✅ Socket authenticated for user:', userInfo.userId);
+      //console.log(' Socket authenticated for user:', userInfo.userId);
       next();
     } catch (error) {
       console.error('❌ Socket auth error:', error);
@@ -46,7 +46,7 @@ export const initSocketServer = (server: NetServer) => {
   });
 
   io.on('connection', (socket) => {
-    //console.log('✅ User connected:', socket.data.userId);
+    //console.log(' User connected:', socket.data.userId);
     
     socket.join(`user_${socket.data.userId}`);
     
@@ -100,7 +100,7 @@ export const initSocketServer = (server: NetServer) => {
           timestamp: new Date().toISOString()
         });
 
-       // console.log('✅ Message sent successfully');
+       // console.log(' Message sent successfully');
 
       } catch (error) {
         console.error('❌ Error sending message:', error);
@@ -113,7 +113,7 @@ export const initSocketServer = (server: NetServer) => {
     });
   });
 
- // console.log('✅ Socket.IO server initialized');
+ // console.log(' Socket.IO server initialized');
   return io;
 };
 

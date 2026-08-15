@@ -132,13 +132,13 @@ async function sendWelcomeEmail(userEmail: string, userName: string) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Welcome to PartsFinda!</h1>
+      <h1> Welcome to PartsFinda!</h1>
       <p>Your Email Has Been Successfully Verified</p>
     </div>
 
     <div class="content">
       <div class="welcome-badge">
-        ✅ Email Verified Successfully
+         Email Verified Successfully
       </div>
 
       <p>Hello <strong>${userName}</strong>,</p>
@@ -157,7 +157,7 @@ async function sendWelcomeEmail(userEmail: string, userName: string) {
           <p>Our team is reviewing your seller application</p>
         </div>
         <div class="feature">
-          <strong>✅ Final Approval</strong>
+          <strong> Final Approval</strong>
           <p>Once approved, you'll receive buyer requests and can start selling</p>
         </div>
       </div>
@@ -186,10 +186,10 @@ async function sendWelcomeEmail(userEmail: string, userName: string) {
   try {
     await sendMail({
       to: userEmail,
-      subject: '🎉 Welcome to PartsFinda - Email Verified Successfully!',
+      subject: ' Welcome to PartsFinda - Email Verified Successfully!',
       html: emailHtml,
     });
-    console.log(`✅ Welcome email sent to ${userEmail}`);
+    console.log(` Welcome email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send welcome email:', error);
   }

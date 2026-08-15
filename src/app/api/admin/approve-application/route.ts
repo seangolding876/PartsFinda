@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('=== APPROVE APPLICATION START ===');
     
-    // ✅ 1. Verify Authorization Header
+    //  1. Verify Authorization Header
     const authHeader = request.headers.get('authorization');
     console.log('Auth header present:', !!authHeader);
     
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 2. Decode and Verify JWT Implementation
+    //  2. Decode and Verify JWT Implementation
     let userInfo;
     try {
       const token = authHeader.replace('Bearer ', '');
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 3. Check Admin Role
+    //  3. Check Admin Role
     console.log('Checking admin role for user:', userInfo.userId);
     const userCheck = await query('SELECT role FROM users WHERE id = $1', [userInfo.userId]);
     console.log('User check result:', userCheck.rows);
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 4. Validate Request Body
+    //  4. Validate Request Body
     let body;
     try {
       body = await request.json();
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 5. Check Application Existence
+    //  5. Check Application Existence
     console.log('Checking application:', applicationId);
     const applicationResult = await query(
       `SELECT id, email, name FROM users WHERE id = $1 AND role = 'seller'`,
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const application = applicationResult.rows[0];
     console.log('Application details:', application);
 
-    // ✅ 6. Perform Action (Approve or Reject)
+    //  6. Perform Action (Approve or Reject)
     console.log('Performing action:', action);
     
     if (action === 'approve') {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ 7. Success Response
+    //  7. Success Response
     console.log('=== APPROVE APPLICATION SUCCESS ===');
     return NextResponse.json({
       success: true,
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    // ✅ 8. Global Error Handling
+    //  8. Global Error Handling
     console.error('=== UNHANDLED ERROR ===');
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-// ✅ Approval Email Template
+//  Approval Email Template
 async function sendApprovalEmail(userEmail: string, userName: string) {
   const emailHtml = `
 <!DOCTYPE html>
@@ -273,7 +273,7 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Congratulations!</h1>
+      <h1> Congratulations!</h1>
       <p>Your PartsFinda Seller Account Has Been Verified</p>
     </div>
 
@@ -287,7 +287,7 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
       
       <div class="message-box">
         <p style="margin: 0; font-size: 16px; line-height: 1.6;">
-          <strong>Congratulations! 🎊</strong> Your account has been successfully verified! 
+          <strong>Congratulations! </strong> Your account has been successfully verified! 
           If you have also completed email verification, you can now access our website 
           as a fully authorized seller and start growing your business.
         </p>
@@ -337,17 +337,17 @@ async function sendApprovalEmail(userEmail: string, userName: string) {
   try {
     await sendMail({
       to: userEmail,
-      subject: '🎉 Congratulations! Your PartsFinda Seller Account is Verified',
+      subject: ' Congratulations! Your PartsFinda Seller Account is Verified',
       html: emailHtml,
     });
-    // console.log(`✅ Approval email sent to ${userEmail}`);
+    // console.log(` Approval email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send approval email:', error);
     // Don't throw error - email failure shouldn't break the main flow
   }
 }
 
-// ✅ Rejection Email Template
+//  Rejection Email Template
 async function sendRejectionEmail(userEmail: string, userName: string, rejectionReason: string) {
   const emailHtml = `
 <!DOCTYPE html>
@@ -523,7 +523,7 @@ async function sendRejectionEmail(userEmail: string, userName: string, rejection
       subject: '⚠️ Your PartsFinda Seller Application Requires Attention',
       html: emailHtml,
     });
-    // console.log(`✅ Rejection email sent to ${userEmail}`);
+    // console.log(` Rejection email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send rejection email:', error);
     // Don't throw error - email failure shouldn't break the main flow

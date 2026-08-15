@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 print_status() {
-    echo -e "${GREEN}✅${NC} $1"
+    echo -e "${GREEN}${NC} $1"
 }
 
 print_warning() {
@@ -100,7 +100,7 @@ io.use((socket, next) => {
     
     // Temporary user ID - replace with JWT verification
     socket.data.userId = 'user-' + Date.now();
-    console.log('✅ Socket authenticated for user:', socket.data.userId);
+    console.log(' Socket authenticated for user:', socket.data.userId);
     next();
   } catch (error) {
     console.error('❌ Socket auth error:', error);
@@ -109,7 +109,7 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('✅ User connected:', socket.data.userId);
+  console.log(' User connected:', socket.data.userId);
   
   socket.join(`user_${socket.data.userId}`);
   
@@ -213,7 +213,7 @@ setup_worker() {
 console.log('🚀 PartsFinda Worker Started -', new Date().toISOString());
 
 setInterval(() => {
-    console.log('✅ Worker running -', new Date().toISOString());
+    console.log(' Worker running -', new Date().toISOString());
 }, 60000); // Log every minute
 
 // Handle graceful shutdown
@@ -360,7 +360,7 @@ main() {
     
     echo ""
     echo "======================================"
-    print_status "🎉 ALL DEPLOYMENTS COMPLETED SUCCESSFULLY!"
+    print_status " ALL DEPLOYMENTS COMPLETED SUCCESSFULLY!"
     echo ""
     echo "📊 Services Status:"
     echo "   - Next.js App: partsfinda"

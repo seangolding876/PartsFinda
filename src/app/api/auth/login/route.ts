@@ -30,7 +30,7 @@ if (isBanned) {
   );
 }
 
-// ✅ 5 attempts per minute
+//  5 attempts per minute
 const allowed = await rateLimit(ip, 5, 60);
 
 if (!allowed) {
@@ -101,10 +101,10 @@ if (!allowed) {
     }
 
     const dbUser = userResult.rows[0];
-    console.log('✅ User found with ID:', dbUser.id); // ID yahan available hai
+    console.log(' User found with ID:', dbUser.id); // ID yahan available hai
     
     // Verify password for existing user
-    console.log('✅ User found, verifying password...');
+    console.log(' User found, verifying password...');
     const isPasswordValid: boolean = await verifyPassword(password, dbUser.password);
     
     if (!isPasswordValid) {
@@ -154,15 +154,15 @@ if (!allowed) {
 
       // Case 3: Fully verified and approved seller - Check subscription
       if (dbUser.email_verified && dbUser.verified_status === 'approved') {
-        console.log('✅ Seller fully verified and approved - Checking subscription...');
-        // ✅ Yahan dbUser.id use kar rahe hain
+        console.log(' Seller fully verified and approved - Checking subscription...');
+        //  Yahan dbUser.id use kar rahe hain
         const subscriptionResult = await query(
           `SELECT plan_name, end_date 
            FROM supplier_subscription 
            WHERE user_id = $1 AND end_date IS NOT NULL
            ORDER BY created_at DESC 
            LIMIT 1`,
-          [dbUser.id] // ✅ dbUser.id yahan use ho raha hai
+          [dbUser.id] //  dbUser.id yahan use ho raha hai
         );
 
         if (subscriptionResult.rows.length > 0) {
@@ -194,7 +194,7 @@ if (!allowed) {
         );
       }
       
-      console.log('✅ Buyer email verified');
+      console.log(' Buyer email verified');
     }
 
     // 4. Unknown role
@@ -224,7 +224,7 @@ if (!allowed) {
     
     const authToken: string = generateToken(tokenPayload);
 
-    console.log('✅ Login successful for:', user.email, 'Role:', user.role);
+    console.log(' Login successful for:', user.email, 'Role:', user.role);
 
     // Create response with subscription message
     const responseData: AuthResponse = {

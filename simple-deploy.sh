@@ -23,6 +23,6 @@ npm run build
 echo "🔄 Restarting application..."
 pm2 restart partsfinda
 
-echo "✅ Deployment completed successfully!"
+echo " Deployment completed successfully!"
 
 

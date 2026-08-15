@@ -100,7 +100,7 @@ function SellerDashboard() {
   const [sellerLoading, setSellerLoading] = useState(true);
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
 
-  // ✅ Toast hook use karein
+  //  Toast hook use karein
   const { successmsg, errormsg, infomsg } = useToast();
 
   // Welcome Message First Time
@@ -133,7 +133,7 @@ function SellerDashboard() {
 
         if (response.ok) {
           const result = await response.json();
-          // console.log('✅ API Result:', result);
+          // console.log(' API Result:', result);
 
           if (result.success) {
             // Ensure rating is a number
@@ -145,7 +145,7 @@ function SellerDashboard() {
             };
             
             setSellerProfile(profileData);
-            // console.log('🎉 Seller profile set successfully');
+            // console.log(' Seller profile set successfully');
           } else {
             console.error('❌ API Error:', result.error);
             errormsg(result.error || 'Failed to load seller profile');
@@ -189,7 +189,7 @@ function SellerDashboard() {
           if (requestsResponse.ok) {
             const requestsResult = await requestsResponse.json();
             if (requestsResult.success) {
-              // ✅ Real-time notification for new requests
+              //  Real-time notification for new requests
               if (requests.length > 0 && requestsResult.data.length > requests.length) {
                 const newRequests = requestsResult.data.length - requests.length;
                 infomsg(`${newRequests} new request${newRequests > 1 ? 's' : ''} available`);
@@ -214,7 +214,7 @@ function SellerDashboard() {
             if (statsResponse.ok) {
               const statsResult = await statsResponse.json();
               if (statsResult.success) {
-                // ✅ Real-time stats comparison
+                //  Real-time stats comparison
                 if (lastStats && statsResult.data.monthlyRevenue > lastStats.monthlyRevenue) {
                   const increase = statsResult.data.monthlyRevenue - lastStats.monthlyRevenue;
                   successmsg(`Revenue increased by ${formatCurrency(increase)} this month!`);
@@ -241,7 +241,7 @@ function SellerDashboard() {
     fetchData();
   }, [activeTab, filterStatus]);
 
-  // ✅ Handle subscription cancellation
+  //  Handle subscription cancellation
   const handleCancelSubscription = async () => {
     if (cancellingSubscription || !sellerProfile.subscription?.is_active) return;
 
@@ -306,7 +306,7 @@ function SellerDashboard() {
     }
   };
 
-  // ✅ Get subscription benefits based on plan
+  //  Get subscription benefits based on plan
   const getSubscriptionBenefits = () => {
     const subscription = sellerProfile.subscription;
     
@@ -348,7 +348,7 @@ function SellerDashboard() {
     }
   };
 
-  // ✅ Format currency
+  //  Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-JM', {
       style: 'currency',
@@ -356,7 +356,7 @@ function SellerDashboard() {
     }).format(amount);
   };
 
-  // ✅ Time ago utility
+  //  Time ago utility
   const timeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -582,7 +582,7 @@ const getTimeRemaining = (request: SellerRequest) => {
 };
 
 
-// ✅ Render request card with visibility logic
+//  Render request card with visibility logic
 const renderRequestCard = (request) => {
   const isVisible = isRequestVisible(request);
   const isBasicPlan = request.membership_plan === 'basic';
@@ -771,7 +771,7 @@ const renderRequestCard = (request) => {
                 </div>
               </div>
 
-              {/* ✅ SUBSCRIPTION STATUS SECTION - Yahan Add Kiya Hai */}
+              {/*  SUBSCRIPTION STATUS SECTION - Yahan Add Kiya Hai */}
               <div className="mb-6">
                 <div className={`p-4 rounded-lg border ${
                   sellerProfile.subscription?.is_active 

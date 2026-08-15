@@ -86,20 +86,20 @@ export async function POST(request: NextRequest) {
       [userInfo.userId, 'subscription_canceled', `Your ${subscription.plan_name} subscription has been canceled`, 'pending']
     );
 
-    // ✅ FIXED: Check if subscription_cancellations table exists before inserting
+    //  FIXED: Check if subscription_cancellations table exists before inserting
     try {
       await query(
         `INSERT INTO subscription_cancellations (user_id, plan_name, stripe_subscription_id, canceled_at) 
          VALUES ($1, $2, $3, $4)`,
         [userInfo.userId, subscription.plan_name, stripeSubscriptionId, new Date()]
       );
-      console.log('✅ Cancellation logged successfully');
+      console.log(' Cancellation logged successfully');
     } catch (tableError: any) {
       console.warn('⚠️ subscription_cancellations table not found, skipping logging:', tableError.message);
       // Continue without failing - this is optional logging
     }
 
-    console.log('✅ Subscription cancelled successfully for user:', userInfo.userId);
+    console.log(' Subscription cancelled successfully for user:', userInfo.userId);
 
     return NextResponse.json({ 
       success: true,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Cancel subscription error:', error);
     
-    // ✅ Better error messages for different scenarios
+    //  Better error messages for different scenarios
     let errorMessage = 'Failed to cancel subscription';
     if (error.message.includes('subscription_cancellations')) {
       errorMessage = 'Subscription cancelled but logging failed';

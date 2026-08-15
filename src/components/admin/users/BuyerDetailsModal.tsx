@@ -73,7 +73,7 @@ const fetchBuyerStats = async () => {
     }
 
     const data = await response.json();
-  //  console.log('✅ API Response:', data);
+  //  console.log(' API Response:', data);
 
     if (data.success) {
       setStats(data.data);

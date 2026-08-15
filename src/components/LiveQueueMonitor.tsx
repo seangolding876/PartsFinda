@@ -335,7 +335,7 @@ function SuccessfulRequestsTable({ successfulRequests }) {
                     <div key={seller.seller_id} className="text-sm">
                       {seller.has_quote ? (
                         <div className="flex items-center space-x-2">
-                          <span className="text-green-600">✅</span>
+                          <span className="text-green-600"></span>
                           <span>Quoted: {seller.quoted_price}</span>
                           <span className={`text-xs px-2 py-1 rounded ${
                             seller.quote_status === 'accepted' 

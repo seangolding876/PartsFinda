@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast'; 
 
-// ✅ Star Rating Component
+//  Star Rating Component
 export const StarRating = ({ 
   rating, 
   onRatingChange, 
@@ -55,7 +55,7 @@ export const StarRating = ({
   );
 };
 
-// ✅ Rating Modal Component
+//  Rating Modal Component
 export const RatingModal = ({ 
   isOpen, 
   onClose, 
@@ -175,7 +175,7 @@ export const RatingModal = ({
   );
 };
 
-// ✅ User Rating Display Component
+//  User Rating Display Component
 export const UserRatingDisplay = ({ userId, getAuthToken }: { 
   userId: string; 
   getAuthToken: () => string | null;

@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       [name, email.toLowerCase(), hashedPassword, phone, role, true]
     );
 
-    // console.log('✅ Admin user created successfully with ID:', result.rows[0].id);
+    // console.log(' Admin user created successfully with ID:', result.rows[0].id);
 
     return NextResponse.json({
       success: true,

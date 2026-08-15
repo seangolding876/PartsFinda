@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Star, Check, Search, Filter, Phone, Mail, Clock, Award } from 'lucide-react';
+import { MapPin, Star, Check, Search, Filter, Phone, Mail, Clock, Award, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -297,6 +298,10 @@ export default function SuppliersPage() {
           </div>
         </div>
       </section>
+
+
+
+      
 
       {/* Become a Supplier CTA */}
       <section className="py-20 bg-green-600">

@@ -9,7 +9,7 @@ import RequestDetailsModal from '@/components/RequestDetailsModal';
 import RequestQuotesModal from '@/components/RequestQuotesModal';
 import EnhancedRequestQuotesModal from '@/components/EnhancedRequestQuotesModal';
 import { useWelcomeMessage } from '@/hooks/useWelcomeMessage';
-import { useToast } from '@/hooks/useToast'; // ✅ Toast hook import karein
+import { useToast } from '@/hooks/useToast'; //  Toast hook import karein
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -77,7 +77,7 @@ function BuyerDashboard() {
   const [showQuotesModal, setShowQuotesModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // ✅ Toast hook use karein
+  //  Toast hook use karein
   const { successmsg, errormsg } = useToast();
 
   //Welcome Messge First Time
@@ -109,7 +109,7 @@ function BuyerDashboard() {
       if (result.success) {
         setPartRequests(result.data);
         await calculateStats(result.data);
-        // ✅ Success message agar data mila ho
+        //  Success message agar data mila ho
         if (result.data.length > 0) {
           successmsg(`Loaded ${result.data.length} requests successfully`);
         }
@@ -177,7 +177,7 @@ function BuyerDashboard() {
     });
   };
 
-  // ✅ Handle repost request - Alert ko replace karein
+  //  Handle repost request - Alert ko replace karein
   const handleRepostRequest = async (requestId: number) => {
     // Custom confirmation dialog banayein
     const userConfirmed = window.confirm('Are you sure you want to repost this request?');

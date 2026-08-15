@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-// ✅ Add this export to make the route dynamic
+//  Add this export to make the route dynamic
 export const dynamic = 'force-dynamic';
-// ✅ Alternatively, you can use:
+//  Alternatively, you can use:
 // export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {

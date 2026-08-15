@@ -209,7 +209,7 @@ export async function DELETE(
 
       await query('COMMIT');
 
-      // console.log('✅ User deleted successfully:', deleteResult.rows[0]);
+      // console.log(' User deleted successfully:', deleteResult.rows[0]);
 
       return NextResponse.json({
         success: true,

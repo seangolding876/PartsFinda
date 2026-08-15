@@ -13,9 +13,9 @@ export default function SocketHandler(req: NextApiRequest, res: NextApiResponse)
     initSocketServer(httpServer);
     
     (res.socket as any).server.io = true;
-    // console.log('✅ Socket.IO server initialized via API route');
+    // console.log(' Socket.IO server initialized via API route');
   } else {
-    // console.log('✅ Socket.IO server already initialized');
+    // console.log(' Socket.IO server already initialized');
   }
   
   res.end();

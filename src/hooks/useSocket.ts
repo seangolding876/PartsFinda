@@ -34,13 +34,13 @@ export const useSocket = () => {
 
     console.log('🔄 Starting socket connection...');
 
-    // ✅ FIXED: Use correct socket URL and path
+    //  FIXED: Use correct socket URL and path
     const socketUrl = process.env.NODE_ENV === 'development' 
       ? 'http://localhost:3001' 
       : 'https://partsfinda.com';
 
     const socketInstance = io(socketUrl, {
-      path: '/socket.io/', // ✅ Nginx expects this path
+      path: '/socket.io/', //  Nginx expects this path
       auth: { 
         token 
       },
@@ -50,14 +50,14 @@ export const useSocket = () => {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      forceNew: true, // ✅ Better for reconnections
-      withCredentials: true, // ✅ Important for cookies/auth
+      forceNew: true, //  Better for reconnections
+      withCredentials: true, //  Important for cookies/auth
       autoConnect: true
     });
 
     // Connection events
     socketInstance.on('connect', () => {
-      // console.log('✅ CONNECTED to Socket Server!', {
+      // console.log(' CONNECTED to Socket Server!', {
       //   id: socketInstance.id,
       //   connected: socketInstance.connected
       // });
@@ -105,7 +105,7 @@ export const useSocket = () => {
     });
 
     socketInstance.on('reconnect', (attempt) => {
-    //  console.log(`✅ Socket reconnected after ${attempt} attempts`);
+    //  console.log(` Socket reconnected after ${attempt} attempts`);
       setIsConnected(true);
       setConnectionError(null);
     });

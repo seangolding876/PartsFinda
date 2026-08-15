@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import { sendMail } from '@/lib/mailService';
 import { rateLimit } from "@/lib/rateLimit";
 
-// ✅ Rate limiting storage
+//  Rate limiting storage
 const submissionCounts = new Map<string, { count: number; lastSubmission: number }>();
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Contact form submission:', { name, email, subject, clientIP });
 
-    // ✅ 1. HONEYPOT CHECK - Agar website field bhara hai toh spam hai
+    //  1. HONEYPOT CHECK - Agar website field bhara hai toh spam hai
     if (website && website !== '') {
       console.log('🚫 Honeypot triggered - spam detected');
       return NextResponse.json(
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-// ✅ Global Rate Limiting - ADNAN
+//  Global Rate Limiting - ADNAN
 const allowed = await rateLimit(clientIP, 5, 60 * 60); // 5 req/hour
 
 if (!allowed) {
@@ -32,7 +32,7 @@ if (!allowed) {
     { status: 429 }
   );
 }
-    // ✅ 3. BASIC VALIDATION
+    //  3. BASIC VALIDATION
     if (!name || !email || !subject || !message) {
       return NextResponse.json(
         { success: false, error: 'All required fields must be filled' },
@@ -40,7 +40,7 @@ if (!allowed) {
       );
     }
 
-    // ✅ 4. SPAM DETECTION
+    //  4. SPAM DETECTION
     const spamCheck = detectSpam({ name, email, subject, message, phone });
     if (spamCheck.isSpam) {
       console.log('🚫 Spam detected:', spamCheck.reason);
@@ -50,7 +50,7 @@ if (!allowed) {
       );
     }
 
-    // ✅ 5. EMAIL VALIDATION
+    //  5. EMAIL VALIDATION
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ if (!allowed) {
       );
     }
 
-    // ✅ 6. CONTENT VALIDATION
+    //  6. CONTENT VALIDATION
     if (!isValidContent(name) || !isValidContent(subject) || !isValidContent(message)) {
       return NextResponse.json(
         { success: false, error: 'Invalid content detected in form fields' },
@@ -67,7 +67,7 @@ if (!allowed) {
       );
     }
 
-    // ✅ 7. Save contact message to database
+    //  7. Save contact message to database
     const contactResult = await query(
       `INSERT INTO contact_messages (
         name, email, phone, subject, message, type, status, ip_address
@@ -78,13 +78,13 @@ if (!allowed) {
 
     const contactMessage = contactResult.rows[0];
 
-    // ✅ 8. Send confirmation email to user
+    //  8. Send confirmation email to user
     await sendUserConfirmationEmail(name, email, subject, message, type);
 
-    // ✅ 9. Send notification email to admin
+    //  9. Send notification email to admin
     await sendAdminNotificationEmail(name, email, phone, subject, message, type);
 
-    console.log('✅ Contact form submitted successfully:', contactMessage.id);
+    console.log(' Contact form submitted successfully:', contactMessage.id);
 
     return NextResponse.json({
       success: true,
@@ -109,7 +109,7 @@ if (!allowed) {
   }
 }
 
-// ✅ SPAM DETECTION FUNCTION
+//  SPAM DETECTION FUNCTION
 function detectSpam(data: { name: string; email: string; subject: string; message: string; phone?: string }) {
   const { name, email, subject, message, phone } = data;
 
@@ -145,7 +145,7 @@ function detectSpam(data: { name: string; email: string; subject: string; messag
   return { isSpam: false, reason: '' };
 }
 
-// ✅ RANDOM STRING DETECTION
+//  RANDOM STRING DETECTION
 function isRandomString(str: string): boolean {
   if (str.length < 8) return false;
   
@@ -159,21 +159,21 @@ function isRandomString(str: string): boolean {
   return letterRatio > 0.7 && hasMixedCase && noSpaces && (noVowels || consecutiveConsonants);
 }
 
-// ✅ CONTENT VALIDATION
+//  CONTENT VALIDATION
 function isValidContent(content: string): boolean {
   return content.trim().length >= 2 && 
          content.length <= 5000 && 
          /[a-zA-Z]/.test(content); // At least one letter
 }
 
-// ✅ PHONE VALIDATION
+//  PHONE VALIDATION
 function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 15;
 }
 
 
-// ✅ User Confirmation Email Template
+//  User Confirmation Email Template
 async function sendUserConfirmationEmail(
   userName: string,
   userEmail: string,
@@ -284,7 +284,7 @@ async function sendUserConfirmationEmail(
 
       <div class="confirmation-badge">
         <p style="margin: 0; font-size: 18px; font-weight: 600; color: #2563eb;">
-          ✅ Message Confirmation - Case #${Date.now().toString().slice(-6)}
+           Message Confirmation - Case #${Date.now().toString().slice(-6)}
         </p>
       </div>
 
@@ -352,16 +352,16 @@ async function sendUserConfirmationEmail(
   try {
     await sendMail({
       to: userEmail,
-      subject: `✅ Message Received - PartsFinda Contact Confirmation`,
+      subject: ` Message Received - PartsFinda Contact Confirmation`,
       html: emailHtml,
     });
-    console.log(`✅ User confirmation email sent to ${userEmail}`);
+    console.log(` User confirmation email sent to ${userEmail}`);
   } catch (error) {
     console.error('❌ Failed to send user confirmation email:', error);
   }
 }
 
-// ✅ Admin Notification Email Template
+//  Admin Notification Email Template
 async function sendAdminNotificationEmail(
   userName: string,
   userEmail: string,
@@ -380,7 +380,7 @@ async function sendAdminNotificationEmail(
 
   const inquiryType = inquiryTypeLabels[type] || 'General Inquiry';
   
-  // ✅ Multiple admin emails support
+  //  Multiple admin emails support
   const adminEmails = process.env.ADMIN_EMAIL 
     ? process.env.ADMIN_EMAIL.split(',').map(email => email.trim())
     : ['admin@partsfinda.com', 'support@partsfinda.com'];
@@ -570,7 +570,7 @@ async function sendAdminNotificationEmail(
 </html>`;
 
   try {
-    // ✅ Send email to all admin addresses
+    //  Send email to all admin addresses
     const emailPromises = adminEmails.map(adminEmail => 
       sendMail({
         to: adminEmail,
@@ -580,7 +580,7 @@ async function sendAdminNotificationEmail(
     );
 
     await Promise.all(emailPromises);
-    console.log(`✅ Admin notification emails sent to: ${adminEmails.join(', ')}`);
+    console.log(` Admin notification emails sent to: ${adminEmails.join(', ')}`);
   } catch (error) {
     console.error('❌ Failed to send admin notification emails:', error);
   }

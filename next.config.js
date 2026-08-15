@@ -30,23 +30,23 @@ const nextConfig = {
     NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   },
 
-  // ✅ IMPORTANT: Skip ESLint during production builds
+  //  IMPORTANT: Skip ESLint during production builds
   eslint: {
     ignoreDuringBuilds: true,
   },
 
-  // ✅ IMPORTANT: Skip TypeScript errors during build
+  //  IMPORTANT: Skip TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // ✅ IMPORTANT: Disable static generation for dynamic APIs
+  //  IMPORTANT: Disable static generation for dynamic APIs
   output: 'standalone',
 
   // Disable x-powered-by header for security
   poweredByHeader: false,
 
-  // ✅ Add this to handle API routes properly
+  //  Add this to handle API routes properly
   async headers() {
     return [
       {

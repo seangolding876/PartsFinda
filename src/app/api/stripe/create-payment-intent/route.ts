@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     const { planId } = await request.json();
 
-    console.log('🔍 Received planId:', planId); // ✅ Debug log
+    console.log('🔍 Received planId:', planId); //  Debug log
 
     if (!planId) {
       console.log('❌ planId is missing or invalid');
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       [planId]
     );
 
-    console.log('🔍 Plan query result:', planResult.rows); // ✅ Debug log
+    console.log('🔍 Plan query result:', planResult.rows); //  Debug log
 
     if (planResult.rows.length === 0) {
       console.log('❌ No plan found with ID:', planId);
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Stripe payment intent created:', paymentIntent.id);
 
-    // ✅ CORRECTED: Save payment record with subscription_plan_id
+    //  CORRECTED: Save payment record with subscription_plan_id
     await query(
       `INSERT INTO payments (
         user_id, stripe_payment_id, amount, currency, status, description, subscription_plan_id
@@ -75,11 +75,11 @@ export async function POST(request: NextRequest) {
         'JMD',
         'pending',
         `Subscription: ${plan.plan_name}`,
-        planId  // ✅ This should work now
+        planId  //  This should work now
       ]
     );
 
-    console.log('✅ Payment record saved successfully');
+    console.log(' Payment record saved successfully');
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

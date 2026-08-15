@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             <div class="container">
               <div class="header">
                 <h1>PartsFinda</h1>
-                <p>New Quote Received! 🎉</p>
+                <p>New Quote Received! </p>
               </div>
 
               <div class="badge">NEW QUOTE</div>
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
             <div class="container">
               <div class="header">
                 <h1>PartsFinda</h1>
-                <p>Quote Accepted! ✅</p>
+                <p>Quote Accepted! </p>
               </div>
 
               <div class="success-box">
@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
       html: emailHtml
     });
 
-    console.log('✅ Email sent successfully:', mailResult);
+    console.log(' Email sent successfully:', mailResult);
 
     return NextResponse.json({
       success: true,

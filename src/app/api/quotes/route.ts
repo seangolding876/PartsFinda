@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     let userInfo;
     try {
       userInfo = verifyToken(token);
-      console.log('✅ Token verified, user ID:', userInfo.userId);
+      console.log(' Token verified, user ID:', userInfo.userId);
     } catch (tokenError: any) {
       console.log('❌ Token verification failed:', tokenError.message);
       return NextResponse.json({ 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       [userInfo.userId]
     );
 
-    console.log('✅ Query successful, rows found:', quotesResult.rows.length);
+    console.log(' Query successful, rows found:', quotesResult.rows.length);
     
     // Data formatting check
     const formattedQuotes = quotesResult.rows.map(quote => ({

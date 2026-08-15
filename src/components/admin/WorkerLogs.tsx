@@ -1,7 +1,7 @@
 // components/admin/WorkerLogs.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // ✅ useRef import karein
+import { useState, useEffect, useRef } from 'react'; //  useRef import karein
 import { RefreshCw, Trash2, Download, Play, Square } from 'lucide-react';
 import { useToast } from '@/hooks/useToast'; 
 
@@ -16,7 +16,7 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
   const [workerStatus, setWorkerStatus] = useState<'running' | 'stopped' | 'unknown'>('unknown');
   const { successmsg, errormsg, infomsg } = useToast(); 
   
-  // ✅ Scroll ke liye ref add karein
+  //  Scroll ke liye ref add karein
   const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchWorkerLogs = async () => {
@@ -108,7 +108,7 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
     URL.revokeObjectURL(url);
   };
 
-  // ✅ Scroll to bottom function
+  //  Scroll to bottom function
   const scrollToBottom = () => {
     if (logsContainerRef.current) {
       logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
@@ -123,14 +123,14 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(fetchWorkerLogs, 15000); // ✅ 15 seconds kar diya
+    const interval = setInterval(fetchWorkerLogs, 15000); //  15 seconds kar diya
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
-  // ✅ Jab bhi logs update ho, automatically scroll to bottom karo
+  //  Jab bhi logs update ho, automatically scroll to bottom karo
   useEffect(() => {
     scrollToBottom();
-  }, [logs]); // ✅ logs change hone par scroll karo
+  }, [logs]); //  logs change hone par scroll karo
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -186,13 +186,13 @@ export default function WorkerLogs({ authToken }: WorkerLogsProps) {
             onChange={(e) => setAutoRefresh(e.target.checked)}
             className="rounded border-gray-300"
           />
-          <span className="text-sm text-gray-700">Auto-refresh (15s)</span> {/* ✅ 15s update kiya */}
+          <span className="text-sm text-gray-700">Auto-refresh (15s)</span> {/*  15s update kiya */}
         </label>
       </div>
 
       {/* Logs Display - REF add kiya */}
       <div 
-        ref={logsContainerRef} // ✅ REF yahan add kiya
+        ref={logsContainerRef} //  REF yahan add kiya
         className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm h-96 overflow-auto"
       >
         {loading ? (

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
       const sellerName = sellerInfo.rows[0]?.business_name || sellerInfo.rows[0]?.name;
 
-      // ✅ Create BUYER notification in single table
+      //  Create BUYER notification in single table
       await query(
         `INSERT INTO notifications 
          (user_id, part_request_id, title, message, type, user_type) 

@@ -34,9 +34,9 @@ if grep -q "_next/static" "$NGINX_CONF"; then
     echo "⚠ Removing _next/static alias from Nginx..."
     sudo sed -i '/location \/\\_next\/static\//,/}/d' "$NGINX_CONF"
     sudo nginx -t && sudo systemctl reload nginx
-    echo "✅ Nginx reloaded with correct proxy config"
+    echo " Nginx reloaded with correct proxy config"
 else
-    echo "✅ Nginx already correctly configured"
+    echo " Nginx already correctly configured"
 fi
 
-echo "🎉 Deploy completed! Clear browser cache or use Incognito to see latest changes."
+echo " Deploy completed! Clear browser cache or use Incognito to see latest changes."

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     try {
       console.log('🔍 Verifying token...');
       userInfo = verifyToken(token);
-      console.log('✅ Token verified, user ID:', userInfo.userId);
+      console.log(' Token verified, user ID:', userInfo.userId);
     } catch (tokenError: any) {
       console.error('❌ Token verification failed:', tokenError.message);
       return NextResponse.json({ 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     let requestBody;
     try {
       requestBody = await request.json();
-      console.log('✅ Request body parsed:', requestBody);
+      console.log(' Request body parsed:', requestBody);
     } catch (parseError: any) {
       console.error('❌ JSON parse error:', parseError.message);
       return NextResponse.json({ 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ User IDs converted - Rater:', raterIdInt, 'Rated:', ratedUserIdInt);
+    console.log(' User IDs converted - Rater:', raterIdInt, 'Rated:', ratedUserIdInt);
 
     // 6. Conversation Validation
     console.log('💬 Checking conversation access...');
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
          WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)`,
         [conversationId, raterIdInt]
       );
-      console.log('✅ Conversation query executed, rows found:', convCheck.rows.length);
+      console.log(' Conversation query executed, rows found:', convCheck.rows.length);
     } catch (dbError: any) {
       console.error('❌ Database error in conversation check:', dbError);
       return NextResponse.json(
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     const conversation = convCheck.rows[0];
-    console.log('✅ Conversation found:', conversation);
+    console.log(' Conversation found:', conversation);
 
     // 7. Rated User Validation
     console.log('👤 Validating rated user...');
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
         `SELECT id, rating, created_at FROM ratings WHERE conversation_id = $1 AND rater_id = $2`,
         [conversationId, raterIdInt]
       );
-      console.log('✅ Existing rating check completed, found:', existingRating.rows.length);
+      console.log(' Existing rating check completed, found:', existingRating.rows.length);
     } catch (dbError: any) {
       console.error('❌ Database error in existing rating check:', dbError);
       return NextResponse.json(
@@ -222,9 +222,9 @@ export async function POST(request: NextRequest) {
          RETURNING id, rating, comment, created_at`,
         [conversationId, raterIdInt, ratedUserIdInt, rating, comment || null]
       );
-      console.log('✅ Rating inserted successfully:', result.rows[0]);
+      console.log(' Rating inserted successfully:', result.rows[0]);
 
-       // ✅ ✅ ✅ YEH NEW CODE ADD KAREIN - NOTIFICATION CREATE KARO
+       //    YEH NEW CODE ADD KAREIN - NOTIFICATION CREATE KARO
   try {
     // Rated user ko notification bhejo
     await query(
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
       ]
     );
     
-    console.log('✅ Rating notification created for user:', ratedUserIdInt);
+    console.log(' Rating notification created for user:', ratedUserIdInt);
 
     
     
@@ -267,14 +267,14 @@ export async function POST(request: NextRequest) {
     console.log('📊 Updating user average rating...');
     try {
       await updateUserRating(ratedUserIdInt);
-      console.log('✅ User rating updated successfully');
+      console.log(' User rating updated successfully');
     } catch (updateError: any) {
       console.error('⚠️ Error updating user rating (non-critical):', updateError);
       // Don't fail the request if this fails, just log it
     }
 
     // 12. Success Response
-    console.log('🎉 Rating submission completed successfully');
+    console.log(' Rating submission completed successfully');
     return NextResponse.json({
       success: true,
       data: {
@@ -330,7 +330,7 @@ async function updateUserRating(userId: number) {
       [roundedRating, ratingCount, userId]
     );
 
-    console.log(`✅ User ${userId} rating updated: ${roundedRating} (${ratingCount} ratings)`);
+    console.log(` User ${userId} rating updated: ${roundedRating} (${ratingCount} ratings)`);
 
   } catch (error: any) {
     console.error('❌ Error in updateUserRating:', error);

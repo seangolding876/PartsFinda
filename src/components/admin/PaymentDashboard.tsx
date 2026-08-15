@@ -45,7 +45,7 @@ export default function PaymentDashboard() {
   const [expiring, setExpiring] = useState<ExpiringSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
-    const router = useRouter(); // ✅ initialize router here
+    const router = useRouter(); //  initialize router here
 
 const getAuthData = () => {
   if (typeof window === 'undefined') return null;

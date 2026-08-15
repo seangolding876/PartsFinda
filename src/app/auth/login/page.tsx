@@ -67,9 +67,9 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-       // console.log('✅ Login successful, saving to localStorage...');
+       // console.log(' Login successful, saving to localStorage...');
 
-        // ✅ Auth data localStorage mein save karein
+        //  Auth data localStorage mein save karein
         const authData = {
           token: result.authToken,
           role: result.user.role,
@@ -112,7 +112,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error('❌ Login error:', err);
       
-      // ✅ UPDATED ERROR HANDLING - New API responses ke according
+      //  UPDATED ERROR HANDLING - New API responses ke according
       if (err.message.includes('Network') || err.message.includes('fetch')) {
         setError('🌐 Network error: Please check your internet connection and try again.');
       } 
@@ -129,7 +129,7 @@ export default function LoginPage() {
         setError('🔒 Password must be at least 6 characters long.');
       }
       
-      // ✅ NEW: Seller specific errors
+      //  NEW: Seller specific errors
       else if (err.message.includes('Please verify your email first')) {
         setError('📨 Please verify your email address before logging in. Check your inbox for verification link.');
       }
@@ -137,12 +137,12 @@ export default function LoginPage() {
         setError('⏳ Your seller account is under review. You will receive an approval email within 1-2 business days. Thank you for your patience!');
       }
       
-      // ✅ NEW: Buyer specific errors
+      //  NEW: Buyer specific errors
       else if (err.message.includes('verify your email first')) {
         setError('📧 Please verify your email address to continue. Check your inbox for verification link.');
       }
       
-      // ✅ HTTP Status based errors
+      //  HTTP Status based errors
       else if (err.message.includes('HTTP 401')) {
         setError('❌ Invalid email or password. Please try again.');
       }

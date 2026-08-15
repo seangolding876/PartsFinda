@@ -42,7 +42,7 @@ export default function VerificationSuccess() {
         </div>
         
         <h1 className="text-2xl font-bold text-gray-800 mb-4">
-          Email Verified Successfully! ✅
+          Email Verified Successfully! 
         </h1>
         
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">

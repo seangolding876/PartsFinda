@@ -95,7 +95,7 @@ export async function GET(
           )
         ]);
 
-        // console.log('✅ Seller queries executed successfully');
+        // console.log(' Seller queries executed successfully');
         // console.log('📊 Seller Results:', {
         //   partRequests: partRequestsResult.rows[0],
         //   quotes: quotesResult.rows[0],
@@ -114,7 +114,7 @@ export async function GET(
           payment_history: paymentsResult.rows
         };
 
-        //console.log('🎉 Seller stats successfully generated');
+        //console.log(' Seller stats successfully generated');
         return NextResponse.json({
           success: true,
           data: responseData
@@ -132,7 +132,7 @@ export async function GET(
         // Test connection with a simple query first
         //console.log('🧪 Testing database connection...');
         const testQuery = await query('SELECT NOW() as current_time', []);
-       // console.log('✅ Database connection test passed:', testQuery.rows[0]);
+       // console.log(' Database connection test passed:', testQuery.rows[0]);
 
         // Execute all buyer queries
         const queryPromises = [
@@ -179,7 +179,7 @@ export async function GET(
           totalSpentResult
         ] = await Promise.all(queryPromises);
 
-        // console.log('✅ All buyer queries executed successfully');
+        // console.log(' All buyer queries executed successfully');
         // console.log('📊 Buyer Query Results:', {
         //   totalRequests: totalRequestsResult.rows[0],
         //   openRequests: openRequestsResult.rows[0],
@@ -200,7 +200,7 @@ export async function GET(
         };
 
        // console.log('📈 Final buyer stats:', statsData);
-       // console.log('🎉 Buyer stats successfully generated');
+       // console.log(' Buyer stats successfully generated');
 
         return NextResponse.json({
           success: true,

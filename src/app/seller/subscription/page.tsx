@@ -28,7 +28,7 @@ interface CurrentSubscription {
   duration_days: number;
 }
 
-// ✅ MAIN SUBSCRIPTION COMPONENT - STRIPE CHECKOUT VERSION
+//  MAIN SUBSCRIPTION COMPONENT - STRIPE CHECKOUT VERSION
 export default function SubscriptionPage() {
   const router = useRouter();
   const { successmsg, infomsg, errormsg } = useToast();
@@ -38,7 +38,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [couponCode, setCouponCode] = useState(''); // ✅ New coupon field
+  const [couponCode, setCouponCode] = useState(''); //  New coupon field
 
   // Auth utility
   const getAuthData = () => {
@@ -136,7 +136,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  // ✅ UPDATED: Stripe Checkout Session for Subscriptions
+  //  UPDATED: Stripe Checkout Session for Subscriptions
   const handleSubscribe = async (plan: SubscriptionPlan) => {
     if (processing) return;
 
@@ -188,7 +188,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      // ✅ CHANGED: For PAID plans - Stripe Checkout Session (NEW APPROACH)
+      //  CHANGED: For PAID plans - Stripe Checkout Session (NEW APPROACH)
      // console.log('Creating Stripe checkout session for plan ID:', plan.id);
       infomsg('Redirecting to secure payment...');
 
@@ -208,7 +208,7 @@ export default function SubscriptionPage() {
      // console.log('Stripe checkout session result:', checkoutResult);
 
       if (checkoutResult.url) {
-        // ✅ Redirect user to Stripe Checkout page
+        //  Redirect user to Stripe Checkout page
         successmsg('Redirecting to secure payment gateway...');
         window.location.href = checkoutResult.url;
       } else {
@@ -224,7 +224,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  // ✅ REMOVED: All the old payment intent related functions
+  //  REMOVED: All the old payment intent related functions
   // - handlePaymentSuccess
   // - handlePaymentCancel  
   // - StripeCheckoutForm component
@@ -245,7 +245,7 @@ export default function SubscriptionPage() {
     return `/${durationDays} days`;
   };
 
-  // ✅ New function to apply coupon
+  //  New function to apply coupon
   const handleApplyCoupon = () => {
     if (!couponCode.trim()) {
       errormsg('Please enter a coupon code');
@@ -436,7 +436,7 @@ export default function SubscriptionPage() {
           ))}
         </div>
 
-        {/* ✅ REMOVED: Stripe Checkout Modal - Ab redirect hoga Stripe ki taraf */}
+        {/*  REMOVED: Stripe Checkout Modal - Ab redirect hoga Stripe ki taraf */}
 
         {/* Features Comparison Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">

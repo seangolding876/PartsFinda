@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// ✅ Connection Pool
+//  Connection Pool
 const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -14,12 +14,12 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
-// ✅ Simple query function
+//  Simple query function
 async function query(text: string, params?: any[]) {
   try {
     console.log('🛢️ Executing query:', text.substring(0, 100));
     const result = await pool.query(text, params);
-    console.log('✅ Query successful, rows:', result.rowCount);
+    console.log(' Query successful, rows:', result.rowCount);
     return result;
   } catch (error: any) {
     console.error('❌ Database error:', error.message);
@@ -57,22 +57,22 @@ export async function POST(request: NextRequest) {
     console.log('🎯 Event ID:', event.id);
     console.log('🌐 Live Mode:', event.livemode);
 
-    // ✅ Test database immediately
+    //  Test database immediately
     try {
       const dbTest = await query('SELECT NOW() as time');
-      console.log('✅ Database connected:', dbTest.rows[0].time);
+      console.log(' Database connected:', dbTest.rows[0].time);
     } catch (dbError) {
       console.error('❌ Database connection failed:', dbError);
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
 
-    // ✅ Log webhook receipt
+    //  Log webhook receipt
     await query(
       'INSERT INTO webhook_logs (event_type, status) VALUES ($1, $2)',
       [event.type, 'received']
     );
 
-    // ✅ PROCESS ALL SUBSCRIPTION EVENTS
+    //  PROCESS ALL SUBSCRIPTION EVENTS
     switch (event.type) {
       case 'checkout.session.completed':
         await handleCheckoutSessionCompleted(event.data.object);
@@ -102,13 +102,13 @@ export async function POST(request: NextRequest) {
         console.log(`⚡ Unhandled: ${event.type}`);
     }
 
-    // ✅ Update webhook log to completed
+    //  Update webhook log to completed
     await query(
       'UPDATE webhook_logs SET status = $1 WHERE event_type = $2 AND created_at > NOW() - INTERVAL \'1 minute\'',
       ['completed', event.type]
     );
 
-    console.log('✅ WEBHOOK COMPLETED SUCCESSFULLY');
+    console.log(' WEBHOOK COMPLETED SUCCESSFULLY');
     
     return NextResponse.json({ 
       success: true,
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ WEBHOOK FAILED:', error.message);
     
-    // ✅ Log error to webhook_errors table
+    //  Log error to webhook_errors table
     try {
       await query(
         'INSERT INTO webhook_errors (event_type, error_message) VALUES ($1, $2)',
@@ -142,21 +142,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ✅ CHECKOUT SESSION COMPLETED - WITH COUPON SUPPORT
-// ✅ CHECKOUT SESSION COMPLETED - WITH DYNAMIC PLAN NAME VALIDATION
+//  CHECKOUT SESSION COMPLETED - WITH COUPON SUPPORT
+//  CHECKOUT SESSION COMPLETED - WITH DYNAMIC PLAN NAME VALIDATION
 async function handleCheckoutSessionCompleted(session: any) {
   console.log('💰 CHECKOUT SESSION COMPLETED');
   console.log('📦 Session ID:', session.id);
   console.log('💳 Payment Status:', session.payment_status);
   
   try {
-    // ✅ STEP 0: Log webhook receipt
+    //  STEP 0: Log webhook receipt
     await query(
       'INSERT INTO webhook_logs (event_type, session_id, status) VALUES ($1, $2, $3)',
       ['checkout.session.completed', session.id, 'received']
     );
 
-    // ✅ Extract metadata safely
+    //  Extract metadata safely
     const metadata = session.metadata || {};
     const plan_id = metadata.plan_id;
     const user_id = metadata.user_id;
@@ -174,7 +174,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
 
     console.log('📋 Extracted Metadata:', { plan_id, user_id, plan_name });
 
-    // ✅ Check if metadata exists
+    //  Check if metadata exists
     if (!plan_id || !user_id) {
       console.error('❌ MISSING METADATA - Cannot process subscription');
       
@@ -192,25 +192,25 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
 
     console.log(`🔄 Processing subscription - User: ${user_id}, Plan: ${plan_id}`);
 
-    // ✅ Update webhook log to processing
+    //  Update webhook log to processing
     await query(
       'UPDATE webhook_logs SET user_id = $1, plan_id = $2, status = $3 WHERE session_id = $4',
       [user_id, plan_id, 'processing', session.id]
     );
 
-    // ✅ STEP 1: Update stripe_sessions status to 'completed'
+    //  STEP 1: Update stripe_sessions status to 'completed'
     const sessionUpdateResult = await query(
       'UPDATE stripe_sessions SET status = $1, amount_total = $2 WHERE session_id = $3 RETURNING id',
       ['completed', session.amount_total ? session.amount_total / 100 : 0, session.id]
     );
     
     if (sessionUpdateResult.rows.length > 0) {
-      console.log('✅ Stripe session updated to completed:', sessionUpdateResult.rows[0].id);
+      console.log(' Stripe session updated to completed:', sessionUpdateResult.rows[0].id);
     } else {
       console.log('⚠️ Stripe session not found for update:', session.id);
     }
 
-    // ✅ STEP 2: Get plan details
+    //  STEP 2: Get plan details
     const planResult = await query(
       'SELECT * FROM subscription_plans WHERE plan_id = $1',
       [plan_id]
@@ -234,7 +234,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
     const plan = planResult.rows[0];
     console.log('🎯 Plan found:', plan.plan_name, 'Price:', plan.price);
 
-    // ✅ STEP 2.5: DYNAMIC PLAN NAME VALIDATION
+    //  STEP 2.5: DYNAMIC PLAN NAME VALIDATION
     let allowedPlanNames = ['Basic', 'Premium', 'Enterprise'];
     
     try {
@@ -256,7 +256,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
         const matches = constraintDef.match(/'([^']*)'/g);
         if (matches) {
           allowedPlanNames = matches.map((m: string) => m.replace(/'/g, ''));
-          console.log('✅ Dynamic allowed plan names from constraint:', allowedPlanNames);
+          console.log(' Dynamic allowed plan names from constraint:', allowedPlanNames);
         }
       } else {
         console.log('ℹ️ No constraint found, using default allowed names');
@@ -296,7 +296,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       forUser: normalizedPlanNameForUser
     });
 
-    // ✅ STEP 3: GET COUPON DETAILS FROM INVOICE
+    //  STEP 3: GET COUPON DETAILS FROM INVOICE
     let discountAmount = 0;
     let couponCode = null;
     let discountPercentage = 0;
@@ -345,7 +345,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       console.error('❌ Error retrieving invoice:', invoiceError);
     }
 
-    // ✅ STEP 4: Calculate payment amounts with coupon discount
+    //  STEP 4: Calculate payment amounts with coupon discount
     const originalAmount = plan.price; // Original plan price
     let finalAmount = session.amount_total ? session.amount_total / 100 : originalAmount;
 
@@ -376,14 +376,14 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       hasInvoice: !!invoiceDetails
     });
 
-    // ✅ STEP 5: Deactivate existing subscriptions
+    //  STEP 5: Deactivate existing subscriptions
     const deactivateResult = await query(
       'UPDATE supplier_subscription SET is_active = false WHERE user_id = $1',
       [user_id]
     );
     console.log('📊 Deactivated subscriptions:', deactivateResult.rowCount);
 
-    // ✅ STEP 6: Calculate dates - SAFE VERSION
+    //  STEP 6: Calculate dates - SAFE VERSION
     const startDate = new Date();
     let validEndDate = new Date();
     
@@ -414,16 +414,16 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       console.log('📅 Using plan duration days:', durationDays);
     }
 
-    // ✅ Final validation of dates
+    //  Final validation of dates
     if (isNaN(validEndDate.getTime())) {
       console.error('❌ Invalid end date calculated, using 30 days default');
       validEndDate = new Date();
       validEndDate.setDate(validEndDate.getDate() + 30);
     }
 
-    console.log('✅ Final dates - Start:', startDate, 'End:', validEndDate);
+    console.log(' Final dates - Start:', startDate, 'End:', validEndDate);
 
-    // ✅ STEP 7: Create new subscription in supplier_subscription WITH VALIDATED PLAN NAME
+    //  STEP 7: Create new subscription in supplier_subscription WITH VALIDATED PLAN NAME
     const subscriptionResult = await query(
       `INSERT INTO supplier_subscription (
         user_id, plan_name, start_date, end_date, is_active, renewal_count,
@@ -431,7 +431,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [
         user_id, 
-        exactPlanNameForSubscription, // ✅ DYNAMIC VALIDATED PLAN NAME
+        exactPlanNameForSubscription, //  DYNAMIC VALIDATED PLAN NAME
         startDate, 
         validEndDate,
         true, 
@@ -440,16 +440,16 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
         session.id
       ]
     );
-    console.log('✅ Subscription created with ID:', subscriptionResult.rows[0]?.id);
+    console.log(' Subscription created with ID:', subscriptionResult.rows[0]?.id);
 
-    // ✅ STEP 8: Update user membership_plan
+    //  STEP 8: Update user membership_plan
     const userUpdateResult = await query(
       'UPDATE users SET membership_plan = $1 WHERE id = $2 RETURNING id',
-      [normalizedPlanNameForUser, user_id] // ✅ Lowercase for users table
+      [normalizedPlanNameForUser, user_id] //  Lowercase for users table
     );
     console.log('👤 User membership_plan updated:', userUpdateResult.rowCount);
 
-    // ✅ STEP 9: Create record in subscription_payments table WITH COUPON DETAILS
+    //  STEP 9: Create record in subscription_payments table WITH COUPON DETAILS
     await query(
       `INSERT INTO subscription_payments (
         user_id, subscription_plan_id, stripe_payment_intent_id, stripe_subscription_id,
@@ -479,7 +479,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
     );
     console.log('💰 Subscription payment recorded with coupon details');
 
-    // ✅ STEP 10: Create notification with discount info
+    //  STEP 10: Create notification with discount info
     let notificationMessage = `Your ${exactPlanNameForSubscription} subscription has been activated!`;
     
     if (discountAmount > 0) {
@@ -496,13 +496,13 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
       [user_id, 'subscription_activated', notificationMessage, 'pending']
     );
 
-    // ✅ STEP 11: Update webhook log to completed
+    //  STEP 11: Update webhook log to completed
     await query(
       'UPDATE webhook_logs SET status = $1 WHERE session_id = $2',
       ['completed', session.id]
     );
 
-    console.log(`🎉 SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${exactPlanNameForSubscription}`);
+    console.log(` SUBSCRIPTION SUCCESS: User ${user_id}, Plan ${exactPlanNameForSubscription}`);
     console.log('💰 FINAL Payment details:', {
       originalAmount,
       discountAmount,
@@ -515,7 +515,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
     console.error('❌ CRITICAL ERROR in checkout handler:', error.message);
     console.error('🔍 Error stack:', error.stack);
     
-    // ✅ Log error to webhook_errors table
+    //  Log error to webhook_errors table
     try {
       await query(
         'INSERT INTO webhook_errors (event_type, session_id, error_message) VALUES ($1, $2, $3)',
@@ -533,7 +533,7 @@ console.log('🔄 UPGRADE CHECK - Session Metadata:', {
 }
 
 
-// ✅ SUBSCRIPTION CREATED
+//  SUBSCRIPTION CREATED
 async function handleSubscriptionCreated(subscription: any) {
   console.log(`📝 Subscription created: ${subscription.id}`);
   console.log('📊 Subscription status:', subscription.status);
@@ -545,19 +545,19 @@ async function handleSubscriptionCreated(subscription: any) {
       [subscription.status === 'active', subscription.id]
     );
     
-    console.log(`✅ Subscription ${subscription.id} status updated to: ${subscription.status}`);
+    console.log(` Subscription ${subscription.id} status updated to: ${subscription.status}`);
   } catch (error) {
     console.error('❌ Error handling subscription created:', error);
   }
 }
 
-// ✅ SUBSCRIPTION UPDATED
+//  SUBSCRIPTION UPDATED
 async function handleSubscriptionUpdated(subscription: any) {
   console.log(`🔄 Subscription updated: ${subscription.id}`);
   console.log('📊 New status:', subscription.status);
   
   try {
-    // ✅ SAFE: Calculate end date
+    //  SAFE: Calculate end date
     let validEndDate = new Date();
     if (subscription.current_period_end && !isNaN(subscription.current_period_end)) {
       validEndDate = new Date(subscription.current_period_end * 1000);
@@ -571,13 +571,13 @@ async function handleSubscriptionUpdated(subscription: any) {
       [validEndDate, subscription.status === 'active', subscription.id]
     );
 
-    console.log(`✅ Subscription updated: ${subscription.id}`);
+    console.log(` Subscription updated: ${subscription.id}`);
   } catch (error) {
     console.error('❌ Error updating subscription:', error);
   }
 }
 
-// ✅ SUBSCRIPTION DELETED/CANCELED
+//  SUBSCRIPTION DELETED/CANCELED
 async function handleSubscriptionDeleted(subscription: any) {
   console.log(`🗑️ Subscription deleted: ${subscription.id}`);
   
@@ -603,21 +603,21 @@ async function handleSubscriptionDeleted(subscription: any) {
         [userId, 'subscription_canceled', 'Your subscription has been canceled', 'pending']
       );
 
-      console.log(`✅ Subscription deactivated for user: ${userId}`);
+      console.log(` Subscription deactivated for user: ${userId}`);
     }
   } catch (error) {
     console.error('❌ Error handling subscription deletion:', error);
   }
 }
 
-// ✅ SUBSCRIPTION: Recurring Payment Succeeded
+//  SUBSCRIPTION: Recurring Payment Succeeded
 async function handleInvoicePaymentSucceeded(invoice: any) {
   console.log(`💰 Recurring payment succeeded: ${invoice.id}`);
   console.log('💳 Amount paid:', invoice.amount_paid / 100);
   
   try {
     if (invoice.subscription) {
-      // ✅ SAFE: Calculate new end date
+      //  SAFE: Calculate new end date
       let newEndDate = new Date();
       try {
         const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
@@ -653,14 +653,14 @@ async function handleInvoicePaymentSucceeded(invoice: any) {
         );
       }
 
-      console.log(`✅ Subscription renewed: ${invoice.subscription}`);
+      console.log(` Subscription renewed: ${invoice.subscription}`);
     }
   } catch (error) {
     console.error('❌ Error handling invoice payment:', error);
   }
 }
 
-// ✅ SUBSCRIPTION: Recurring Payment Failed
+//  SUBSCRIPTION: Recurring Payment Failed
 async function handleInvoicePaymentFailed(invoice: any) {
   console.log(`❌ Recurring payment failed: ${invoice.id}`);
   
@@ -688,7 +688,7 @@ async function handleInvoicePaymentFailed(invoice: any) {
   }
 }
 
-// ✅ GET method for testing
+//  GET method for testing
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const test = url.searchParams.get('test');
