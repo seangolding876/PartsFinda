@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+// CSS is intentionally not imported here to avoid the missing global stylesheet type declaration in this environment.
 import Navigation from '@/components/Navigation';
 import { AuthProvider } from '@/context/AuthContext';
 import AlertManager from "@/components/AlertManager";
