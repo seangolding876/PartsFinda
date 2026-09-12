@@ -55,42 +55,42 @@ export default function HomePage() {
     {
       name: 'Brake Pads',
       price: 'J$8,500',
-      image: 'https://ext.same-assets.com/394992809/2530530056.webp'
+      image: '/images/brake-pad.jpg'
     },
     {
       name: 'Oil Filter',
       price: 'J$2,200',
-      image: 'https://ext.same-assets.com/394992809/1815990976.webp'
+          image: '/images/oil-filter.jpg'
     },
     {
       name: 'Spark Plugs',
       price: 'J$1,800',
-      image: 'https://ext.same-assets.com/394992809/3306996441.webp'
+      image: '/images/spark-plugs.jpg'
     },
     {
       name: 'Air Filter',
       price: 'J$3,500',
-      image: 'https://ext.same-assets.com/394992809/2534202371.webp'
+      image: '/images/air-filter.jpg'
     },
     {
       name: 'Transmission Fluid',
       price: 'J$4,200',
-      image: 'https://ext.same-assets.com/394992809/3093145333.webp'
+       image: '/images/transmission-fluid.jpg'
     },
     {
       name: 'Battery',
       price: 'J$12,500',
-      image: 'https://ext.same-assets.com/394992809/1439390553.webp'
+      image: '/images/batteries.jpg'
     },
     {
       name: 'Radiator',
       price: 'J$15,800',
-      image: 'https://ext.same-assets.com/394992809/1683520931.webp'
+        image: '/images/radiators.jpg'
     },
     {
       name: 'Alternator',
       price: 'J$18,500',
-      image: 'https://ext.same-assets.com/394992809/2530530056.webp'
+      image: '/images/alternators.jpg'
     }
   ]
 
@@ -100,7 +100,7 @@ export default function HomePage() {
       location: 'Kingston',
       rating: 4.8,
       reviews: '50+ reviews',
-      image: 'https://ext.same-assets.com/394992809/111244731.webp',
+      image: '/images/king-auto.jpg',
       specialties: ['Engine Parts', 'Brake Systems', 'Electrical']
     },
     {
@@ -108,7 +108,7 @@ export default function HomePage() {
       location: 'Spanish Town',
       rating: 4.9,
       reviews: '50+ reviews',
-      image: 'https://ext.same-assets.com/394992809/2388574119.webp',
+         image: '/images/spinash-motors.jpg',
       specialties: ['Transmission', 'Suspension', 'Body Parts']
     },
     {
@@ -116,7 +116,7 @@ export default function HomePage() {
       location: 'Montego Bay',
       rating: 4.7,
       reviews: '50+ reviews',
-      image: 'https://ext.same-assets.com/394992809/2452830785.webp',
+         image: '/images/mangeto-go.jpg',
       specialties: ['Japanese Cars', 'European Cars', 'Filters']
     }
   ]
@@ -166,7 +166,7 @@ export default function HomePage() {
             <div className="relative">
               <div className="bg-gradient-to-br from-cyan-300 to-cyan-500 rounded-3xl p-8 transform rotate-3 hover:rotate-0 transition-transform duration-500">
                 <img
-                  src="https://ext.same-assets.com/394992809/2693083641.webp"
+                  src="/images/hero-image.jpg"
                   alt="Car Parts"
                   className="w-full h-auto object-contain"
                 />
@@ -393,11 +393,13 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-6">
             {popularParts.map((part) => (
               <div key={part.name} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                <img
-                  src={part.image}
-                  alt={part.name}
-                  className="w-24 h-24 object-contain mx-auto mb-4"
-                />
+                <div className="w-full h-44 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-md mb-4 p-3">
+  <img
+    src={part.image}
+    alt={part.name}
+    className="max-w-full max-h-full object-contain transition-transform duration-300 hover:scale-105"
+  />
+</div>
                 <h3 className="font-bold text-lg text-gray-800 mb-2">{part.name}</h3>
                 <div className="text-2xl font-bold text-green-600 mb-1">{part.price}</div>
                 <div className="text-sm text-gray-500">Average price</div>
