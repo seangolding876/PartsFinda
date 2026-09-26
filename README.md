@@ -214,7 +214,7 @@ This project is proprietary and confidential. All rights reserved.
 ## 📞 Support
 
 - **Email**: support@partsfinda.com
-- **Phone**: +876 219 3329
+- **Phone**: +876 - 393-9151
 - **Address**: Kingston, Jamaica
 
 ## 🇯🇲 Made in Jamaica

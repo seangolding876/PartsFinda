@@ -494,7 +494,7 @@ export default function HomePage() {
             </div>
             <div className="text-white">
               <Phone className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-xl font-semibold">+876 219 3329</div>
+              <div className="text-xl font-semibold">+876 - 393-9151</div>
             </div>
             <div className="text-white">
               <MapPin className="w-12 h-12 mx-auto mb-4" />
