@@ -48,10 +48,10 @@ export default function QuoteModal({ isOpen, onClose, onSubmit, request, loading
       return;
     }
 
-    if (parseFloat(formData.price) > request.budget * 2) {
-      errormsg('Price seems too high compared to buyer budget');
-      return;
-    }
+    // if (parseFloat(formData.price) > request.budget * 2) {
+    //   errormsg('Price seems too high compared to buyer budget');
+    //   return;
+    // }
 
     await onSubmit({
       requestId: request.id,

@@ -1,7 +1,7 @@
 'use client';
 
 import { X, MapPin, Calendar, Clock, User, Phone, Mail, DollarSign } from 'lucide-react';
-import { useToast } from '@/hooks/useToast'; //  Toast hook import
+import { useToast } from '@/hooks/useToast';
 
 interface RequestDetailsModalProps {
   isOpen: boolean;
@@ -10,7 +10,6 @@ interface RequestDetailsModalProps {
 }
 
 export default function RequestDetailsModal({ isOpen, onClose, request }: RequestDetailsModalProps) {
-  //  Toast hook use karein
   const { infomsg } = useToast();
 
   if (!isOpen || !request) return null;
@@ -22,11 +21,14 @@ export default function RequestDetailsModal({ isOpen, onClose, request }: Reques
     }).format(amount);
   };
 
-  // Copy to clipboard function with toast
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     infomsg(`${type} copied to clipboard`);
   };
+
+  // Helper to check if value is real contact info
+  const isRealContact = (val?: string) =>
+    val && val !== 'Pending Acceptance' && val !== 'Not Quoted Yet';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -77,6 +79,8 @@ export default function RequestDetailsModal({ isOpen, onClose, request }: Reques
           <div>
             <h4 className="text-lg font-semibold text-gray-800 mb-4">Buyer Information</h4>
             <div className="grid md:grid-cols-2 gap-4">
+
+              {/* Buyer Name — always visible */}
               <div 
                 className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                 onClick={() => copyToClipboard(request.buyerName, 'Buyer name')}
@@ -87,17 +91,41 @@ export default function RequestDetailsModal({ isOpen, onClose, request }: Reques
                   <p className="text-gray-900 font-medium">{request.buyerName}</p>
                 </div>
               </div>
-              <div 
-                className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                onClick={() => copyToClipboard(request.buyerEmail, 'Email')}
-              >
-                <Mail className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="text-gray-900 font-medium">{request.buyerEmail}</p>
+
+              {/* Email — conditional */}
+              {isRealContact(request.buyerEmail) ? (
+                <div 
+                  className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                  onClick={() => copyToClipboard(request.buyerEmail, 'Email')}
+                >
+                  <Mail className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="text-gray-900 font-medium">{request.buyerEmail}</p>
+                  </div>
                 </div>
-              </div>
-              {request.buyerPhone && (
+              ) : request.buyerEmail === 'Pending Acceptance' ? (
+                <div className="flex items-center gap-3 p-2">
+                  <Mail className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="text-orange-600 text-sm font-medium italic flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Pending Acceptance
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-2">
+                  <Mail className="w-5 h-5 text-gray-300" />
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="text-gray-400 text-sm italic">Submit a quote to view</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Phone — conditional */}
+              {isRealContact(request.buyerPhone) ? (
                 <div 
                   className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                   onClick={() => copyToClipboard(request.buyerPhone, 'Phone number')}
@@ -108,7 +136,27 @@ export default function RequestDetailsModal({ isOpen, onClose, request }: Reques
                     <p className="text-gray-900 font-medium">{request.buyerPhone}</p>
                   </div>
                 </div>
+              ) : request.buyerPhone === 'Pending Acceptance' ? (
+                <div className="flex items-center gap-3 p-2">
+                  <Phone className="w-5 h-5 text-orange-400" />
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-orange-600 text-sm font-medium italic flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Pending Acceptance
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-2">
+                  <Phone className="w-5 h-5 text-gray-300" />
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-gray-400 text-sm italic">Submit a quote to view</p>
+                  </div>
+                </div>
               )}
+
+              {/* Location — always visible */}
               <div className="flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-gray-400" />
                 <div>

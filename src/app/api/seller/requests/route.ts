@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -37,8 +35,19 @@ export async function GET(request: NextRequest) {
         mk.name as make_name,
         md.name as model_name,
         u.name as buyer_name,
-        u.email as buyer_email,
-        u.phone as buyer_phone,
+
+        CASE 
+          WHEN qs.status = 'accepted' THEN u.email
+          WHEN qs.status IS NOT NULL   THEN 'Pending Acceptance'
+          ELSE 'Not Quoted Yet'
+        END as buyer_email,
+
+        CASE 
+          WHEN qs.status = 'accepted' THEN u.phone
+          WHEN qs.status IS NOT NULL   THEN 'Pending Acceptance'
+          ELSE 'Not Quoted Yet'
+        END as buyer_phone,
+
         pr.expires_at,
         pr.created_at as date_received,
         rq.id as queue_id,
@@ -46,30 +55,46 @@ export async function GET(request: NextRequest) {
         rq.status as queue_status,
         rq.scheduled_delivery_time,
         rq."isReject",
-        EXISTS(
-          SELECT 1 FROM request_quotes rq2 
-          WHERE rq2.request_id = pr.id AND rq2.seller_id = $1
-        ) as has_quoted,
-        COALESCE(
-          (SELECT COUNT(*) FROM request_quotes rq3 WHERE rq3.request_id = pr.id), 0
-        ) as total_quotes,
-		seller_visible_time,
-		seller.membership_plan,
-		    CASE 
-        WHEN seller.membership_plan = 'basic' 
-        THEN (NOW() >= rq.seller_visible_time)
-        ELSE true 
+
+        (qs.quote_id IS NOT NULL) as has_quoted,
+        COALESCE(qs.total_quotes, 0) as total_quotes,
+
+        rq.seller_visible_time,
+        seller.membership_plan,
+
+        CASE 
+          WHEN seller.membership_plan = 'basic' 
+          THEN (NOW() >= rq.seller_visible_time)
+          ELSE true 
         END as is_visible_to_seller,
-		    NOW() as server_date
+
+        NOW() as server_date
+
        FROM request_queue rq
        JOIN part_requests pr ON rq.part_request_id = pr.id
        JOIN users u ON pr.user_id = u.id
        JOIN users seller ON rq.seller_id = seller.id
        JOIN makes mk ON pr.make_id = mk.id
        JOIN models md ON pr.model_id = md.id AND mk.id = md.make_id
-       WHERE rq.seller_id = $1 AND ${statusCondition} AND (rq."isReject" = false OR rq."isReject" IS NULL)
+
+       LEFT JOIN LATERAL (
+         SELECT 
+           rq_self.id as quote_id,
+           rq_self.status as status,
+           (SELECT COUNT(*) FROM request_quotes rqc 
+             WHERE rqc.request_id = pr.id) as total_quotes
+         FROM request_quotes rq_self
+         WHERE rq_self.request_id = pr.id
+           AND rq_self.seller_id = $1
+         LIMIT 1
+       ) qs ON true
+
+       WHERE rq.seller_id = $1 
+         AND ${statusCondition} 
+         AND (rq."isReject" = false OR rq."isReject" IS NULL)
+
        ORDER BY 
-       rq.processed_at DESC,
+         rq.processed_at DESC,
          CASE pr.urgency 
            WHEN 'high' THEN 1
            WHEN 'medium' THEN 2
@@ -98,16 +123,16 @@ export async function GET(request: NextRequest) {
       dateReceived: request.date_received,
       expiresAt: request.expires_at,
       queueStatus: request.queue_status,
-      scheduledDelivery: request.scheduled_delivery,
+      scheduledDelivery: request.scheduled_delivery_time,
       processedAt: request.processed_at,
       hasQuoted: request.has_quoted,
-      quoted: request.has_quoted, // duplicate for compatibility
+      quoted: request.has_quoted,
       totalQuotes: parseInt(request.total_quotes),
-      seller_visible_time : request.seller_visible_time,
+      seller_visible_time: request.seller_visible_time,
       is_visible_to_seller: request.is_visible_to_seller,
       membership_plan: request.membership_plan,
       isReject: request.isReject || false,
-      serverDate : request.server_date
+      serverDate: request.server_date
     }));
 
     return NextResponse.json({
