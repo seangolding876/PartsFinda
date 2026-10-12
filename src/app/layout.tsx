@@ -64,7 +64,7 @@ export default function RootLayout({
               <div>
                 <h4 className="font-semibold mb-4">Contact Info</h4>
                 <ul className="space-y-2 text-gray-400">
-                  <li>📞 1-876-219-3329</li>
+                  <li>📞 1-876-393-9151</li>
                   <li>📧 support@partsfinda.com</li>
                   <li>📍 Kingston, Jamaica</li>
                 </ul>

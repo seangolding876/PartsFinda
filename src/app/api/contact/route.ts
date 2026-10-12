@@ -326,13 +326,13 @@ async function sendUserConfirmationEmail(
         <h4 style="margin: 0 0 10px 0; color: #065f46;">⏰ What to Expect Next</h4>
         <p style="margin: 0; color: #047857;">
           Our team typically responds within <strong>24 hours</strong> during business days. 
-          For urgent matters, you can call us directly at <strong>1-876-219-3329</strong>.
+          For urgent matters, you can call us directly at <strong>1-876-393-9151</strong>.
         </p>
       </div>
 
       <p><strong>Need Immediate Assistance?</strong></p>
       <p>
-        📞 <strong>Call Us:</strong> 1-876-219-3329<br>
+        📞 <strong>Call Us:</strong> 1-876-393-9151<br>
         🕒 <strong>Business Hours:</strong> Mon-Fri 8:00 AM - 6:00 PM | Sat 9:00 AM - 4:00 PM
       </p>
 
@@ -544,7 +544,7 @@ async function sendAdminNotificationEmail(
         <a href="mailto:${userEmail}" class="button" style="background: #2563eb;">
           📧 Reply to Customer
         </a>
-        <a href="tel:${userPhone || '1-876-219-3329'}" class="button" style="background: #059669;">
+        <a href="tel:${userPhone || '1-876-393-9151'}" class="button" style="background: #059669;">
           📞 Call Customer
         </a>
       </div>

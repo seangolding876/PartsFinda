@@ -160,7 +160,7 @@ export default function PrivacyPage() {
             <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-gray-700"><strong>PartsFinda Inc.</strong></p>
               <p className="text-gray-700">Email: support@partsfinda.com</p>
-              <p className="text-gray-700">Phone: 1-876-219-3329</p>
+              <p className="text-gray-700">Phone: 1-876-393-9151</p>
               <p className="text-gray-700">Address: Kingston, Jamaica</p>
             </div>
           </section>

@@ -141,8 +141,8 @@ export default function ContactPage() {
                 <div>
                   <h3 className="font-semibold text-lg">Phone</h3>
                   <p className="text-gray-600">Call us for immediate assistance</p>
-                  <a href="tel:1-876-219-3329" className="text-blue-600 hover:text-blue-800 font-semibold">
-                    1-876-219-3329
+                  <a href="tel:1-876-393-9151" className="text-blue-600 hover:text-blue-800 font-semibold">
+                    1-876-393-9151
                   </a>
                 </div>
               </div>

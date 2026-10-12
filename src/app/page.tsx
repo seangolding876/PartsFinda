@@ -469,9 +469,9 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  <button className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-colors">
+                  {/* <button className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-colors">
                     Contact Supplier
-                  </button>
+                  </button> */}
                 </div>
               </div>
             ))}
@@ -494,7 +494,7 @@ export default function HomePage() {
             </div>
             <div className="text-white">
               <Phone className="w-12 h-12 mx-auto mb-4" />
-              <div className="text-xl font-semibold">+876 - 393-9151</div>
+              <div className="text-xl font-semibold">1-876-393-9151</div>
             </div>
             <div className="text-white">
               <MapPin className="w-12 h-12 mx-auto mb-4" />
